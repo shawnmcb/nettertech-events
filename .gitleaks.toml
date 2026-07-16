@@ -1,0 +1,21 @@
+# gitleaks configuration — INV-S3 (.coherence-invariants.md)
+#
+# Pre-push scans outgoing commits only; the 9 historical findings from the
+# initial full-history scan (2026-06-11) were triaged: 4 false positives
+# (dummy test fixtures, a path string), 5 hits of a local-only test-site
+# password already rotated. No history rewrite warranted — private remote,
+# local-only credential, rotated.
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Known test fixtures and internal docs"
+paths = [
+    '''\.claude/plans/.*''',
+]
+regexes = [
+    # Deliberate dummy fixtures in unit tests.
+    '''previously-generated-secret-key-abcdef1234567890''',
+    '''ABCDEF12345678901234567890123456''',
+]

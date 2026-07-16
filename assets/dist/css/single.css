@@ -1,0 +1,734 @@
+/**
+ * Single Event Page Styles
+ *
+ * @package NetterTechEvents
+ */
+
+/* Single Event Layout */
+.nte-single-event {
+	max-width: var(--nte-container-max-width, 1200px);
+	margin: 0 auto;
+	padding: var(--nte-spacing-lg, 1.5rem);
+}
+
+.nte-single-event__image {
+	aspect-ratio: var(--nte-image-ratio-single, var(--nte-image-ratio-default, 16 / 9));
+	margin-bottom: var(--nte-spacing-lg, 1.5rem);
+	border-radius: var(--nte-radius-lg, 0.5rem);
+	overflow: hidden;
+}
+
+.nte-single-event__img {
+	display: block;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	object-position: 50% var(--nte-single-image-anchor-y, 50%);
+}
+
+.nte-single-event__header {
+	margin-bottom: var(--nte-spacing-xl, 2rem);
+}
+
+.nte-single-event__title {
+	font-size: clamp(30px, 5vw, 40px);
+	font-weight: 700;
+	margin: 0 0 var(--nte-spacing-xs, 0.25rem);
+	line-height: 1.2;
+	color: var(--nte-color-text, #1f2937);
+}
+
+.nte-single-event__cancelled-notice {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--nte-spacing-xs, 0.25rem);
+	align-items: baseline;
+	margin: 0 0 var(--nte-spacing-md, 1rem);
+	padding: var(--nte-spacing-sm, 0.5rem) var(--nte-spacing-md, 1rem);
+	border-left: 4px solid var(--nte-color-error, #dc2626);
+	border-radius: var(--nte-radius-sm, 0.25rem);
+	background: var(--nte-color-error-bg, #fef2f2);
+	color: var(--nte-color-text, #1f2937);
+	font-size: var(--nte-font-size-base, 1em);
+}
+
+.nte-single-event__cancelled-notice strong {
+	color: var(--nte-color-error, #dc2626);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+.nte-single-event__subtitle {
+	font-size: clamp(18px, 3vw, 24px);
+	font-weight: 500;
+	color: var(--nte-color-text-muted, #5a616e);
+	margin: 0 0 var(--nte-spacing-sm, 0.5rem);
+	line-height: 1.4;
+}
+
+.nte-single-event__price {
+	font-family: var(--wp--preset--font-family--body, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+	font-weight: 400;
+	font-style: normal;
+	letter-spacing: normal;
+	text-transform: none;
+}
+
+.nte-single-event__date-display {
+	display: flex;
+	align-items: center;
+	gap: var(--nte-spacing-sm, 0.5rem);
+	color: var(--nte-color-primary, #2563eb);
+	font-size: var(--nte-font-size-lg, 1.125em);
+	font-weight: 600;
+	margin: 0 0 var(--nte-spacing-sm, 0.5rem);
+}
+
+.nte-single-event__date-display .nte-icon {
+	flex-shrink: 0;
+}
+
+.nte-single-event__venue {
+	display: flex;
+	align-items: center;
+	gap: var(--nte-spacing-sm, 0.5rem);
+	color: var(--nte-color-text-muted, #5a616e);
+	font-size: var(--nte-font-size-base, 1em);
+	margin: 0;
+}
+
+.nte-single-event__venue .nte-icon {
+	flex-shrink: 0;
+}
+
+.nte-single-event__address {
+	display: block;
+	margin-left: 1.5rem;
+	font-size: var(--nte-font-size-sm, 0.875em);
+}
+
+.nte-single-event__virtual {
+	display: flex;
+	align-items: center;
+	gap: var(--nte-spacing-sm, 0.5rem);
+	color: var(--nte-color-text-muted, #5a616e);
+	font-size: var(--nte-font-size-base, 1em);
+	margin: var(--nte-spacing-xs, 0.25rem) 0 0 0;
+}
+
+.nte-single-event__virtual .nte-icon {
+	flex-shrink: 0;
+}
+
+.nte-single-event__virtual a {
+	color: var(--nte-color-primary, #0073aa);
+	text-decoration: none;
+}
+
+.nte-single-event__virtual a:hover {
+	text-decoration: underline;
+}
+
+.nte-single-event__section-title {
+	font-size: var(--nte-font-size-lg, 1.125em);
+	font-weight: 600;
+	margin: 0 0 var(--nte-spacing-md, 1em);
+	padding-bottom: var(--nte-spacing-sm, 0.5rem);
+	border-bottom: 1px solid var(--nte-color-border, #82858c);
+}
+
+/* Occurrence List */
+.nte-single-event__dates {
+	margin-bottom: var(--nte-spacing-xl, 2rem);
+}
+
+.nte-single-event__occurrences {
+	list-style: none;
+	padding: 0;
+	margin: 0;
+}
+
+.nte-single-event__occurrence {
+	display: flex;
+	flex-direction: column;
+	gap: var(--nte-spacing-sm, 0.5rem);
+	padding: var(--nte-spacing-md, 1em);
+	background: var(--nte-color-background, #fff);
+	border-radius: var(--nte-radius-md, 0.375rem);
+	margin-bottom: var(--nte-spacing-sm, 0.5rem);
+}
+
+.nte-single-event__occurrence--past {
+	opacity: 0.6;
+}
+
+/* Date and time share a row */
+.nte-single-event__occurrence-header {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--nte-spacing-md, 1em);
+}
+
+.nte-single-event__occurrence-date {
+	flex: 1;
+	min-width: 150px;
+}
+
+.nte-single-event__occurrence-day {
+	display: block;
+	font-weight: 600;
+	color: var(--nte-color-primary, #2563eb);
+}
+
+.nte-single-event__occurrence-full-date {
+	display: block;
+	font-size: var(--nte-font-size-sm, 0.875em);
+	color: var(--nte-color-text-muted, #5a616e);
+}
+
+.nte-single-event__occurrence-time {
+	color: var(--nte-color-text, #1f2937);
+}
+
+/* Actions stack below date/time row */
+.nte-occurrence-actions {
+	display: flex;
+	flex-direction: column;
+	gap: 0.75rem;
+	width: 100%;
+	margin-top: 0.5rem;
+}
+
+/* Event Content */
+.nte-single-event__content {
+	margin-bottom: var(--nte-spacing-xl, 2rem);
+}
+
+.nte-single-event__description {
+	line-height: 1.7;
+}
+
+.nte-single-event__description p {
+	margin-bottom: var(--nte-spacing-md, 1em);
+}
+
+/* Fluid video embeds: oEmbed iframes fill the available width at 16:9,
+   overriding the fixed width/height attributes WordPress emits.
+   Scoped to the default video providers; non-16:9 videos letterbox. */
+.nte-single-event__description iframe[src*="youtube.com"],
+.nte-single-event__description iframe[src*="youtube-nocookie.com"],
+.nte-single-event__description iframe[src*="vimeo.com"] {
+	display: block;
+	width: 100%;
+	height: auto;
+	aspect-ratio: 16 / 9;
+	border: 0;
+}
+
+/* Occurrence Siblings Navigation (More Dates) */
+.nte-occurrence-siblings {
+	margin-top: var(--nte-spacing-xl, 2rem);
+	padding-top: var(--nte-spacing-lg, 1.5rem);
+	border-top: 1px solid var(--nte-color-border, #82858c);
+}
+
+.nte-occurrence-siblings__title {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	font-size: var(--nte-font-size-lg, 1.125em);
+	font-weight: 600;
+	margin: 0 0 var(--nte-spacing-md, 1em);
+}
+
+.nte-occurrence-siblings__view-all {
+	font-size: var(--nte-font-size-sm, 0.875em);
+	font-weight: 400;
+	color: var(--nte-color-primary, #2563eb);
+	text-decoration: none;
+}
+
+.nte-occurrence-siblings__view-all:hover {
+	text-decoration: underline;
+}
+
+.nte-occurrence-siblings__list {
+	list-style: none;
+	padding: 0;
+	margin: 0;
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--nte-spacing-sm, 0.5rem);
+}
+
+.nte-occurrence-siblings__item {
+	flex: 0 0 auto;
+}
+
+.nte-occurrence-siblings__link {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--nte-spacing-xs, 0.25rem);
+	padding: var(--nte-spacing-xs, 0.25rem) var(--nte-spacing-sm, 0.5rem);
+	background: var(--nte-color-background-alt, #f3f4f6);
+	border-radius: var(--nte-radius-sm, 0.25rem);
+	color: var(--nte-color-text, #1f2937);
+	text-decoration: none;
+	font-size: var(--nte-font-size-sm, 0.875em);
+	transition: background-color 0.2s;
+}
+
+.nte-occurrence-siblings__link:hover {
+	background: var(--nte-color-border, #82858c);
+}
+
+.nte-occurrence-siblings__link--current {
+	background: var(--nte-color-primary, #2563eb);
+	color: #fff;
+	font-weight: 600;
+}
+
+.nte-occurrence-siblings__item--cancelled .nte-occurrence-siblings__link {
+	opacity: 0.7;
+	text-decoration: line-through;
+}
+
+.nte-occurrence-siblings__status {
+	padding: 1px 4px;
+	background: var(--nte-color-error, #dc2626);
+	color: #fff;
+	font-size: var(--nte-font-size-xs, 0.8125em);
+	border-radius: 2px;
+	text-decoration: none;
+}
+
+/* Ticket Card Layout */
+
+/* Ticket form: display:contents removes the <form>
+   box so flex layout flows through */
+.nte-ticket-form {
+	display: contents;
+}
+
+.nte-ticket-card {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 0.75rem;
+	padding: 0.75rem;
+	background: var(--nte-color-background-alt, #f9fafb);
+	border: 1px solid var(--nte-color-border, #82858c);
+	border-radius: 0.5rem;
+}
+
+.nte-ticket-card__info {
+	flex: 1;
+	min-width: 200px;
+}
+
+.nte-ticket-card__name {
+	margin: 0 0 0.25rem;
+	color: var(--nte-color-text, #1f2937);
+	font-weight: 600;
+}
+
+.nte-ticket-card__description {
+	margin: 0 0 0.5rem;
+	color: var(--nte-color-text-muted, #5a616e);
+	line-height: 1.4;
+}
+
+.nte-ticket-card__price {
+	color: var(--nte-color-text, #1f2937);
+	font-weight: 500;
+}
+
+.nte-ticket-form .nte-ticket-card__footer {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 1rem;
+	padding: 0.5rem 0.75rem;
+	margin-top: 0.5rem;
+	margin-bottom: 1em;
+	background: inherit;
+	border: 2px solid var(--nte-color-border, #82858c);
+	border-radius: 0.25rem;
+}
+
+.nte-ticket-form .nte-ticket-card__action {
+	flex-shrink: 0;
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+.nte-ticket-form .nte-ticket-quantity {
+	display: flex;
+	align-items: center;
+	gap: 0.25rem;
+}
+
+.nte-ticket-form .nte-ticket-card__name {
+	margin-bottom: 0.125rem;
+}
+
+.nte-ticket-form .nte-ticket-card__description {
+	margin-top: 0;
+	margin-bottom: 0.5rem;
+}
+
+.nte-ticket-form .nte-ticket-card__separator {
+	border: none;
+	border-top: 1px solid var(--nte-color-border, #82858c);
+	margin: 1rem 0;
+}
+
+.nte-ticket-form__submit-price {
+	margin-left: 0.4em;
+	font-family: var(--wp--preset--font-family--body, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+	font-weight: 400;
+	font-style: normal;
+	letter-spacing: normal;
+	text-transform: none;
+}
+
+.nte-ticket-form__footer {
+	display: flex;
+	justify-content: flex-end;
+	align-items: center;
+	gap: 1rem;
+	margin-top: 1rem;
+	padding-top: 1rem;
+	border-top: 1px solid var(--nte-color-border, #82858c);
+}
+
+.nte-ticket-form__submit {
+	min-width: 140px;
+	padding: 0.75rem 1.5rem;
+}
+
+.nte-ticket-form__submit:disabled {
+	cursor: not-allowed;
+}
+
+.nte-ticket-form__submit:focus-visible {
+	outline: 2px solid var(--nte-color-primary, #2563eb);
+	outline-offset: 2px;
+}
+
+.nte-ticket-form__submit:active {
+	transform: scale(0.97);
+}
+
+/* Ticket button base styles */
+.nte-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	text-decoration: none;
+	cursor: pointer;
+	border: none;
+	transition: all 0.2s;
+}
+
+.nte-btn:focus-visible {
+	outline: 2px solid var(--nte-color-primary, #2563eb);
+	outline-offset: 2px;
+}
+
+.nte-btn:active {
+	transform: scale(0.97);
+}
+
+/* Theme-adaptive button overrides for disabled/sold-out states.
+   wp-element-button inherits theme colors; these ensure disabled states
+   remain visually distinct regardless of theme. */
+.nte-btn.nte-btn--primary.wp-element-button:disabled {
+	background: #9ca3af;
+	color: #fff;
+	cursor: not-allowed;
+	opacity: 1;
+}
+
+.nte-btn.nte-btn--sold-out.wp-element-button {
+	background: #9ca3af;
+	color: #fff;
+	cursor: not-allowed;
+	opacity: 1;
+}
+
+/* Low-stock badge anchor on button */
+.nte-btn--low-stock {
+	position: relative;
+}
+
+/* Badges */
+.nte-badge {
+	display: inline-block;
+	margin-inline-start: 0.5rem;
+	padding: 0.125rem 0.375rem;
+	border-radius: 0.25rem;
+}
+
+.nte-badge--warning {
+	background: #fef3c7;
+	color: #92400e;
+}
+
+/* Occurrence status */
+.nte-occurrence-status {
+	padding: 0.25rem 0.75rem;
+	border-radius: 0.25rem;
+}
+
+.nte-occurrence-status--past {
+	background: var(--nte-color-background-alt, #f3f4f6);
+	color: var(--nte-color-text-muted, #5a616e);
+}
+
+/* RSVP form container */
+.nte-rsvp-form-container {
+	padding: 1rem;
+	margin-top: 1rem;
+	background: var(--nte-color-background-alt, #f9fafb);
+	border: 1px solid var(--nte-color-border, #82858c);
+	border-radius: 0.5rem;
+}
+
+/* Ticket info line */
+.nte-ticket-info {
+	color: var(--nte-color-text-muted, #5a616e);
+}
+
+/* Ticket error message */
+.nte-ticket-error {
+	margin-top: 0.25rem;
+	color: #dc2626;
+}
+
+/* Quantity stepper */
+/* stylelint-disable-next-line no-descending-specificity --
+   base stepper after .nte-ticket-form scoped variant */
+.nte-ticket-quantity {
+	display: flex;
+	align-items: center;
+	gap: 0.25rem;
+}
+
+/* Parent+class selector (0,2,0) overrides Kadence
+   input[type="number"] { background: var(--global-palette9) }
+   which is (0,1,1) and loads after plugin CSS */
+.nte-ticket-quantity .nte-ticket-quantity__input {
+	width: 3rem;
+	height: 2rem;
+	padding: 0 0.25rem;
+	background: var(--nte-color-background, #fff);
+	border: 1px solid var(--nte-color-border, #82858c);
+	border-radius: 0.375rem;
+	color: var(--nte-color-text, #1f2937);
+	text-align: center;
+	-moz-appearance: textfield;
+}
+
+.nte-ticket-quantity__input::-webkit-outer-spin-button,
+.nte-ticket-quantity__input::-webkit-inner-spin-button {
+	-webkit-appearance: none;
+	margin: 0;
+}
+
+.nte-ticket-quantity__input:disabled {
+	background: var(--nte-color-background-alt, #f3f4f6);
+	color: var(--nte-color-text-disabled, #5a616e);
+	cursor: not-allowed;
+}
+
+.nte-ticket-quantity__btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 2rem;
+	height: 2rem;
+	padding: 0;
+	background: var(--nte-color-background, #fff);
+	border: 1px solid var(--nte-color-border, #82858c);
+	border-radius: 0.375rem;
+	color: var(--nte-color-text, #1f2937);
+	font-weight: 600;
+	cursor: pointer;
+	transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+}
+
+.nte-ticket-quantity__btn:focus-visible {
+	outline: 2px solid var(--nte-color-primary, #2563eb);
+	outline-offset: 2px;
+	color: var(--nte-color-text, #1f2937);
+}
+
+.nte-ticket-quantity__btn:disabled {
+	background: var(--nte-color-background, #fff);
+	border: 1px solid var(--nte-color-border, #82858c);
+	color: var(--nte-color-text-muted, #5a616e);
+	opacity: 0.4;
+	cursor: not-allowed;
+}
+
+.nte-ticket-quantity__btn:hover:not(:disabled) {
+	background: var(--nte-color-background-alt, #f3f4f6);
+	border-color: var(--nte-color-text-muted, #5a616e);
+	color: var(--nte-color-text, #1f2937);
+}
+
+.nte-ticket-quantity__btn:active:not(:disabled) {
+	transform: scale(0.97);
+	color: var(--nte-color-text, #1f2937);
+}
+
+.nte-ticket-quantity__input:focus-visible {
+	outline: 2px solid var(--nte-color-primary, #2563eb);
+	outline-offset: -1px;
+	border-color: var(--nte-color-primary, #2563eb);
+}
+
+/* Stock indicators */
+.nte-ticket-stock {
+	margin-inline-start: 0.5rem;
+	color: var(--nte-color-text-muted, #5a616e);
+}
+
+.nte-ticket-stock--low {
+	color: #b45309;
+}
+
+/* Screen reader only utility */
+.nte-sr-only {
+	position: absolute;
+	overflow: hidden;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+	border: 0;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+
+	.nte-single-event {
+		padding: var(--nte-spacing-md, 1em);
+	}
+
+	.nte-single-event__occurrence-header {
+		flex-direction: column;
+		align-items: flex-start;
+	}
+
+	.nte-occurrence-siblings__list {
+		flex-direction: column;
+	}
+
+	.nte-occurrence-siblings__link {
+		width: 100%;
+		justify-content: center;
+	}
+}
+
+/* Add to Calendar Dropdown */
+.nte-add-to-calendar {
+	position: relative;
+	display: inline-block;
+}
+
+.nte-add-to-calendar__trigger {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.375rem;
+	padding: 0;
+	border: none;
+	background: none;
+	font-family: inherit;
+	font-size: var(--nte-font-size-sm, 0.875em);
+	color: var(--nte-color-text-muted, #5a616e);
+	cursor: pointer;
+	line-height: inherit;
+}
+
+.nte-add-to-calendar__trigger:hover,
+.nte-add-to-calendar__trigger:focus-visible {
+	color: var(--nte-color-primary, #2563eb);
+}
+
+.nte-add-to-calendar__trigger:focus-visible {
+	outline: 2px solid var(--nte-color-primary, #2563eb);
+	outline-offset: 2px;
+	border-radius: 2px;
+}
+
+.nte-add-to-calendar__icon {
+	flex-shrink: 0;
+	transform: translateY(-2px);
+}
+
+.nte-add-to-calendar__chevron {
+	flex-shrink: 0;
+	transition: transform 0.15s ease;
+}
+
+.nte-add-to-calendar__trigger[aria-expanded="true"] .nte-add-to-calendar__chevron {
+	transform: rotate(180deg);
+}
+
+.nte-add-to-calendar__menu {
+	display: none;
+	position: absolute;
+	z-index: 100;
+	top: calc(100% + 0.25rem);
+	left: 0;
+	min-width: 10rem;
+	margin: 0;
+	padding: 0.25rem 0;
+	list-style: none;
+	background: var(--nte-color-bg, #fff);
+	border: 1px solid var(--nte-color-border, #d1d5db);
+	border-radius: 0.375rem;
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.nte-add-to-calendar__trigger[aria-expanded="true"] + .nte-add-to-calendar__menu {
+	display: block;
+}
+
+.nte-add-to-calendar__item {
+	display: block;
+	padding: 0.5rem 0.75rem;
+	font-size: var(--nte-font-size-sm, 0.875em);
+	color: var(--nte-color-text, #1f2937);
+	text-decoration: none;
+	white-space: nowrap;
+}
+
+.nte-add-to-calendar__item:hover,
+.nte-add-to-calendar__item:focus-visible {
+	background: var(--nte-color-bg-hover, #f3f4f6);
+	color: var(--nte-color-primary, #2563eb);
+	text-decoration: none;
+}
+
+.nte-add-to-calendar__item:focus-visible {
+	outline: 2px solid var(--nte-color-primary, #2563eb);
+	outline-offset: -2px;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+
+	.nte-btn,
+	.nte-ticket-quantity__btn,
+	.nte-occurrence-siblings__link {
+		transition: none;
+	}
+}

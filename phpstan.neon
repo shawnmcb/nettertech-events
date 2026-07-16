@@ -1,0 +1,156 @@
+includes:
+    - vendor/szepeviktor/phpstan-wordpress/extension.neon
+    - vendor/shipmonk/dead-code-detector/rules.neon
+    # HONEST BASELINE (2026-06-11, audit R-05): 438 errors parked when the gate
+    # was restored after being silently dead 2026-04-05 → 2026-06-11 (see
+    # .coherence-invariants.md INV-M1). Composition at parking time: ~186
+    # dead-code-detector findings, ~160 L8 type-strictness (int|null narrowing
+    # etc.), duck-typed Pro extension points (Router::$ticket_router), guarded
+    # optional-dependency classes (FLPageData, PdfTicketService). Real bugs
+    # found during triage were FIXED, not parked (organizer metabox wiring).
+    # This baseline is a debt ledger, not a cleanliness claim — burn it down,
+    # never regenerate it to absorb new errors.
+    - phpstan-baseline.neon
+
+services:
+    -
+        class: NetterTechEvents\PHPStan\WordPressHookUsageProvider
+        tags:
+            - shipmonk.deadCode.memberUsageProvider
+    -
+        class: NetterTechEvents\PHPStan\TemplateMethodUsageProvider
+        tags:
+            - shipmonk.deadCode.memberUsageProvider
+    -
+        class: NetterTechEvents\PHPStan\WpListTableColumnUsageProvider
+        tags:
+            - shipmonk.deadCode.memberUsageProvider
+    -
+        class: NetterTechEvents\PHPStan\SatelliteUsageProvider
+        tags:
+            - shipmonk.deadCode.memberUsageProvider
+
+parameters:
+    level: 8
+    paths:
+        - includes
+    excludePaths:
+        - vendor
+        # Beaver Builder modules depend on FLBuilderModule class (optional dependency)
+        - includes/Integrations/BeaverBuilder/Modules
+
+    # PHP 8.2 minimum (readonly classes, DNF types)
+    phpVersion: 80200
+
+    # Bootstrap files for constants and stubs
+    bootstrapFiles:
+        - phpstan-bootstrap.php
+        - phpstan-stubs.php
+        - vendor/php-stubs/wordpress-stubs/wordpress-stubs.php
+        - vendor/php-stubs/woocommerce-stubs/woocommerce-stubs.php
+
+    ignoreErrors:
+        # Astra theme function - optional dependency
+        - '#Function astra_get_option not found#'
+
+        # Action callbacks returning values is valid PHP, just unconventional
+        - '#Action callback returns .* but should not return anything#'
+
+        # Over-cautious empty() check - valid code
+        - '#Variable \$values in empty\(\) always exists and is not falsy#'
+
+        # Core\Settings\* are readonly typed-settings DTOs (the 1.7.0 typed
+        # facade over the stored options array). Pro consumes the typed tree
+        # across the plugin boundary (e.g. CheckInPage reads
+        # checkin->checkin_counters); the remaining fields keep the DTOs
+        # schema-complete with the stored settings. Adjudicated keep,
+        # tranche 4 (2026-06-12).
+        -
+            identifier: shipmonk.deadProperty.neverRead
+            path: includes/Core/Settings
+            reportUnmatched: false
+
+        # ActivityLog is the OWASP-A09 typed log-record carrier; details and
+        # user_agent mirror persisted activity_log columns (consumed today via
+        # raw rows in PrivacyService exports). Schema-complete keep, same
+        # adjudication as Core\Settings. Surfaced 2026-06-12 when precise row
+        # types removed shipmonk's phantom property credits.
+        -
+            identifier: shipmonk.deadProperty.neverRead
+            message: '#ActivityLog\:\:\$(details|user_agent)#'
+            reportUnmatched: false
+
+        # SettingsPage::save_settings is a documented reflection-callable test
+        # shim (see its docblock); ~10 behavioral unit tests invoke it via
+        # ReflectionMethod, which the dead-code detector cannot see.
+        # Adjudicated keep, tranche 4 (2026-06-12).
+        -
+            identifier: shipmonk.deadMethod
+            message: '#SettingsPage\:\:save_settings#'
+            reportUnmatched: false
+        -
+            identifier: method.unused
+            message: '#SettingsPage\:\:save_settings#'
+            reportUnmatched: false
+
+        # wpdb::prepare() dynamically-built queries use string concatenation
+        # which PHPStan cannot verify as literal-string (consistent with Pro/Rentals/Seating)
+        -
+            identifier: argument.type
+            message: "#expects literal\\-string, non\\-falsy\\-string given#"
+            reportUnmatched: false
+
+        # Defensive null-coalescing and boolean checks on values PHPStan considers
+        # always-set or always-truthy. These guards protect against runtime edge cases
+        # (e.g., corrupt DB rows, WooCommerce session race conditions).
+        -
+            identifier: nullCoalesce.offset
+            reportUnmatched: false
+        -
+            identifier: nullCoalesce.property
+            reportUnmatched: false
+        # Redundant-per-PHPStan runtime type guards kept by policy: is_array()/
+        # is_string() on values whose static type comes from stubs (runtime can
+        # differ — get_option, $_POST), instanceof checks on container/repo
+        # returns (EventsPage, AdminMenu throw RuntimeException on mismatch),
+        # and php-parser ArrayItem guards that bridge parser version drift
+        # (WordPressHookUsageProvider). See ADR-018 / tranche-1 triage 2026-06-11.
+        -
+            identifier: function.alreadyNarrowedType
+            reportUnmatched: false
+        -
+            identifier: instanceof.alwaysTrue
+            reportUnmatched: false
+        -
+            identifier: booleanNot.alwaysFalse
+            reportUnmatched: false
+        -
+            identifier: booleanAnd.rightAlwaysTrue
+            reportUnmatched: false
+        -
+            identifier: isset.property
+            reportUnmatched: false
+        -
+            identifier: smallerOrEqual.alwaysFalse
+            reportUnmatched: false
+
+        # GD image functions accept int but PHPStan expects int<0, 255> or int<0, 127>.
+        # The values come from hexdec() which always returns valid range for 2-digit hex.
+        -
+            identifier: argument.type
+            message: "#expects int<0, (127|255)>, int given#"
+            reportUnmatched: false
+
+        # GD image color allocation returns int<0, max>|false but downstream
+        # functions expect plain int. Color allocation is validated contextually.
+        -
+            identifier: argument.type
+            message: "#expects int, int<0, max>\\|false given#"
+            reportUnmatched: false
+
+        # Third-party chillerlan settings container exposes magic properties
+        # its interface does not declare.
+        -
+            identifier: property.notFound
+            message: "#chillerlan\\\\Settings\\\\SettingsContainerInterface#"
+            reportUnmatched: false

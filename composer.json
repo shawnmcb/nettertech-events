@@ -1,0 +1,104 @@
+{
+	"name": "nettertech/nettertech-events",
+	"description": "A clean, performant WordPress events plugin with ticketing, recurring events, and WooCommerce integration.",
+	"type": "wordpress-plugin",
+	"license": "GPL-2.0-or-later",
+	"minimum-stability": "stable",
+	"prefer-stable": true,
+	"require": {
+		"php": ">=8.2",
+		"chillerlan/php-qrcode": "^6.0"
+	},
+	"require-dev": {
+		"squizlabs/php_codesniffer": "^3.7",
+		"wp-coding-standards/wpcs": "^3.0",
+		"phpcompatibility/phpcompatibility-wp": "^2.1",
+		"phpunit/phpunit": "^10.0",
+		"yoast/phpunit-polyfills": "^2.0",
+		"dealerdirect/phpcodesniffer-composer-installer": "^1.0",
+		"brain/monkey": "^2.6",
+		"wp-phpunit/wp-phpunit": "^6.0",
+		"phpmd/phpmd": "^2.15",
+		"phpstan/phpstan": "^2.0",
+		"szepeviktor/phpstan-wordpress": "^2.0",
+		"php-stubs/woocommerce-stubs": "^10.4",
+		"infection/infection": "^0.32",
+		"shipmonk/dead-code-detector": "^0.15.1",
+		"cyclonedx/cyclonedx-php-composer": "*"
+	},
+	"autoload": {
+		"psr-4": {
+			"NetterTechEvents\\": "includes/"
+		}
+	},
+	"autoload-dev": {
+		"psr-4": {
+			"NetterTechEvents\\Tests\\": "tests/"
+		}
+	},
+	"scripts": {
+		"phpcs": "phpcs",
+		"phpcbf": "phpcbf",
+		"test": "phpunit --no-coverage",
+		"test:unit": "phpunit --testsuite=Unit --no-coverage",
+		"test:coverage": "bash scripts/check-coverage.sh",
+		"test:fresh-matrix": "bash scripts/fresh-install-matrix.sh",
+		"test:integration": "php -d memory_limit=1G vendor/bin/phpunit --configuration phpunit-integration.xml.dist --no-coverage",
+		"test:all": "phpunit --no-coverage",
+		"test:wiring": "phpunit --group wiring --no-coverage",
+		"test:structural": "phpunit --group structural --no-coverage",
+		"check": [
+			"@phpcs",
+			"@test"
+		],
+		"quality": [
+			"@phpcs",
+			"@phpstan",
+			"@phpmd",
+			"@test"
+		],
+		"infection": "php -d memory_limit=512M vendor/bin/infection --threads=4 --git-diff-filter=AM --git-diff-base=origin/main --only-covering-test-cases --map-source-class-to-test",
+		"infection:full": "php -d memory_limit=512M vendor/bin/infection --threads=4",
+		"deps:audit": "composer audit --format=plain",
+		"push": [
+			"@phpcs",
+			"@phpstan",
+			"@deps:audit",
+			"@test",
+			"@infection",
+			"git push"
+		],
+		"hook:install": "git config core.hooksPath .githooks && echo 'Git hooks active (.githooks/)'",
+		"hook:remove": "git config --unset core.hooksPath && echo 'Git hooks deactivated'",
+		"test:coverage": "phpunit --coverage-clover build/coverage/clover.xml --coverage-text",
+		"coverage": "php -d pcov.enabled=1 vendor/bin/phpunit --coverage-text --coverage-html build/coverage",
+		"coverage:html": "phpunit --coverage-html build/coverage",
+		"coverage:integration": "phpunit --configuration phpunit-integration.xml.dist",
+		"phpmd": "php -d error_reporting=E_ALL^E_DEPRECATED vendor/bin/phpmd includes/ text phpmd.xml",
+		"phpstan": "phpstan analyse --memory-limit=2G",
+		"phpstan:baseline": "phpstan analyse --generate-baseline --memory-limit=2G",
+		"lint:js": "npm run lint:js --silent",
+		"patch:infection": "bash scripts/patch-infection-interceptor.sh",
+		"post-install-cmd": [
+			"bash scripts/patch-infection-interceptor.sh",
+			"@hook:install"
+		],
+		"post-update-cmd": [
+			"bash scripts/patch-infection-interceptor.sh",
+			"@hook:install"
+		],
+		"release:check": "bash scripts/release-gates.sh",
+		"sbom": "composer CycloneDX:make-sbom --output-format=JSON --output-file=build/nettertech-events.sbom.json --omit=dev"
+	},
+	"scripts-descriptions": {
+		"patch:infection": "Patch Infection IncludeInterceptor for PHP 8.5 (STREAM_OPEN_FOR_INCLUDE removed)"
+	},
+	"config": {
+		"allow-plugins": {
+			"dealerdirect/phpcodesniffer-composer-installer": true,
+			"infection/extension-installer": true,
+			"cyclonedx/cyclonedx-php-composer": true
+		},
+		"process-timeout": 900
+	}
+}

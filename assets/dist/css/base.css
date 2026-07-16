@@ -1,0 +1,615 @@
+/**
+ * NetterTech Events - Base Styles
+ *
+ * Minimal skeleton CSS designed to:
+ * - Inherit from the active theme where possible (theme.json support)
+ * - Use low specificity for easy customization
+ * - Provide CSS custom properties for theming
+ *
+ * Theme Integration:
+ * - WordPress theme.json variables are used when available
+ * - Themes can override --nte-* variables in their CSS
+ * - All variables cascade down to child components
+ *
+ * @package NetterTechEvents
+ */
+
+:root {
+
+	/*
+	 * Layout - Inherit from WordPress theme.json when available
+	 * These map to Settings > Layout in theme.json
+	 */
+	--nte-container-max-width: var(--wp--style--global--content-size, 1200px);
+	--nte-container-wide-width: var(--wp--style--global--wide-size, 1400px);
+	--nte-container-padding: 1rem;
+
+	/*
+	 * Colors - Inherit from theme when available, with sensible defaults
+	 * Themes can override via CSS or by setting --nte-* in their stylesheet
+	 */
+	--nte-color-primary: var(--wp--preset--color--primary, var(--wp--preset--color--vivid-cyan-blue, #2563eb));
+	--nte-color-primary-hover: var(--wp--preset--color--primary-dark, #1d4ed8);
+	--nte-color-text: var(--wp--preset--color--contrast, var(--wp--preset--color--black, #1f2937));
+	--nte-color-text-muted: var(--wp--preset--color--secondary, #5a616e);
+	--nte-color-border: var(--wp--preset--color--tertiary, #82858c);
+	--nte-color-background: var(--wp--preset--color--base, var(--wp--preset--color--white, #fff));
+	--nte-color-background-alt: var(--wp--preset--color--secondary-background, #f9fafb);
+	--nte-color-success: #10b981;
+	--nte-color-warning: #f59e0b;
+	--nte-color-error: #ef4444;
+	--nte-color-text-disabled: #5a616e;
+
+	/*
+	 * Spacing - Fixed component-level scale.
+	 * NOT inherited from theme.json spacing presets, which are designed for
+	 * layout-level block gaps and can be 4-10x larger than component needs.
+	 * Themes can override --nte-* variables directly in their CSS.
+	 */
+	--nte-spacing-xs: 0.25rem;
+	--nte-spacing-sm: 0.5rem;
+	--nte-spacing-md: 1rem;
+	--nte-spacing-lg: 1.5rem;
+	--nte-spacing-xl: 2rem;
+
+	/*
+	 * Typography - Inherit font family from theme
+	 * Font sizes use em units relative to container (not rem).
+	 * This ensures proper inheritance when themes set html font-size to 10px.
+	 * Accessibility: No text should render below --nte-font-size-min (12px).
+	 */
+	--nte-font-family: var(--wp--preset--font-family--body, inherit);
+	--nte-font-size-min: 0.75rem;
+	--nte-font-size-xs: 0.8125em;
+	--nte-font-size-sm: 0.875em;
+	--nte-font-size-base: 1em;
+	--nte-font-size-lg: 1.125em;
+	--nte-font-size-xl: 1.25em;
+
+	/*
+	 * Border radius - can be overridden by themes
+	 */
+	--nte-radius-sm: 0.25rem;
+	--nte-radius-md: 0.375rem;
+	--nte-radius-lg: 0.5rem;
+
+	/*
+	 * Shadows
+	 */
+	--nte-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+	--nte-shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+}
+
+/*
+ * Block-level vertical rhythm.
+ * Ensures consistent spacing between VE blocks on a page.
+ */
+.nte-calendar,
+.nte-carousel,
+.nte-event-list {
+	margin-bottom: var(--nte-spacing-xl);
+}
+
+/*
+ * Base container - inherits theme width, centers content
+ * All --nte-* variables are available to child elements
+ */
+.nte-container {
+
+	/* Layout */
+	max-width: var(--nte-container-max-width);
+	margin-left: auto;
+	margin-right: auto;
+	padding-left: var(--nte-container-padding);
+	padding-right: var(--nte-container-padding);
+	padding-top: var(--nte-spacing-lg);
+	padding-bottom: var(--nte-spacing-lg);
+
+	/*
+	 * Typography - reset to body font-size
+	 * Some themes set html to 10px for rem math, but body to 16px.
+	 * Using 1rem would give 10px, so we use 1.6rem (10*1.6=16) or inherit.
+	 */
+	font-family: var(--nte-font-family);
+	font-size: 16px; /* Explicit base size for consistency */
+	font-size: max(1rem, 16px); /* Use larger of rem or 16px fallback */
+	color: var(--nte-color-text);
+	line-height: 1.5;
+
+	/* Ensure box-sizing for consistent sizing */
+	box-sizing: border-box;
+}
+
+/* Wide container variant - for full-width layouts */
+.nte-container--wide {
+	max-width: var(--nte-container-wide-width);
+}
+
+/* Full width variant - no max-width constraint */
+.nte-container--full {
+	max-width: none;
+}
+
+/* Responsive padding increase on larger screens */
+@media (min-width: 768px) {
+
+	.nte-container {
+		padding-left: var(--nte-spacing-xl);
+		padding-right: var(--nte-spacing-xl);
+	}
+}
+
+/*
+ * Theme compatibility: Allow themes to inject their container
+ * by wrapping .nte-container with .alignwide or .alignfull
+ */
+.alignwide > .nte-container {
+	max-width: var(--nte-container-wide-width);
+}
+
+.alignfull > .nte-container {
+	max-width: none;
+	padding-left: var(--nte-spacing-lg);
+	padding-right: var(--nte-spacing-lg);
+}
+
+/* Event cards - shared structure */
+.nte-event-card {
+	background: var(--nte-color-background);
+	border: 1px solid var(--nte-color-border);
+	border-radius: var(--nte-radius-lg);
+	overflow: hidden;
+	transition: box-shadow 0.2s ease;
+}
+
+.nte-event-card:hover {
+	box-shadow: var(--nte-shadow-md);
+}
+
+.nte-event-card__image {
+	aspect-ratio: var(--nte-image-ratio-default, 16 / 9);
+	object-fit: cover;
+	width: 100%;
+}
+
+.nte-event-card__img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	/* Per-event vertical crop anchor (NTE-132); var inherits from the
+	   .nte-event-card__image wrapper, defaults to centered. */
+	object-position: 50% var(--nte-card-image-anchor-y, 50%);
+}
+
+.nte-event-card__content {
+	padding: var(--nte-spacing-md);
+}
+
+.nte-event-card__title {
+	font-size: var(--nte-font-size-lg);
+	font-weight: 600;
+	margin: 0 0 var(--nte-spacing-sm);
+}
+
+.nte-event-card__title a {
+	color: inherit;
+	text-decoration: none;
+}
+
+.nte-event-card__title a:hover {
+	color: var(--nte-color-primary);
+}
+
+.nte-event-card__date {
+	color: var(--nte-color-text-muted);
+	font-size: var(--nte-font-size-sm);
+}
+
+.nte-event-card__price {
+	font-weight: 600;
+	color: var(--nte-color-primary);
+}
+
+/* Buttons */
+.nte-button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: var(--nte-spacing-sm) var(--nte-spacing-md);
+	font-size: var(--nte-font-size-base);
+	font-weight: 500;
+	border-radius: var(--nte-radius-md);
+	cursor: pointer;
+	transition: background-color 0.2s, border-color 0.2s;
+	text-decoration: none;
+}
+
+.nte-button--primary {
+	background-color: var(--nte-color-primary);
+	color: #fff;
+	border: 1px solid var(--nte-color-primary);
+}
+
+.nte-button--primary:hover {
+	background-color: var(--nte-color-primary-hover);
+	border-color: var(--nte-color-primary-hover);
+}
+
+.nte-button--secondary {
+	background-color: transparent;
+	color: var(--nte-color-primary);
+	border: 1px solid var(--nte-color-border);
+}
+
+.nte-button--secondary:hover {
+	border-color: var(--nte-color-primary);
+}
+
+/* Button shared interactive states */
+.nte-button:focus-visible {
+	outline: 2px solid var(--nte-color-primary);
+	outline-offset: 2px;
+}
+
+.nte-button:active {
+	transform: scale(0.97);
+}
+
+.nte-button:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+/* Status badges */
+.nte-badge {
+	display: inline-flex;
+	align-items: center;
+	padding: var(--nte-spacing-xs) var(--nte-spacing-sm);
+	font-size: var(--nte-font-size-sm);
+	font-weight: 500;
+	border-radius: var(--nte-radius-sm);
+}
+
+.nte-badge--available {
+	background-color: #dcfce7;
+	color: #166534;
+}
+
+.nte-badge--limited {
+	background-color: #fef3c7;
+	color: #92400e;
+}
+
+.nte-badge--sold-out {
+	background-color: #fee2e2;
+	color: #991b1b;
+}
+
+/* Event tags */
+.nte-event-tags {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin-top: var(--nte-spacing-sm, 0.5rem);
+}
+
+.nte-tag-pill {
+	display: inline-block;
+	padding: 2px 10px;
+	border-radius: 12px;
+	background: var(--nte-color-background-alt, #e9ecef);
+	color: var(--nte-color-text-muted, #495057);
+	font-size: var(--nte-font-size-xs, 0.8125em);
+	line-height: 1.6;
+}
+
+/* Archive navigation toggle (Upcoming / Past) */
+.nte-archive__header {
+	margin-bottom: var(--nte-spacing-lg);
+}
+
+.nte-archive__nav {
+	display: inline-flex;
+	gap: 0;
+	margin-top: var(--nte-spacing-sm);
+	border: 1px solid var(--nte-color-border);
+	border-radius: var(--nte-radius-md);
+	overflow: hidden;
+}
+
+.nte-archive__nav-current,
+.nte-archive__nav-link {
+	display: inline-block;
+	padding: var(--nte-spacing-sm) var(--nte-spacing-md);
+	font-size: var(--nte-font-size-sm);
+	font-weight: 500;
+	text-decoration: none;
+	transition: background-color 0.2s, color 0.2s;
+}
+
+.nte-archive__nav-current {
+	background-color: var(--nte-color-primary);
+	color: #fff;
+	font-weight: 600;
+}
+
+.nte-archive__nav-link {
+	background-color: var(--nte-color-background);
+	color: var(--nte-color-text);
+}
+
+.nte-archive__nav-link:hover {
+	background-color: var(--nte-color-background-alt);
+	color: var(--nte-color-primary);
+}
+
+.nte-archive__nav-current:focus-visible,
+.nte-archive__nav-link:focus-visible {
+	outline: 2px solid var(--nte-color-primary);
+	outline-offset: 2px;
+}
+
+.nte-archive__nav-link:active {
+	transform: scale(0.97);
+}
+
+/* Loading state */
+.nte-loading {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: var(--nte-spacing-xl);
+	color: var(--nte-color-text-muted);
+}
+
+/* Empty state */
+.nte-empty {
+	text-align: center;
+	padding: var(--nte-spacing-xl);
+	color: var(--nte-color-text-muted);
+}
+
+/* Reduced motion: suppress transitions for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+
+	.nte-event-card,
+	.nte-button,
+	.nte-archive__nav-current,
+	.nte-archive__nav-link {
+		transition: none;
+	}
+}
+
+/* Inline SVG icons — theme-resistant centering */
+.nte-icon {
+	display: inline-block;
+	vertical-align: middle;
+	flex-shrink: 0;
+	fill: none;
+	stroke: currentcolor;
+}
+
+/* Frontend branding lockup — lozenge, anchored right */
+.nte-frontend-branding {
+	display: flex;
+	justify-content: flex-end;
+	margin-top: var(--nte-spacing-sm);
+}
+
+.nte-frontend-branding__link {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 4px 10px 4px 6px;
+	background: var(--nte-color-background-alt, #f3f4f6);
+	border: 1px solid var(--nte-color-border, #e5e7eb);
+	border-radius: 999px;
+	text-decoration: none;
+	color: var(--nte-color-text-muted, #6b7280);
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+	font-size: 11px;
+	font-weight: 500;
+	line-height: 1;
+	transition: border-color 0.2s, color 0.2s;
+}
+
+.nte-frontend-branding__link:hover,
+.nte-frontend-branding__link:focus-visible {
+	border-color: var(--nte-color-text-muted, #9ca3af);
+	color: var(--nte-color-text, #1f2937);
+}
+
+.nte-frontend-branding__link:focus-visible {
+	outline: 2px solid var(--nte-color-primary);
+	outline-offset: 2px;
+}
+
+.nte-frontend-branding__logo {
+	width: 16px;
+	height: 16px;
+	object-fit: contain;
+	flex-shrink: 0;
+	border-radius: 50%;
+}
+
+.nte-frontend-branding__text {
+	white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+
+	.nte-frontend-branding__text {
+		display: none;
+	}
+
+	.nte-frontend-branding__link {
+		padding: 4px;
+		border-radius: 50%;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+	.nte-frontend-branding__link {
+		transition: none;
+	}
+}
+
+/* Screen reader only */
+.nte-sr-only {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+	border: 0;
+}
+
+/* Breadcrumb / back navigation */
+
+.nte-breadcrumb {
+	margin-bottom: 1rem;
+}
+
+.nte-breadcrumb__link {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.25rem;
+	color: var(--nte-text-muted, #6b7280);
+	text-decoration: none;
+}
+
+.nte-breadcrumb__link:hover {
+	color: var(--nte-link-color, var(--wp--preset--color--primary, #2563eb));
+}
+
+/* Weekly Regulars Table */
+.nte-regulars__heading {
+	margin-bottom: 0.75rem;
+}
+
+.nte-regulars__table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: var(--nte-font-size-sm, 0.875rem);
+}
+
+.nte-regulars__th {
+	padding: 0.5rem 0.75rem;
+	text-align: left;
+	font-weight: 600;
+	border-bottom: 2px solid var(--nte-border-color, #d1d5db);
+	color: var(--nte-text-color, #1f2937);
+}
+
+.nte-regulars__td {
+	padding: 0.5rem 0.75rem;
+	border-bottom: 1px solid var(--nte-border-color-light, #e5e7eb);
+	vertical-align: top;
+}
+
+.nte-regulars__td--day {
+	font-weight: 600;
+	white-space: nowrap;
+}
+
+.nte-regulars__row--day-start .nte-regulars__td {
+	border-top: 2px solid var(--nte-border-color, #d1d5db);
+}
+
+.nte-regulars__row:first-child .nte-regulars__td {
+	border-top: none;
+}
+
+/* Row becomes the containing block so the stretched link fills the whole row.
+   A single semantic <a> remains the only link in the row; the ::after pseudo
+   expands the clickable area so users can click the venue or time cell and
+   still navigate to the event page. Keyboard focus still lands on the text.
+
+   WebKit historically ignores `position: relative` on <tr>, so the stretched
+   link ::after would escape to the body instead of staying inside the row.
+   A no-op `transform: translate(0)` forces the <tr> to be a containing block
+   on every engine without changing the visual layout. */
+.nte-regulars__row {
+	position: relative;
+	transform: translate(0);
+	transition: background-color 0.15s ease;
+}
+
+.nte-regulars__row:hover {
+	background-color: var(--nte-row-hover-bg, rgba(37, 99, 235, 0.06));
+	cursor: pointer;
+}
+
+.nte-regulars__link {
+	color: var(--nte-link-color, var(--wp--preset--color--primary, #2563eb));
+	text-decoration: none;
+}
+
+.nte-regulars__link::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	z-index: 1;
+}
+
+.nte-regulars__link:hover {
+	text-decoration: underline;
+}
+
+.nte-regulars__link:focus-visible {
+	outline: 2px solid var(--nte-focus-color, var(--wp--preset--color--primary, #2563eb));
+	outline-offset: 2px;
+	border-radius: 2px;
+}
+
+.nte-regulars__td--time {
+	white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+
+	.nte-regulars__table,
+	.nte-regulars__table thead,
+	.nte-regulars__table tbody,
+	.nte-regulars__table tr,
+	.nte-regulars__table th,
+	.nte-regulars__table td {
+		display: block;
+	}
+
+	.nte-regulars__table thead {
+		clip: rect(0 0 0 0);
+		height: 1px;
+		margin: -1px;
+		overflow: hidden;
+		padding: 0;
+		position: absolute;
+		width: 1px;
+	}
+
+	.nte-regulars__row {
+		margin-bottom: 0.75rem;
+		border: 1px solid var(--nte-border-color, #d1d5db);
+		border-radius: 0.375rem;
+		padding: 0.5rem;
+	}
+
+	.nte-regulars__row--day-start .nte-regulars__td {
+		border-top: none;
+	}
+
+	.nte-regulars__td {
+		border-bottom: none;
+		padding: 0.25rem 0;
+	}
+
+	.nte-regulars__td--day {
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		color: var(--nte-text-muted, #6b7280);
+	}
+}

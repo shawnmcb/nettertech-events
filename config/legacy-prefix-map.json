@@ -1,0 +1,80 @@
+{
+    "_comment": "Legacy nte_* identifiers mapped to canonical nettertech_events_* identifiers. Used by PrefixMigrationManager during plugin upgrade. DO NOT add identifiers with the legacy 've_*' prefix here — those are handled by the earlier MigrationManager (ve_*→nte_*) pass.",
+    "_schema_version": 1,
+
+    "option_map": {
+        "nte_settings":                 "nettertech_events_settings",
+        "nte_email_settings":           "nettertech_events_email_settings",
+        "nte_db_version":               "nettertech_events_db_version",
+        "nte_version":                  "nettertech_events_version",
+        "nte_activated":                "nettertech_events_activated",
+        "nte_cache_version":            "nettertech_events_cache_version",
+        "nte_flush_rewrite_rules":      "nettertech_events_flush_rewrite_rules",
+        "nte_hmac_key":                 "nettertech_events_hmac_key",
+        "nte_category_taxonomy_synced": "nettertech_events_category_taxonomy_synced",
+        "nte_waitlist_leave_token_key": "nettertech_events_waitlist_leave_token_key"
+    },
+
+    "post_meta_map": {
+        "_nte_event_id":            "_nettertech_events_event_id",
+        "_nte_occurrence_id":       "_nettertech_events_occurrence_id",
+        "_nte_ticket_type_id":      "_nettertech_events_ticket_type_id",
+        "_nte_is_event_ticket":     "_nettertech_events_is_event_ticket",
+        "_nte_qr_logo_id":          "_nettertech_events_qr_logo_id",
+        "_nte_qr_logo_mode":        "_nettertech_events_qr_logo_mode",
+        "_nte_accessibility_notes": "_nettertech_events_accessibility_notes"
+    },
+
+    "order_item_meta_map": {
+        "_nte_donation_amount": "_nettertech_events_donation_amount",
+        "_nte_donation_type":   "_nettertech_events_donation_type"
+    },
+
+    "post_type_map": {
+        "nte_event":               "nettertech_event",
+        "nettertech_events_event": "nettertech_event",
+        "nettertech_events_ev":    "nettertech_event"
+    },
+
+    "taxonomy_map": {
+        "nte_event_category":               "nettertech_event_category",
+        "nte_event_tag":                    "nettertech_event_tag",
+        "nettertech_events_event_category": "nettertech_event_category",
+        "nettertech_events_event_tag":      "nettertech_event_tag"
+    },
+
+    "shortcode_map": {
+        "nte_carousel": "nettertech_events_carousel",
+        "nte_list":     "nettertech_events_list",
+        "nte_grid":     "nettertech_events_grid",
+        "nte_calendar": "nettertech_events_calendar",
+        "nte_rsvp":     "nettertech_events_rsvp",
+        "nte_regulars": "nettertech_events_regulars"
+    },
+
+    "cache_transient_prefixes": [
+        "nte_csv_import_",
+        "nte_save_error_",
+        "nte_series_",
+        "nte_settings_notice"
+    ],
+
+    "stateful_transient_prefixes": [
+        "nte_rate_limit_"
+    ],
+
+    "cron_hook_map": {
+        "nte_send_reminder_emails":       "nettertech_events_send_reminder_emails",
+        "nte_cleanup_expired_holds":      "nettertech_events_cleanup_expired_holds",
+        "nte_purge_activity_log":         "nettertech_events_purge_activity_log",
+        "nte_purge_activity_log_pii":     "nettertech_events_purge_activity_log_pii",
+        "nte_generate_occurrences":       "nettertech_events_generate_occurrences",
+        "nte_daily_cleanup":              "nettertech_events_daily_cleanup",
+        "nte_sweep_expired_reservations": "nettertech_events_sweep_expired_reservations",
+        "nte_rebrand_migration_complete": "nettertech_events_rebrand_migration_complete"
+    },
+
+    "obsolete_cron_hooks": [
+        "nte_cleanup"
+    ]
+}

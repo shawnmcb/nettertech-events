@@ -1,0 +1,305 @@
+.nte-tickets-metabox {
+	max-width: 100%;
+}
+
+.nte-hidden {
+	display: none !important;
+}
+
+.nte-ticketing-toggle {
+	margin-bottom: 15px;
+}
+
+.nte-toggle-label {
+	display: inline-flex;
+	align-items: center;
+	cursor: pointer;
+}
+
+.nte-toggle-label input {
+	display: none;
+}
+
+.nte-toggle-slider {
+	width: 36px;
+	height: 20px;
+	background: #ccc;
+	border-radius: 10px;
+	margin-right: 10px;
+	position: relative;
+	transition: background 0.2s;
+}
+
+.nte-toggle-slider::after {
+	content: '';
+	width: 16px;
+	height: 16px;
+	background: white;
+	border-radius: 50%;
+	position: absolute;
+	top: 2px;
+	left: 2px;
+	transition: left 0.2s;
+}
+
+.nte-toggle-label input:checked + .nte-toggle-slider {
+	background: #2271b1;
+}
+
+.nte-toggle-label input:checked + .nte-toggle-slider::after {
+	left: 18px;
+}
+
+.nte-ticket-tabs {
+	display: flex;
+	gap: 0;
+	border-bottom: 1px solid #ddd;
+	margin-bottom: 15px;
+}
+
+.nte-tab-button {
+	padding: 10px 15px;
+	background: #f7f7f7;
+	border: 1px solid #ddd;
+	border-bottom: none;
+	margin-bottom: -1px;
+	cursor: pointer;
+	font-size: 13px;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.nte-tab-button:first-child {
+	border-radius: 4px 0 0;
+}
+
+.nte-tab-button:last-child {
+	border-radius: 0 4px 0 0;
+}
+
+.nte-tab-button.active {
+	background: #fff;
+	border-bottom-color: #fff;
+}
+
+.nte-tab-content {
+	display: none;
+}
+
+.nte-tab-content.active {
+	display: block;
+}
+
+.nte-badge {
+	background: #ddd;
+	color: #666;
+	padding: 2px 6px;
+	border-radius: 10px;
+	font-size: 12px;
+}
+
+.nte-tab-button.active .nte-badge {
+	background: #2271b1;
+	color: #fff;
+}
+
+.nte-ticket-list {
+	margin-bottom: 10px;
+}
+
+.nte-empty-state {
+	color: #666;
+	font-style: italic;
+	padding: 20px;
+	background: #f9f9f9;
+	border-radius: 4px;
+	text-align: center;
+}
+
+.nte-ticket-row {
+	border: 1px solid #ddd;
+	border-radius: 4px;
+	margin-bottom: 10px;
+	background: #fff;
+}
+
+.nte-ticket-header {
+	display: flex;
+	align-items: center;
+	padding: 10px 12px;
+	background: #f7f7f7;
+	border-bottom: 1px solid #ddd;
+	gap: 10px;
+}
+
+.nte-ticket-drag-handle {
+	cursor: move;
+	color: #999;
+}
+
+.nte-ticket-move-up,
+.nte-ticket-move-down {
+	background: none;
+	border: none;
+	cursor: pointer;
+	padding: 0;
+	color: #999;
+	line-height: 1;
+}
+
+.nte-ticket-move-up:hover,
+.nte-ticket-move-down:hover {
+	color: #2271b1;
+}
+
+.nte-ticket-row--dragging {
+	opacity: 0.5;
+}
+
+.nte-ticket-row--drag-over {
+	border-top: 2px solid #2271b1;
+}
+
+.nte-ticket-name {
+	flex: 1;
+	font-weight: 600;
+}
+
+.nte-ticket-scope-badge {
+	font-size: 12px;
+	padding: 2px 8px;
+	border-radius: 3px;
+	text-transform: uppercase;
+}
+
+.nte-scope-occurrence {
+	background: #e7f5ff;
+	color: #1971c2;
+}
+
+.nte-scope-event {
+	background: #fff3bf;
+	color: #e67700;
+}
+
+.nte-scope-template {
+	background: #d3f9d8;
+	color: #2f9e44;
+}
+
+.nte-ticket-toggle,
+.nte-ticket-remove {
+	background: none;
+	border: none;
+	cursor: pointer;
+	padding: 0;
+	color: #666;
+}
+
+.nte-ticket-remove:hover {
+	color: #dc3232;
+}
+
+.nte-ticket-toggle:hover {
+	color: #2271b1;
+}
+
+.nte-ticket-body {
+	padding: 15px;
+}
+
+.nte-ticket-fields {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+	gap: 12px;
+}
+
+.nte-field {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.nte-field-full {
+	grid-column: 1 / -1;
+}
+
+.nte-field label {
+	font-size: 12px;
+	font-weight: 500;
+	color: #444;
+}
+
+.nte-field label .required {
+	color: #dc3232;
+}
+
+.nte-field input,
+.nte-field textarea,
+.nte-field select {
+	width: 100%;
+}
+
+.nte-field-hint {
+	font-size: 12px;
+	color: #888;
+}
+
+.nte-input-group {
+	display: flex;
+	align-items: center;
+}
+
+.nte-input-prefix {
+	padding: 0 8px;
+	background: #f7f7f7;
+	border: 1px solid #8c8f94;
+	border-right: none;
+	border-radius: 4px 0 0 4px;
+	line-height: 28px;
+}
+
+.nte-input-group input {
+	border-radius: 0 4px 4px 0;
+}
+
+.nte-low-stock {
+	color: #e67700;
+	font-weight: 500;
+}
+
+.nte-sold-out {
+	color: #dc3232;
+	font-weight: 500;
+}
+
+.nte-wc-link {
+	margin-top: 10px;
+	padding-top: 10px;
+	border-top: 1px dashed #ddd;
+}
+
+.nte-wc-link a {
+	font-size: 12px;
+	color: #666;
+	text-decoration: none;
+}
+
+.nte-wc-link a:hover {
+	color: #2271b1;
+}
+
+.nte-wc-link .dashicons {
+	font-size: 14px;
+	vertical-align: middle;
+}
+
+.nte-add-ticket-row {
+	margin-top: 10px;
+}
+
+.nte-add-ticket .dashicons {
+	vertical-align: middle;
+	margin-right: 4px;
+}

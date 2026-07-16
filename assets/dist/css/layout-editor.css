@@ -1,0 +1,306 @@
+/**
+ * Layout Editor Styles
+ *
+ * Drag-and-drop interface for event page layout configuration.
+ *
+ * @package NetterTechEvents
+ */
+
+/* Layout Editor Container */
+.nte-layout-editor {
+	max-width: 600px;
+}
+
+/* Sortable List */
+.nte-layout-editor__list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	background: #fff;
+}
+
+.nte-layout-editor__item {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 12px 16px;
+	border-bottom: 1px solid #e2e4e7;
+	background: #fff;
+	cursor: grab;
+	transition: background-color 0.15s ease, box-shadow 0.15s ease;
+	user-select: none;
+}
+
+.nte-layout-editor__item:last-child {
+	border-bottom: none;
+}
+
+.nte-layout-editor__item:hover {
+	background: #f6f7f7;
+}
+
+.nte-layout-editor__item:focus {
+	outline: 2px solid #2271b1;
+	outline-offset: -2px;
+	z-index: 1;
+}
+
+.nte-layout-editor__item--hidden {
+	opacity: 0.5;
+}
+
+/* Drag States */
+.nte-layout-editor__item.is-dragging {
+	opacity: 0.5;
+	cursor: grabbing;
+}
+
+.nte-layout-editor__item.is-drag-over {
+	border-top: 2px solid #2271b1;
+	padding-top: 10px;
+}
+
+.nte-layout-editor__item.is-drag-over-bottom {
+	border-bottom: 2px solid #2271b1;
+	padding-bottom: 10px;
+}
+
+/* Drag Handle */
+.nte-layout-editor__handle {
+	flex-shrink: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 24px;
+	height: 24px;
+	color: #8c8f94;
+	cursor: grab;
+}
+
+.nte-layout-editor__handle:hover {
+	color: #2271b1;
+}
+
+.nte-layout-editor__item.is-dragging .nte-layout-editor__handle {
+	cursor: grabbing;
+}
+
+/* Visibility Toggle */
+.nte-layout-editor__toggle {
+	flex-shrink: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 32px;
+	height: 20px;
+	cursor: pointer;
+}
+
+.nte-layout-editor__checkbox {
+	position: absolute;
+	opacity: 0;
+	width: 0;
+	height: 0;
+}
+
+.nte-layout-editor__toggle-indicator {
+	position: relative;
+	display: block;
+	width: 32px;
+	height: 18px;
+	background: #c3c4c7;
+	border-radius: 9px;
+	transition: background-color 0.15s ease;
+}
+
+.nte-layout-editor__toggle-indicator::after {
+	content: "";
+	position: absolute;
+	top: 2px;
+	left: 2px;
+	width: 14px;
+	height: 14px;
+	background: #fff;
+	border-radius: 50%;
+	transition: transform 0.15s ease;
+}
+
+.nte-layout-editor__checkbox:checked + .nte-layout-editor__toggle-indicator {
+	background: #2271b1;
+}
+
+.nte-layout-editor__checkbox:checked + .nte-layout-editor__toggle-indicator::after {
+	transform: translateX(14px);
+}
+
+.nte-layout-editor__checkbox:focus + .nte-layout-editor__toggle-indicator {
+	box-shadow: 0 0 0 2px #fff, 0 0 0 4px #2271b1;
+}
+
+/* Labels */
+.nte-layout-editor__label {
+	flex-shrink: 0;
+	font-weight: 600;
+	color: #1d2327;
+	min-width: 180px;
+}
+
+.nte-layout-editor__description {
+	flex: 1;
+	font-size: 13px;
+	color: #646970;
+}
+
+.nte-layout-editor__item--hidden .nte-layout-editor__label,
+.nte-layout-editor__item--hidden .nte-layout-editor__description {
+	text-decoration: line-through;
+}
+
+/* Actions */
+.nte-layout-editor__actions {
+	margin-top: 16px;
+	display: flex;
+	gap: 8px;
+}
+
+.nte-layout-editor__reset {
+	color: #646970;
+}
+
+/* Event Editor Metabox Variant */
+.nte-layout-editor[data-context="metabox"] {
+	margin-top: 12px;
+}
+
+.nte-layout-editor[data-context="metabox"] .nte-layout-editor__list {
+	max-height: 350px;
+	overflow-y: auto;
+}
+
+/* Radio Toggle for Use Global vs Customize */
+.nte-layout-editor__mode {
+	margin-bottom: 16px;
+}
+
+.nte-layout-editor__mode label {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-bottom: 8px;
+	cursor: pointer;
+}
+
+.nte-layout-editor__mode input[type="radio"] {
+	margin: 0;
+}
+
+.nte-layout-editor__custom-wrapper {
+	display: none;
+}
+
+.nte-layout-editor__custom-wrapper.is-active {
+	display: block;
+}
+
+/* Preview Panel */
+.nte-layout-editor__preview {
+	margin-top: 20px;
+	padding-top: 20px;
+	border-top: 1px solid #c3c4c7;
+}
+
+.nte-layout-editor__preview-title {
+	font-weight: 600;
+	margin-bottom: 12px;
+}
+
+.nte-layout-editor__preview-frame {
+	width: 100%;
+	height: 400px;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	background: #f6f7f7;
+}
+
+.nte-layout-editor__preview-actions {
+	margin-top: 12px;
+	display: flex;
+	gap: 8px;
+}
+
+/* Keyboard Navigation Hints */
+.nte-layout-editor__hint {
+	margin-top: 12px;
+	font-size: 12px;
+	color: #646970;
+}
+
+.nte-layout-editor__hint kbd {
+	display: inline-block;
+	padding: 2px 6px;
+	font-family: monospace;
+	font-size: 12px;
+	background: #f0f0f1;
+	border: 1px solid #c3c4c7;
+	border-radius: 3px;
+	box-shadow: 0 1px 0 #c3c4c7;
+}
+
+/* Main Content Area Preview (full-width) */
+.nte-layout-preview-postbox {
+	margin-top: 20px;
+}
+
+.nte-layout-preview__frame-wrapper {
+	position: relative;
+	width: 100%;
+	background: #f6f7f7;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	overflow: hidden;
+}
+
+.nte-layout-preview__frame {
+	display: block;
+	width: 100%;
+	height: 600px;
+	border: none;
+}
+
+.nte-layout-preview__actions {
+	margin-top: 12px;
+	display: flex;
+	gap: 8px;
+}
+
+/* Responsive */
+@media (max-width: 782px) {
+
+	.nte-layout-editor__item {
+		flex-wrap: wrap;
+	}
+
+	.nte-layout-editor__label {
+		min-width: auto;
+		width: 100%;
+		order: 1;
+		margin-left: 36px;
+	}
+
+	.nte-layout-editor__description {
+		width: 100%;
+		order: 2;
+		margin-left: 36px;
+		margin-top: 4px;
+	}
+
+	.nte-layout-editor__handle {
+		order: 0;
+	}
+
+	.nte-layout-editor__toggle {
+		order: 0;
+	}
+}

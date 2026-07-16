@@ -1,0 +1,129 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "nettertech-events/grid",
+	"version": "0.8.0",
+	"title": "Event Grid",
+	"category": "widgets",
+	"icon": "grid-view",
+	"description": "Display events in a filterable grid or list layout.",
+	"keywords": [ "events", "grid", "list", "filter" ],
+	"textdomain": "nettertech-events",
+	"supports": {
+		"html": false,
+		"align": [ "wide", "full" ],
+		"className": true
+	},
+	"attributes": {
+		"limit": {
+			"type": "number",
+			"default": 12
+		},
+		"columns": {
+			"type": "number",
+			"default": 3
+		},
+		"layout": {
+			"type": "string",
+			"default": "grid",
+			"enum": [ "grid", "list", "cards" ]
+		},
+		"showFilters": {
+			"type": "boolean",
+			"default": true
+		},
+		"showSearch": {
+			"type": "boolean",
+			"default": true
+		},
+		"showCategory": {
+			"type": "boolean",
+			"default": true
+		},
+		"showImage": {
+			"type": "boolean",
+			"default": true
+		},
+		"showDate": {
+			"type": "boolean",
+			"default": true
+		},
+		"showTime": {
+			"type": "boolean",
+			"default": true
+		},
+		"showVenue": {
+			"type": "boolean",
+			"default": true
+		},
+		"showExcerpt": {
+			"type": "boolean",
+			"default": false
+		},
+		"pagination": {
+			"type": "boolean",
+			"default": true
+		},
+		"ajax": {
+			"type": "boolean",
+			"default": true
+		},
+		"category": {
+			"type": "string",
+			"default": ""
+		},
+		"past": {
+			"type": "boolean",
+			"default": false
+		}
+	},
+	"editorScript": "file:./build/index.js",
+	"editorStyle": "file:./build/index.css",
+	"render": "file:./render.php",
+	"variations": [
+		{
+			"name": "grid-view",
+			"title": "Grid View",
+			"description": "Display events in a multi-column grid with images and filters.",
+			"icon": "grid-view",
+			"attributes": {
+				"layout": "grid",
+				"columns": 3,
+				"showFilters": true,
+				"showSearch": true,
+				"showImage": true
+			},
+			"isDefault": true,
+			"scope": [ "inserter" ]
+		},
+		{
+			"name": "list-view",
+			"title": "List View",
+			"description": "Display events in a compact single-column list without images.",
+			"icon": "list-view",
+			"attributes": {
+				"layout": "list",
+				"columns": 1,
+				"showFilters": false,
+				"showSearch": false,
+				"showImage": false
+			},
+			"scope": [ "inserter" ]
+		},
+		{
+			"name": "card-view",
+			"title": "Card View",
+			"description": "Display events as rich cards with excerpts and full details.",
+			"icon": "align-none",
+			"attributes": {
+				"layout": "cards",
+				"columns": 2,
+				"showFilters": true,
+				"showSearch": true,
+				"showImage": true,
+				"showExcerpt": true
+			},
+			"scope": [ "inserter" ]
+		}
+	]
+}

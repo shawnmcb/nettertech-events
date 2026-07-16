@@ -1,0 +1,194 @@
+* {
+	box-sizing: border-box;
+}
+
+body.nte-scan-result-page {
+	margin: 0;
+	padding: 0;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+	background: #f5f5f5;
+	min-height: 100vh;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.nte-scan-result {
+	width: 100%;
+	max-width: 420px;
+	margin: 20px;
+	background: #fff;
+	border-radius: 16px;
+	box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
+	overflow: hidden;
+}
+
+.nte-scan-result__status {
+	padding: 28px 24px;
+	text-align: center;
+	color: #fff;
+}
+
+.nte-scan-result__status--success { background: #00a32a; }
+.nte-scan-result__status--warning { background: #dba617; }
+.nte-scan-result__status--partial { background: #2271b1; }
+.nte-scan-result__status--error { background: #d63638; }
+
+.nte-scan-result__status-icon {
+	display: block;
+	font-size: 3rem;
+	line-height: 1;
+	margin-bottom: 10px;
+}
+
+.nte-scan-result__status-text {
+	display: block;
+	font-size: 1.25rem;
+	font-weight: 700;
+}
+
+.nte-scan-result__attendee {
+	padding: 24px;
+	text-align: center;
+	border-bottom: 1px solid #e5e5e5;
+}
+
+.nte-scan-result__name {
+	margin: 0 0 8px;
+	font-size: 1.5rem;
+	line-height: 1.25;
+	color: #1d2327;
+}
+
+.nte-scan-result__email,
+.nte-scan-result__seats {
+	margin: 4px 0;
+	color: #646970;
+}
+
+.nte-scan-result__count {
+	display: flex;
+	align-items: baseline;
+	justify-content: center;
+	gap: 6px;
+	padding: 20px 24px;
+	background: #f6f7f7;
+}
+
+.nte-scan-result__count-value {
+	font-size: 3rem;
+	font-weight: 700;
+	color: #1d2327;
+}
+
+.nte-scan-result__count-separator,
+.nte-scan-result__count-total {
+	font-size: 1.5rem;
+	color: #646970;
+}
+
+.nte-scan-result__count-label {
+	margin-left: 4px;
+	color: #646970;
+}
+
+.nte-scan-result__actions {
+	display: flex;
+	gap: 12px;
+	padding: 20px 24px;
+}
+
+.nte-scan-result__btn {
+	flex: 1;
+	border: 0;
+	border-radius: 8px;
+	padding: 14px 16px;
+	font-size: 1rem;
+	font-weight: 700;
+	cursor: pointer;
+	transition: transform 0.1s ease, opacity 0.1s ease;
+}
+
+.nte-scan-result__btn:active {
+	transform: scale(0.98);
+}
+
+.nte-scan-result__btn--primary {
+	background: #2271b1;
+	color: #fff;
+}
+
+.nte-scan-result__btn--primary:hover {
+	background: #135e96;
+}
+
+.nte-scan-result__btn--primary:disabled {
+	background: #e2e2e2;
+	color: #565656;
+	cursor: wait;
+}
+
+.nte-scan-result__btn--secondary {
+	background: #f0f0f1;
+	color: #1d2327;
+}
+
+.nte-scan-result__btn--secondary:hover {
+	background: #dcdcde;
+}
+
+.nte-scan-result__event {
+	padding: 18px 24px;
+	border-top: 1px solid #e5e5e5;
+}
+
+.nte-scan-result__event-title {
+	margin: 0 0 8px;
+	font-weight: 700;
+	color: #1d2327;
+}
+
+.nte-scan-result__event-datetime,
+.nte-scan-result__event-venue {
+	margin: 4px 0;
+	color: #646970;
+}
+
+.nte-scan-result__footer {
+	padding: 18px 24px 24px;
+	text-align: center;
+}
+
+.nte-scan-result__link {
+	color: #2271b1;
+	font-weight: 700;
+	text-decoration: none;
+}
+
+.nte-scan-result__link:hover {
+	text-decoration: underline;
+}
+
+.nte-scan-result__hint {
+	margin: 12px 0 0;
+	font-size: 0.85em;
+	color: #595959;
+}
+
+@keyframes nte-success-pulse {
+	0% { transform: scale(1); }
+	50% { transform: scale(1.05); }
+	100% { transform: scale(1); }
+}
+
+.nte-scan-result--success-animation .nte-scan-result__count-value {
+	animation: nte-success-pulse 0.3s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.nte-scan-result__btn,
+	.nte-scan-result__count-value {
+		animation: none;
+		transition: none;
+	}
+}

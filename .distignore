@@ -1,0 +1,156 @@
+# Version control
+.git
+.gitignore
+.gitattributes
+.distignore
+
+# AI / process artifacts
+.claude
+.gemini
+.serena
+.audit
+.remediation
+.marketing
+.obsidian
+.claudeBAK
+
+# Dev tooling config
+.commitlintrc.json
+.editorconfig
+.eslintignore
+.eslintrc
+.eslintrc.js
+.eslintrc.json
+.prettierrc
+.prettierrc.json
+.stylelintrc.json
+*.gitkeep
+.githooks
+.husky
+infection.json5
+infection-bootstrap.php
+phpcs.xml
+phpunit.xml.dist
+phpunit-integration.xml.dist
+phpstan.neon
+phpstan-baseline.neon
+phpstan-bootstrap.php
+phpstan-stubs.php
+patchwork.json
+phpmd.xml
+playwright.config.ts
+webpack.config.js
+includes/PHPStan
+
+# Vendor documentation (LICENSE files are preserved upstream in source; we
+# carry the project's top-level LICENSE.txt and inline third-party attribution
+# in readme.txt's "Bundled Third-Party Libraries" section. Shipping 30+
+# per-library license/README/notice files inflates the dist and confuses
+# Plugin Check's "non-prefixed" scans. The composer.json + composer.lock
+# manifests at the plugin root let reviewers verify vendor/ contents.)
+vendor/**/LICENSE
+vendor/**/LICENSE.*
+vendor/**/LICENSE-*
+vendor/**/license
+vendor/**/license.*
+vendor/**/NOTICE
+vendor/**/NOTICE.*
+vendor/**/CHANGELOG.md
+vendor/**/CHANGELOG.txt
+vendor/**/CHANGES.md
+vendor/**/README.md
+vendor/**/README.txt
+vendor/**/UPGRADE.md
+vendor/**/CONTRIBUTING.md
+vendor/**/.github
+vendor/**/.gitattributes
+vendor/**/.gitignore
+vendor/**/Makefile
+vendor/**/phpunit.xml.dist
+vendor/**/phpcs.xml
+vendor/**/phpstan.neon
+vendor/**/*.neon
+vendor/**/.phpstan
+# build-dist.sh resolves directory patterns via filesystem `-d` test, which
+# does not interpret `**` as a glob. Listing the only `.phpstan/` directory
+# currently shipped under composer install --no-dev as an exact path so the
+# script generates the correct zip --exclude rule. If a future composer
+# update introduces .phpstan/ in another vendor package, list it here.
+vendor/chillerlan/php-settings-container/.phpstan
+vendor/**/psalm.xml
+vendor/**/tests
+vendor/**/test
+vendor/**/docs
+vendor/**/examples
+vendor/**/example
+
+# Build manifests (composer.json and composer.lock shipped so reviewers can
+# verify exact resolved vendor/ versions; both are referenced in readme.txt's
+# "Bundled Third-Party Libraries" section as the authoritative manifest.)
+package.json
+package-lock.json
+
+# Dev dependencies
+node_modules
+vendor-dev-backup
+
+# Source files for compiled assets are included alongside their built output
+# (see blocks/*/src/ and the "Source Code & Build" section in readme.txt) so
+# reviewers and downstream developers can verify the human-readable origin of
+# every minified file in the dist per WP.org guideline 4. Only the
+# pre-build entry points under assets/src — none of which compile to anything
+# shipped — are excluded.
+assets/src
+
+# Tests & QA
+tests
+test-results
+playwright-report
+/build
+.phpunit.cache
+.phpunit.result.cache
+
+# Deprecated code (retained in source for history; never shipped)
+deprecated
+
+# Dev documentation
+architecture
+docs
+scripts
+specs
+CONTRIBUTING.md
+GEMINI.md
+README.md
+
+# Stray editor/build backups (never ship)
+*.bak
+
+# Reports
+complexity_report.yaml
+gap_analysis_report.yaml
+quality_assessment.yaml
+security-audit-report-2026-01-18.yaml
+
+# WP.org SVN assets (screenshots, banners, icons)
+.wordpress-org
+
+# QR test artifacts (defense in depth)
+ABCD1234EFGH5678.png
+/nettertech-events/
+
+# Hidden / environment files
+.coherence-invariants.md
+.env
+.env.example
+.gitleaks.toml
+.gitleaksignore
+.wp-env.json
+.worktrees
+
+# Stray markdown
+CURRENT.md
+
+# OS junk
+.DS_Store
+Thumbs.db
+Sites

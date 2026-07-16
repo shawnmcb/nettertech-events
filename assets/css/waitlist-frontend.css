@@ -1,0 +1,203 @@
+/**
+ * Waitlist frontend styles.
+ *
+ * Matches existing .nte-btn and .nte-ticket-card patterns from TicketDisplay.
+ *
+ * @package NetterTechEvents
+ */
+
+/* Container */
+.nte-waitlist {
+	width: 100%;
+	margin-top: 0.5rem;
+}
+
+/* Toggle button - inherits theme button styles */
+.nte-waitlist__toggle {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin-left: auto;
+	width: fit-content;
+	cursor: pointer;
+}
+
+/* Expandable panel */
+.nte-waitlist__panel {
+	max-height: 0;
+	overflow: hidden;
+	transition: max-height 0.3s ease-out, opacity 0.3s ease-out;
+	opacity: 0;
+}
+
+.nte-waitlist__panel[hidden] {
+	display: block;
+	max-height: 0;
+	opacity: 0;
+	overflow: hidden;
+	visibility: hidden;
+}
+
+.nte-waitlist__panel--open {
+	max-height: 400px;
+	opacity: 1;
+	visibility: visible;
+}
+
+/* Form layout */
+.nte-waitlist__form {
+	padding: 0.75rem 0;
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+}
+
+.nte-waitlist__field {
+	display: flex;
+	flex-direction: column;
+	gap: 0.25rem;
+}
+
+.nte-waitlist__field label {
+	font-size: inherit;
+	font-weight: 500;
+	color: var(--nte-color-text, #1f2937);
+}
+
+.nte-waitlist__input {
+	padding: 0.4rem 0.625rem;
+	border: 1px solid var(--nte-color-border, #e5e7eb);
+	border-radius: 0.25rem;
+	font-size: inherit;
+	font-family: inherit;
+	color: var(--nte-color-text, #1f2937);
+	transition: border-color 0.2s;
+}
+
+.nte-waitlist__input:focus {
+	outline: none;
+	border-color: var(--nte-color-primary, #2563eb);
+	box-shadow: 0 0 0 1px var(--nte-color-primary, #2563eb);
+}
+
+/* Submit button - inherits theme button styles */
+.nte-waitlist__submit {
+	align-self: flex-end;
+	margin-top: 0.25rem;
+	cursor: pointer;
+}
+
+.nte-waitlist__submit:disabled {
+	background: #e2e2e2;
+	color: #565656;
+	cursor: not-allowed;
+}
+
+/* Error message */
+.nte-waitlist__error {
+	padding: 0.5rem 0.75rem;
+	margin-top: 0.25rem;
+	color: var(--nte-color-error, #ef4444);
+	background: #fef2f2;
+	border: 1px solid #fecaca;
+	border-radius: 0.25rem;
+	font-size: inherit;
+}
+
+/* Hidden attribute support (prevent display overrides) */
+.nte-waitlist__toggle[hidden],
+.nte-waitlist__success[hidden],
+.nte-waitlist__error[hidden] {
+	display: none;
+}
+
+/* Success state */
+.nte-waitlist__success {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	flex-wrap: wrap;
+	padding: 0.5rem 0;
+	font-size: inherit;
+	color: var(--nte-color-text, #1f2937);
+}
+
+/* CSS-only green checkmark */
+.nte-waitlist__check {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 1.25rem;
+	height: 1.25rem;
+	background: var(--nte-color-success, #10b981);
+	border-radius: 50%;
+	flex-shrink: 0;
+}
+
+.nte-waitlist__check::after {
+	content: '';
+	display: block;
+	width: 0.35rem;
+	height: 0.6rem;
+	border: solid #fff;
+	border-width: 0 2px 2px 0;
+	transform: rotate(45deg);
+	margin-top: -1px;
+}
+
+.nte-waitlist__success-text {
+	font-weight: 500;
+}
+
+/* Leave button - small text link style */
+.nte-waitlist__leave {
+	background: none;
+	border: none;
+	color: var(--nte-color-text-muted, #6b7280);
+	font-size: inherit;
+	cursor: pointer;
+	text-decoration: underline;
+	padding: 0;
+}
+
+.nte-waitlist__leave:hover {
+	color: var(--nte-color-error, #ef4444);
+}
+
+.nte-waitlist__leave:disabled {
+	color: var(--nte-color-text-disabled, #565656);
+	cursor: not-allowed;
+}
+
+/* Skip rendering when panel is collapsed */
+.nte-waitlist__panel:not(.nte-waitlist__panel--open) {
+	content-visibility: hidden;
+	contain-intrinsic-size: 0 200px;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+	.nte-waitlist__panel {
+		transition: none;
+	}
+	.nte-waitlist__toggle,
+	.nte-waitlist__submit,
+	.nte-waitlist__input {
+		transition: none;
+	}
+}
+
+/* Mobile */
+@media (max-width: 600px) {
+	.nte-waitlist__form {
+		gap: 0.625rem;
+	}
+	.nte-waitlist__submit {
+		width: 100%;
+		justify-content: center;
+		min-height: 44px;
+	}
+	.nte-waitlist__toggle {
+		min-height: 44px;
+	}
+}

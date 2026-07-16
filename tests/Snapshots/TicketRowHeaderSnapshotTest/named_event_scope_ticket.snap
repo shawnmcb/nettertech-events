@@ -1,0 +1,19 @@
+<div class="nte-ticket-header">
+<span class="nte-ticket-drag-handle dashicons dashicons-move" aria-hidden="true"></span>
+<button type="button" class="nte-ticket-move-up" title="Move up">
+<span class="dashicons dashicons-arrow-up-alt2"></span>
+</button>
+<button type="button" class="nte-ticket-move-down" title="Move down">
+<span class="dashicons dashicons-arrow-down-alt2"></span>
+</button>
+<span class="nte-ticket-name">
+General Admission </span>
+<span class="nte-ticket-scope-badge nte-scope-event">
+Series Pass </span>
+<button type="button" class="nte-ticket-toggle" aria-expanded="true">
+<span class="dashicons dashicons-arrow-up-alt2"></span>
+</button>
+<button type="button" class="nte-ticket-remove" title="Remove">
+<span class="dashicons dashicons-trash"></span>
+</button>
+</div>

@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <!-- Classic ticket line art - monochrome, vintage style -->
+  <!-- Using site's primary dark color: #1f2937 -->
+
+  <!-- Outer background (light) -->
+  <rect x="0" y="0" width="200" height="200" fill="#f9fafb"/>
+
+  <!-- Ticket outline with notches -->
+  <g transform="translate(25, 50)" fill="none" stroke="#1f2937" stroke-width="2">
+    <!-- Main ticket shape with semicircle notches -->
+    <path d="M0 10 Q0 0 10 0 L140 0 Q150 0 150 10 L150 38
+             A8 8 0 0 0 150 62
+             L150 90 Q150 100 140 100 L10 100 Q0 100 0 90 L0 62
+             A8 8 0 0 0 0 38 Z"/>
+
+    <!-- Stub perforation line -->
+    <line x1="110" y1="5" x2="110" y2="95" stroke-dasharray="4 3"/>
+
+    <!-- Double border inside main area (pushed right to clear notch) -->
+    <rect x="18" y="8" width="84" height="84" rx="3"/>
+
+    <!-- "ADMIT ONE" text area -->
+    <text x="60" y="42" text-anchor="middle" font-family="Georgia, serif" font-size="14" font-weight="bold" fill="#1f2937" stroke="none">ADMIT</text>
+    <text x="60" y="62" text-anchor="middle" font-family="Georgia, serif" font-size="14" font-weight="bold" fill="#1f2937" stroke="none">ONE</text>
+
+    <!-- Eight-pointed star (Minnesota L'Étoile du Nord style) - outline for "bright" effect -->
+    <polygon points="136,50 129.6,48.1 132.8,42.2 126.9,45.4 125,39 123.1,45.4 117.2,42.2 120.4,48.1 114,50 120.4,51.9 117.2,57.8 123.1,54.6 125,61 126.9,54.6 132.8,57.8 129.6,51.9"
+             fill="none" stroke="#1f2937" stroke-width="1.5"/>
+  </g>
+</svg>

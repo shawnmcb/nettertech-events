@@ -1,0 +1,51 @@
+<div class="nte-settings__section">
+<div class="nte-settings__section-header">
+<h2 class="nte-settings__section-title">General Settings</h2>
+</div>
+<div class="nte-settings__section-content">
+<table class="form-table">
+<tr>
+<th scope="row">
+<label for="default_view">Default Calendar View</label>
+</th>
+<td>
+<select name="nettertech_events_settings[default_view]" id="default_view">
+<option value="month"
+selected="selected">
+Month </option>
+<option value="week"
+>
+Week </option>
+<option value="day"
+>
+Day </option>
+<option value="list"
+>
+List </option>
+</select>
+</td>
+</tr>
+<tr>
+<th scope="row">
+<label for="events_per_page">Events Per Page</label>
+</th>
+<td>
+<input type="number" name="nettertech_events_settings[events_per_page]" id="events_per_page"
+value="10"
+min="1" max="100" class="small-text">
+</td>
+</tr>
+<tr>
+<th scope="row">
+<label for="timezone">Timezone</label>
+</th>
+<td>
+<select name="nettertech_events_settings[timezone]" id="timezone">
+<option value="UTC" selected="selected">UTC</option> </select>
+<p class="description">
+Default timezone for events. </p>
+</td>
+</tr>
+</table>
+</div>
+</div>

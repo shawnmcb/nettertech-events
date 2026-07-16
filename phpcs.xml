@@ -1,0 +1,81 @@
+<?xml version="1.0"?>
+<ruleset name="NetterTech Events">
+    <description>WordPress Coding Standards for NetterTech Events plugin (PSR-4 compatible)</description>
+
+    <!-- Scan these files -->
+    <file>./includes</file>
+    <file>./templates</file>
+    <file>./nettertech-events.php</file>
+    <file>./uninstall.php</file>
+    <file>./blocks</file>
+
+    <!-- Only scan PHP files -->
+    <arg name="extensions" value="php"/>
+
+    <!-- Exclude paths -->
+    <exclude-pattern>./vendor/*</exclude-pattern>
+    <exclude-pattern>./node_modules/*</exclude-pattern>
+    <exclude-pattern>./tests/*</exclude-pattern>
+    <exclude-pattern>./assets/*</exclude-pattern>
+    <exclude-pattern>./blocks/*/build/*</exclude-pattern>
+
+    <!-- Show progress and colors -->
+    <arg value="ps"/>
+    <arg name="colors"/>
+
+    <!-- Use WordPress-Extra as base (includes WordPress-Core) -->
+    <rule ref="WordPress-Extra">
+        <!-- Exclude filename rules - we use PSR-4 autoloading -->
+        <exclude name="WordPress.Files.FileName.InvalidClassFileName"/>
+        <exclude name="WordPress.Files.FileName.NotHyphenatedLowercase"/>
+    </rule>
+
+    <!-- WordPress Documentation Standards -->
+    <rule ref="WordPress-Docs"/>
+
+    <!-- PHP Compatibility - PHP 8.2+ -->
+    <config name="testVersion" value="8.2-"/>
+    <rule ref="PHPCompatibilityWP"/>
+
+    <rule ref="Universal.Arrays.DisallowShortArraySyntax"/>
+
+    <!-- Text domain for i18n -->
+    <rule ref="WordPress.WP.I18n">
+        <properties>
+            <property name="text_domain" type="array">
+                <element value="nettertech-events"/>
+            </property>
+        </properties>
+    </rule>
+
+    <!-- Prefix for hooks and functions -->
+    <rule ref="WordPress.NamingConventions.PrefixAllGlobals">
+        <properties>
+            <property name="prefixes" type="array">
+                <element value="nettertech_events_"/>
+                <element value="nte_"/>
+                <element value="NetterTechEvents"/>
+            </property>
+        </properties>
+        <!--
+            Template variables are local to template execution context.
+            PHPCS incorrectly flags them as unprefixed globals.
+            This is a known false positive for WordPress templates.
+        -->
+        <exclude-pattern>./templates/*</exclude-pattern>
+    </rule>
+
+    <!--
+        PHPCS cannot resolve class constants in hook names (e.g. Hooks::INIT).
+        All hook constants in NetterTechEvents\Core\Hooks are prefixed with 'nte_'.
+        Suppress the false positive for dynamic hook name detection.
+    -->
+    <rule ref="WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound">
+        <severity>0</severity>
+    </rule>
+
+    <!-- Allow modern PHP in strict type declarations -->
+    <rule ref="PSR1.Files.SideEffects.FoundWithSymbols">
+        <severity>0</severity>
+    </rule>
+</ruleset>

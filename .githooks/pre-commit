@@ -1,0 +1,143 @@
+#!/bin/bash
+# Pre-commit hook: fast checks that run on every commit.
+# Install: composer hook:install
+# Bypass:  git commit --no-verify
+#
+# ADR-017: Layer 1 validation — must stay fast (< 60s target).
+
+set -e
+PLUGIN_DIR="$(git rev-parse --show-toplevel)"
+cd "$PLUGIN_DIR"
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
+FAILED=0
+
+echo ""
+echo "Running pre-commit checks..."
+echo ""
+
+# Detect staged PHP files once — used by all checks below.
+STAGED_PHP=$(git diff --cached --name-only --diff-filter=ACM | grep '\.php$' || true)
+# NTE-115: staged source JS (excluding built dist) drives the frontend gate at
+# pre-commit, not only pre-push, so eslint errors don't slip through every commit.
+STAGED_JS=$(git diff --cached --name-only --diff-filter=ACM | grep '\.js$' | grep -v '/dist/' || true)
+
+if [ -z "$STAGED_PHP" ] && [ -z "$STAGED_JS" ]; then
+    echo -e "${YELLOW}No PHP or JS files staged — skipping standards, analysis, tests, and frontend gate.${NC}"
+    echo ""
+    echo -e "${GREEN}All pre-commit checks passed.${NC}"
+    exit 0
+fi
+
+# ============================================================================
+# Check 0: Secrets Scan (gitleaks — staged files only, ~1-3s)
+# ============================================================================
+if command -v gitleaks &> /dev/null; then
+    echo "Scanning for secrets..."
+    if ! gitleaks protect --staged -c ~/.claude/configs/gitleaks.toml 2>/dev/null; then
+        echo -e "${RED}Secrets detected in staged files${NC} — remove before committing"
+        FAILED=1
+    else
+        echo -e "${GREEN}No secrets found${NC}"
+    fi
+else
+    echo -e "${YELLOW}gitleaks not installed — skipping secrets scan${NC}"
+fi
+
+echo ""
+
+# ============================================================================
+# Check: Frontend gate (lint:js) — NTE-115. Runs whenever source JS is staged,
+# independent of PHP, mirroring the pre-push frontend gate (ADR-017).
+# ============================================================================
+if [ -n "$STAGED_JS" ]; then
+    echo "Running frontend gate (lint:js)..."
+    if ! composer lint:js --quiet 2>/dev/null; then
+        echo -e "${RED}Frontend gate failed${NC} — run 'composer lint:js' for details"
+        FAILED=1
+    else
+        echo -e "${GREEN}lint:js passed${NC}"
+    fi
+    echo ""
+fi
+
+# No PHP staged → the PHP checks below don't apply; finish after secrets + JS gate.
+if [ -z "$STAGED_PHP" ]; then
+    if [ "$FAILED" -eq 1 ]; then
+        echo -e "${RED}Pre-commit checks failed.${NC} Fix issues or bypass with: git commit --no-verify"
+        exit 1
+    fi
+    echo -e "${GREEN}All pre-commit checks passed.${NC}"
+    exit 0
+fi
+
+# ============================================================================
+# Check 1: PHPCS (Coding Standards)
+# ============================================================================
+echo "Checking coding standards..."
+if ! composer phpcs --quiet 2>/dev/null; then
+    echo -e "${RED}PHPCS failed${NC} — run 'composer phpcbf' to auto-fix"
+    FAILED=1
+else
+    echo -e "${GREEN}PHPCS passed${NC}"
+fi
+
+echo ""
+
+# ============================================================================
+# Check 2: PHPStan (Static Analysis)
+# ============================================================================
+echo "Running static analysis..."
+if ! composer phpstan --quiet 2>/dev/null; then
+    echo -e "${RED}PHPStan failed${NC} — run 'composer phpstan' for details"
+    FAILED=1
+else
+    echo -e "${GREEN}PHPStan passed${NC}"
+fi
+
+echo ""
+
+# ============================================================================
+# Check 3: PHPUnit (Unit Tests — no coverage)
+# ============================================================================
+echo "Running tests..."
+if ! composer test --quiet 2>/dev/null; then
+    echo -e "${RED}Tests failed${NC} — run 'composer test' for details"
+    FAILED=1
+else
+    echo -e "${GREEN}Tests passed${NC}"
+fi
+
+echo ""
+
+# ============================================================================
+# Check 4: PHP Syntax (staged files only)
+# ============================================================================
+echo "Checking PHP syntax..."
+SYNTAX_FAILED=0
+for FILE in $STAGED_PHP; do
+    if [ -f "$PLUGIN_DIR/$FILE" ] && ! php -l "$PLUGIN_DIR/$FILE" > /dev/null 2>&1; then
+        echo -e "${RED}Syntax error: $FILE${NC}"
+        SYNTAX_FAILED=1
+    fi
+done
+if [ "$SYNTAX_FAILED" -eq 1 ]; then
+    FAILED=1
+else
+    echo -e "${GREEN}Syntax OK${NC}"
+fi
+
+echo ""
+
+# ============================================================================
+# Final result
+# ============================================================================
+if [ "$FAILED" -eq 1 ]; then
+    echo -e "${RED}Pre-commit checks failed.${NC} Fix issues or bypass with: git commit --no-verify"
+    exit 1
+fi
+
+echo -e "${GREEN}All pre-commit checks passed.${NC}"

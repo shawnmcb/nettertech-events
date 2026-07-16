@@ -1,0 +1,414 @@
+/**
+ * NetterTech Events - Carousel Styles
+ *
+ * @package NetterTechEvents
+ */
+
+/* -----------------------------------------------------------------------------
+ * Carousel Container
+ * -------------------------------------------------------------------------- */
+
+.nte-carousel {
+	position: relative;
+	overflow: hidden;
+	padding: 0 48px;
+	margin-left: auto;
+	margin-right: auto;
+}
+
+.nte-carousel--empty {
+	padding: 40px 20px;
+	text-align: center;
+}
+
+.nte-carousel--empty p {
+	margin: 0;
+	color: var(--nte-color-text-muted, #5a616e);
+	font-size: 1em;
+}
+
+/* -----------------------------------------------------------------------------
+ * Carousel Track
+ * -------------------------------------------------------------------------- */
+
+.nte-carousel__track {
+	display: flex;
+	gap: 20px;
+	transition: transform 0.3s ease-out;
+}
+
+/* -----------------------------------------------------------------------------
+ * Navigation Buttons
+ * -------------------------------------------------------------------------- */
+
+.nte-carousel__nav {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	position: absolute;
+	top: 50%;
+	transform: translateY(-50%);
+	width: 40px;
+	height: 40px;
+	padding: 0;
+	border: none;
+	border-radius: 50%;
+	background: var(--nte-color-background, #fff);
+	box-shadow: var(--nte-shadow-md);
+	cursor: pointer;
+	z-index: 10;
+	transition: background-color 0.2s, box-shadow 0.2s, opacity 0.2s;
+}
+
+/* State styling — visual only, no positioning */
+.nte-carousel__nav:hover {
+	background: var(--nte-color-background-alt, #f9fafb);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.nte-carousel__nav:focus-visible {
+	outline: 2px solid var(--nte-color-primary, #2563eb);
+	outline-offset: 2px;
+}
+
+.nte-carousel__nav:active {
+	box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+/* Theme button reset resistance — positioning defense only */
+.nte-carousel .nte-carousel__nav,
+.nte-carousel .nte-carousel__nav:hover,
+.nte-carousel .nte-carousel__nav:focus-visible,
+.nte-carousel .nte-carousel__nav:active,
+button.nte-carousel__nav,
+button.nte-carousel__nav:hover,
+button.nte-carousel__nav:focus-visible,
+button.nte-carousel__nav:active {
+	position: absolute !important;
+	top: 50% !important;
+	transform: translateY(-50%) !important;
+}
+
+.nte-carousel__nav--prev {
+	left: 4px;
+}
+
+.nte-carousel__nav--next {
+	right: 4px;
+}
+
+/* stylelint-disable-next-line no-descending-specificity --
+   :disabled follows theme defense block which has higher specificity */
+.nte-carousel__nav--disabled,
+.nte-carousel__nav:disabled {
+	opacity: 0.3;
+	cursor: not-allowed;
+}
+
+.nte-carousel__nav--disabled:hover,
+.nte-carousel__nav:disabled:hover {
+	background: var(--nte-color-background, #fff);
+	box-shadow: var(--nte-shadow-md);
+}
+
+/* SVG icon inside nav buttons inherits currentColor */
+.nte-carousel__nav .nte-icon {
+	display: block;
+	pointer-events: none;
+}
+
+/* -----------------------------------------------------------------------------
+ * Event Card
+ * -------------------------------------------------------------------------- */
+
+.nte-event-card {
+	flex: 0 0 calc((100% - 40px) / 3);
+	min-width: 0;
+	background: var(--nte-color-background, #fff);
+	border-radius: var(--nte-radius-lg);
+	box-shadow: var(--nte-shadow-md);
+	overflow: hidden;
+	transition: box-shadow 0.2s, transform 0.2s;
+}
+
+.nte-event-card:hover {
+	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+	transform: translateY(-2px);
+}
+
+/* Responsive column widths */
+[data-columns="1"] .nte-event-card {
+	flex: 0 0 100%;
+}
+
+[data-columns="2"] .nte-event-card {
+	flex: 0 0 calc((100% - 20px) / 2);
+}
+
+[data-columns="3"] .nte-event-card {
+	flex: 0 0 calc((100% - 40px) / 3);
+}
+
+[data-columns="4"] .nte-event-card {
+	flex: 0 0 calc((100% - 60px) / 4);
+}
+
+/* -----------------------------------------------------------------------------
+ * Card Image
+ * -------------------------------------------------------------------------- */
+
+.nte-event-card__image-link {
+	display: block;
+	text-decoration: none;
+}
+
+.nte-event-card__image {
+	position: relative;
+	aspect-ratio: var(--nte-image-ratio-carousel, var(--nte-image-ratio-default, 16 / 9));
+	overflow: hidden;
+	background: var(--nte-color-border, #82858c);
+}
+
+.nte-event-card__img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	transition: transform 0.3s ease;
+}
+
+.nte-event-card:hover .nte-event-card__img {
+	transform: scale(1.05);
+}
+
+/* -----------------------------------------------------------------------------
+ * Card Content
+ * -------------------------------------------------------------------------- */
+
+.nte-event-card__content {
+	display: flex;
+	padding: var(--nte-spacing-md);
+	gap: 12px;
+}
+
+/* -----------------------------------------------------------------------------
+ * Date Badge
+ * -------------------------------------------------------------------------- */
+
+.nte-event-card__date {
+	flex-shrink: 0;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	width: 50px;
+	height: 50px;
+	background: var(--nte-date-bg, var(--nte-color-primary, #2563eb));
+	border-radius: 6px;
+	color: var(--nte-color-background, #fff);
+	text-align: center;
+}
+
+.nte-event-card__date-month {
+	display: block;
+	font-size: 12px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	line-height: 1;
+}
+
+.nte-event-card__date-day {
+	display: block;
+	font-size: 20px;
+	font-weight: 700;
+	line-height: 1.2;
+}
+
+.nte-event-card__date-year {
+	display: block;
+	font-size: 12px;
+	font-weight: 500;
+	opacity: 0.85;
+	line-height: 1;
+	margin-top: 1px;
+}
+
+/* -----------------------------------------------------------------------------
+ * Card Details
+ * -------------------------------------------------------------------------- */
+
+.nte-event-card__details {
+	flex: 1;
+	min-width: 0;
+}
+
+.nte-event-card__title {
+	margin: 0 0 4px;
+	font-size: 1em;
+	font-weight: 600;
+	line-height: 1.3;
+}
+
+.nte-event-card__title a {
+	color: var(--nte-color-text, #1f2937);
+	text-decoration: none;
+	transition: color 0.2s;
+}
+
+.nte-event-card__title a:hover {
+	color: var(--nte-color-primary, #2563eb);
+}
+
+.nte-event-card__time,
+.nte-event-card__venue {
+	margin: 0;
+	font-size: 0.875em;
+	color: var(--nte-color-text-muted, #5a616e);
+	line-height: 1.4;
+}
+
+.nte-event-card__time {
+	margin-bottom: 2px;
+}
+
+.nte-event-card__price {
+	margin: 4px 0 0;
+	font-size: 0.875em;
+	font-weight: 600;
+	color: var(--nte-color-primary, #2563eb);
+	line-height: 1.4;
+}
+
+/* -----------------------------------------------------------------------------
+ * ARIA Live Region (screen reader announcements)
+ * -------------------------------------------------------------------------- */
+
+.nte-carousel__live-region {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+	border: 0;
+}
+
+/* -----------------------------------------------------------------------------
+ * Responsive Breakpoints
+ * -------------------------------------------------------------------------- */
+
+@media (max-width: 1024px) {
+
+	[data-columns="4"] .nte-event-card {
+		flex: 0 0 calc((100% - 40px) / 3);
+	}
+}
+
+@media (max-width: 768px) {
+
+	.nte-carousel {
+		padding: 0 36px;
+	}
+
+	.nte-carousel__nav {
+		width: 32px;
+		height: 32px;
+	}
+
+	.nte-carousel__nav .nte-icon {
+		width: 16px;
+		height: 16px;
+	}
+
+	[data-columns="3"] .nte-event-card,
+	[data-columns="4"] .nte-event-card {
+		flex: 0 0 calc((100% - 20px) / 2);
+	}
+
+	.nte-event-card__content {
+		padding: 12px;
+		gap: 10px;
+	}
+
+	.nte-event-card__date {
+		width: 44px;
+		height: 44px;
+	}
+
+	.nte-event-card__date-month {
+		font-size: 12px;
+	}
+
+	.nte-event-card__date-day {
+		font-size: 18px;
+	}
+
+	.nte-event-card__title {
+		font-size: 0.9375em;
+	}
+}
+
+@media (max-width: 480px) {
+
+	.nte-carousel {
+		padding: 0;
+	}
+
+	.nte-carousel__nav {
+		display: none;
+	}
+
+	[data-columns="2"] .nte-event-card,
+	[data-columns="3"] .nte-event-card,
+	[data-columns="4"] .nte-event-card {
+		flex: 0 0 85%;
+	}
+
+	.nte-carousel__track {
+		scroll-snap-type: x mandatory;
+		overflow-x: auto;
+		scrollbar-width: none;
+		-ms-overflow-style: none;
+		padding: 0 8px;
+	}
+
+	.nte-carousel__track::-webkit-scrollbar {
+		display: none;
+	}
+
+	/* stylelint-disable-next-line no-descending-specificity --
+	   base card after [data-columns] variants in same media query */
+	.nte-event-card {
+		scroll-snap-align: start;
+	}
+}
+
+/* -----------------------------------------------------------------------------
+ * Accessibility
+ * -------------------------------------------------------------------------- */
+
+.nte-carousel:focus-visible {
+	outline: 2px solid var(--nte-color-primary, #2563eb);
+	outline-offset: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+	.nte-carousel__track,
+	.nte-carousel__nav,
+	.nte-event-card,
+	.nte-event-card__img,
+	.nte-event-card__title a {
+		transition: none;
+	}
+
+	.nte-event-card:hover {
+		transform: none;
+	}
+
+	.nte-event-card:hover .nte-event-card__img {
+		transform: none;
+	}
+}

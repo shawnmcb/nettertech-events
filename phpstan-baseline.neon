@@ -1,0 +1,79 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Result of && is always true\.$#'
+			identifier: booleanAnd.alwaysTrue
+			count: 1
+			path: includes/Admin/AdminRequest.php
+
+		-
+			message: '#^Variable \$_GET in isset\(\) always exists and is not nullable\.$#'
+			identifier: isset.variable
+			count: 1
+			path: includes/Admin/AdminRequest.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between '''' and numeric\-string will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: includes/Admin/Settings/AdvancedSettingsSection.php
+
+		-
+			message: '#^Offset string on array\{\} in isset\(\) does not exist\.$#'
+			identifier: isset.offset
+			count: 1
+			path: includes/Core/Assets.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: includes/Core/Assets.php
+
+		-
+			message: '#^Parameter \#2 \$callback of function add_action expects callable\(\)\: mixed, array\{object, string\} given\.$#'
+			identifier: argument.type
+			count: 1
+			path: includes/Core/Loader.php
+
+		-
+			message: '#^Parameter \#2 \$callback of function add_filter expects callable\(\)\: mixed, array\{object, string\} given\.$#'
+			identifier: argument.type
+			count: 1
+			path: includes/Core/Loader.php
+
+		-
+			message: '#^Call to an undefined method object\:\:get_current_checkin_token\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: includes/Frontend/Router.php
+
+		-
+			message: '#^Call to an undefined method object\:\:get_current_ticket_data\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: includes/Frontend/Router.php
+
+		-
+			message: '#^Call to an undefined method object\:\:is_volunteer_scan\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: includes/Frontend/Router.php
+
+		-
+			message: '#^Ternary operator condition is always false\.$#'
+			identifier: ternary.alwaysFalse
+			count: 2
+			path: includes/Frontend/Shortcodes/EventListShortcode.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between ''0'' and non\-falsy\-string will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: includes/Integrations/BeaverBuilder/Themer/Context.php
+
+		-
+			message: '#^Result of \|\| is always false\.$#'
+			identifier: booleanOr.alwaysFalse
+			count: 1
+			path: includes/PHPStan/WordPressHookUsageProvider.php

@@ -1,0 +1,51 @@
+{
+	"name": "nettertech-events",
+	"version": "1.0.1",
+	"description": "A clean, performant WordPress events plugin with ticketing, recurring events, and WooCommerce integration.",
+	"private": true,
+	"scripts": {
+		"dev": "wp-scripts start",
+		"build": "wp-scripts build",
+		"minify:js": "terser assets/js/public-checkin.js -o assets/js/public-checkin.min.js && terser assets/js/public-checkin-scanner.js -o assets/js/public-checkin-scanner.min.js && terser assets/js/waitlist-frontend.js -o assets/js/waitlist-frontend.min.js",
+		"minify:css": "cleancss -o assets/css/public-checkin.min.css assets/css/public-checkin.css && cleancss -o assets/css/waitlist-frontend.min.css assets/css/waitlist-frontend.css",
+		"minify": "npm run minify:js && npm run minify:css",
+		"lint:js": "wp-scripts lint-js assets/js assets/dist/js blocks",
+		"lint:js:fix": "wp-scripts lint-js assets/js assets/dist/js blocks --fix",
+		"lint:css": "wp-scripts lint-style assets/dist/css",
+		"lint:css:fix": "wp-scripts lint-style assets/dist/css --fix",
+		"lint:php": "composer phpcs",
+		"lint": "npm run lint:js && npm run lint:css",
+		"lint:fix": "npm run lint:js:fix && npm run lint:css:fix",
+		"format": "wp-scripts format",
+		"packages-update": "wp-scripts packages-update",
+		"env:start": "wp-env start",
+		"env:stop": "wp-env stop",
+		"env:destroy": "wp-env destroy",
+		"env:clean": "wp-env clean all",
+		"env:cli": "wp-env run cli",
+		"env:logs": "wp-env logs",
+		"test:e2e": "playwright test",
+		"test:e2e:ui": "playwright test --ui",
+		"test:e2e:debug": "playwright test --debug",
+		"test:e2e:report": "playwright show-report"
+	},
+	"devDependencies": {
+		"@axe-core/playwright": "^4.11.0",
+		"@babel/runtime": "^7.28.6",
+		"@playwright/test": "^1.49.0",
+		"@wordpress/env": "^10.0.0",
+		"@wordpress/scripts": "^28.0.0",
+		"clean-css-cli": "^5.6.3",
+		"dotenv": "^17.4.2",
+		"eslint": "^8.57.0",
+		"eslint-plugin-no-unsanitized": "~4.0.2",
+		"terser": "^5.46.1"
+	},
+	"browserslist": [
+		"extends @wordpress/browserslist-config"
+	],
+	"engines": {
+		"node": ">=18.0.0",
+		"npm": ">=9.0.0"
+	}
+}

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+  <!-- Ticket shape with venue/stage element -->
+  <path d="M2 4.5A1.5 1.5 0 013.5 3h13A1.5 1.5 0 0118 4.5v2.879a.5.5 0 01-.354.476A2 2 0 0016 9.787v.426a2 2 0 001.646 1.932.5.5 0 01.354.476V15.5a1.5 1.5 0 01-1.5 1.5h-13A1.5 1.5 0 012 15.5v-2.879a.5.5 0 01.354-.476A2 2 0 004 10.213v-.426a2 2 0 00-1.646-1.932A.5.5 0 012 7.379V4.5z"/>
+  <!-- Stage/venue detail - small building silhouette -->
+  <path d="M7 7h6v1H7zM6 9h8v5H6z" fill-opacity="0.3"/>
+  <!-- Perforation line -->
+  <path d="M13 4v2M13 6.5v1M13 9v1M13 11.5v1M13 14v2" stroke="currentColor" stroke-width="0.5" stroke-dasharray="1 1" fill="none" opacity="0.5"/>
+</svg>

@@ -1,0 +1,139 @@
+/**
+ * Series Page Styles
+ *
+ * @package NetterTechEvents
+ */
+
+/* Series Page Layout */
+.nte-series-page {
+	max-width: var(--nte-container-max-width, 1200px);
+	margin: 0 auto;
+	padding: var(--nte-spacing-lg, 1.5rem);
+}
+
+.nte-series-page__image {
+	max-height: 500px;
+	margin-bottom: var(--nte-spacing-lg, 1.5rem);
+	border-radius: var(--nte-radius-lg, 0.5rem);
+	overflow: hidden;
+}
+
+.nte-series-page__img {
+	display: block;
+	width: 100%;
+	height: auto;
+	aspect-ratio: var(--nte-image-ratio-default, 16 / 9);
+	object-fit: cover;
+}
+
+.nte-series-page__header {
+	margin-bottom: var(--nte-spacing-lg, 1.5rem);
+}
+
+.nte-series-page__title {
+	font-size: clamp(1.5rem, 4vw, 2.5rem);
+	font-weight: 700;
+	margin: 0 0 var(--nte-spacing-sm, 0.5rem);
+	line-height: 1.2;
+}
+
+.nte-series-page__venue {
+	display: flex;
+	align-items: center;
+	gap: var(--nte-spacing-sm, 0.5rem);
+	color: var(--nte-color-text-muted, #5a616e);
+	font-size: var(--nte-font-size-base, 1em);
+	margin: 0;
+}
+
+.nte-series-page__content {
+	margin-bottom: var(--nte-spacing-xl, 2rem);
+}
+
+.nte-series-page__description {
+	line-height: 1.7;
+}
+
+/* Fluid video embeds: oEmbed iframes fill the available width at 16:9,
+   overriding the fixed width/height attributes WordPress emits.
+   Scoped to the default video providers; non-16:9 videos letterbox. */
+.nte-series-page__description iframe[src*="youtube.com"],
+.nte-series-page__description iframe[src*="youtube-nocookie.com"],
+.nte-series-page__description iframe[src*="vimeo.com"] {
+	display: block;
+	width: 100%;
+	height: auto;
+	aspect-ratio: 16 / 9;
+	border: 0;
+}
+
+.nte-series-page__section-title {
+	font-size: var(--nte-font-size-lg, 1.125em);
+	font-weight: 600;
+	margin: 0 0 var(--nte-spacing-md, 1em);
+	display: flex;
+	align-items: center;
+	gap: var(--nte-spacing-sm, 0.5rem);
+}
+
+.nte-series-page__count {
+	font-weight: 400;
+	color: var(--nte-color-text-muted, #5a616e);
+}
+
+.nte-series-page__dates-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	flex-wrap: wrap;
+	gap: var(--nte-spacing-sm, 0.5rem);
+	margin-bottom: var(--nte-spacing-md, 1rem);
+}
+
+.nte-series-page__dates-header .nte-series-page__section-title {
+	margin-bottom: 0;
+}
+
+.nte-series-page__date-nav {
+	display: flex;
+	gap: var(--nte-spacing-xs, 0.25rem);
+}
+
+.nte-series-page__nav-link {
+	display: inline-block;
+	padding: var(--nte-spacing-xs, 0.25rem) var(--nte-spacing-sm, 0.5rem);
+	background: var(--nte-color-background-alt, #f3f4f6);
+	border-radius: var(--nte-radius-sm, 0.25rem);
+	color: var(--nte-color-text-muted, #5a616e);
+	text-decoration: none;
+	font-size: var(--nte-font-size-sm, 0.875em);
+	transition: background-color 0.2s, color 0.2s;
+}
+
+.nte-series-page__nav-link:hover {
+	background: var(--nte-color-border, #82858c);
+	color: #fff;
+}
+
+.nte-series-page__nav-current {
+	display: inline-block;
+	padding: var(--nte-spacing-xs, 0.25rem) var(--nte-spacing-sm, 0.5rem);
+	background: var(--nte-date-bg, var(--nte-color-primary, #2563eb));
+	border-radius: var(--nte-radius-sm, 0.25rem);
+	color: #fff;
+	font-size: var(--nte-font-size-sm, 0.875em);
+	font-weight: 600;
+}
+
+.nte-series-page__no-dates {
+	color: var(--nte-color-text-muted, #5a616e);
+	font-style: italic;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+
+	.nte-series-page {
+		padding: var(--nte-spacing-md, 1em);
+	}
+}

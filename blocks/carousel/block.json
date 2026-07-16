@@ -1,0 +1,67 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "nettertech-events/carousel",
+	"version": "0.8.0",
+	"title": "Event Carousel",
+	"category": "widgets",
+	"icon": "slides",
+	"description": "Display upcoming events in a responsive carousel.",
+	"keywords": [ "events", "carousel", "slider", "featured" ],
+	"textdomain": "nettertech-events",
+	"supports": {
+		"html": false,
+		"align": [ "wide", "full" ],
+		"className": true
+	},
+	"attributes": {
+		"limit": {
+			"type": "number",
+			"default": 6
+		},
+		"columns": {
+			"type": "number",
+			"default": 3
+		},
+		"showImage": {
+			"type": "boolean",
+			"default": true
+		},
+		"showDate": {
+			"type": "boolean",
+			"default": true
+		},
+		"showTime": {
+			"type": "boolean",
+			"default": true
+		},
+		"showVenue": {
+			"type": "boolean",
+			"default": true
+		},
+		"showYear": {
+			"type": "boolean",
+			"default": false
+		},
+		"autoplay": {
+			"type": "boolean",
+			"default": false
+		},
+		"interval": {
+			"type": "number",
+			"default": 5000
+		},
+		"playbackMode": {
+			"type": "string",
+			"default": "rewind",
+			"enum": [ "rewind", "loop" ]
+		},
+		"maxTags": {
+			"type": "number",
+			"default": 3
+		}
+	},
+	"editorScript": "file:./build/index.js",
+	"editorStyle": "file:./build/index.css",
+	"render": "file:./render.php"
+}

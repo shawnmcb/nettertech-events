@@ -1,0 +1,2181 @@
+openapi: 3.0.3
+info:
+  title: NetterTech Events REST API
+  description: |
+    REST API for the NetterTech Events WordPress plugin.
+
+    ## Scope & Status
+
+    This specification is being incrementally reconciled with the implementation in
+    `includes/API/`. As of 2026-04-20, the core plugin ships exactly these 20 routes
+    across 7 controllers (verified via `grep register_rest_route includes/API`):
+
+    | Controller | Routes |
+    |------------|--------|
+    | EventsController | `GET /events/upcoming`, `GET /events/range`, `GET /events/{id}`, `GET /occurrences` |
+    | ICalController | `GET /ical/feed`, `GET /ical/event/{id}`, `GET /ical/occurrence/{id}`, `POST /ical/import` |
+    | WaitlistRestController | `POST /waitlist/join`, `GET /waitlist/status`, `POST /waitlist/leave` |
+    | AttendeeFieldsController | `GET/POST /events/{event_id}/attendee-fields`, `GET/PATCH/DELETE /events/{event_id}/attendee-fields/{id}`, `GET /attendees/{attendee_id}/custom-fields` |
+    | EventsAdminController | `GET/POST /admin/events`, `GET/PATCH/DELETE /admin/events/{id}` |
+    | AttendeesAdminController | `GET/POST /admin/attendees`, `GET/PATCH/DELETE /admin/attendees/{id}` |
+    | TicketTypesAdminController | `GET/POST /admin/ticket-types`, `GET/PATCH/DELETE /admin/ticket-types/{id}` |
+
+    Routes listed below with the `Check-In` or `Check-In (Admin)` tag are documented
+    here for historical reference but are **not registered by the core plugin** — they
+    belong to the NetterTech Events Pro add-on and are registered by that plugin's own
+    controllers (QR check-in, volunteer scan, check-in reporting). Integrations that
+    need those routes must ensure Pro is installed and active. The core `GET /events`
+    list endpoint listed here is also not implemented — public event listing is via
+    `GET /events/upcoming` or `GET /events/range`.
+
+    A structural rewrite that removes the non-core routes and adds the missing
+    Waitlist and Attendee-Fields operations is tracked in the documentation backlog.
+
+    ## Authentication
+
+    Admin endpoints require WordPress authentication with `manage_options` capability.
+    Use WordPress REST API authentication methods (cookie, application password, or nonce).
+
+    Public endpoints require no authentication.
+
+    Check-in endpoints use token-based authentication via URL parameter.
+
+    ## Rate Limiting
+
+    All endpoints are rate-limited using a sliding window algorithm:
+    - Default: 60 requests per minute per IP
+    - Admin bypass: Authenticated users with `edit_posts` capability bypass rate limiting
+
+    **Admin Bypass Behavior:**
+    Rate limiting is applied to all endpoints for defense in depth. However, authenticated
+    WordPress administrators (users with `edit_posts` capability) bypass rate limit checks
+    entirely. This allows admin workflows that may involve rapid successive API calls
+    (e.g., bulk operations, CSV exports) without hitting rate limits.
+
+    When rate limited, responses include:
+    - HTTP 429 status
+    - `retry_after` field indicating seconds to wait
+
+    ## Request Signing (Optional)
+
+    Sensitive endpoints may include HMAC signatures for data integrity verification.
+    When present, responses include:
+    - `X-VE-Signature`: HMAC-SHA256 signature of the response body
+    - `X-VE-Timestamp`: Unix timestamp when signature was created
+
+    **Verification Process:**
+    1. Extract signature and timestamp from headers
+    2. Check timestamp is within 5 minutes (replay protection)
+    3. Compute HMAC-SHA256 of `{timestamp}.{response_body}` using shared secret
+    4. Compare computed signature with `X-VE-Signature` (timing-safe)
+
+    The signing service is available for integrations that require tamper-proof responses,
+    such as check-in token generation and sensitive attendee data.
+
+    ## Error Responses
+
+    All errors follow WordPress REST API conventions:
+    ```json
+    {
+      "code": "error_code",
+      "message": "Human readable message",
+      "data": { "status": 400 }
+    }
+    ```
+  version: 1.0.0
+  contact:
+    name: NetterTech Events Support
+  license:
+    name: GPL-2.0-or-later
+    url: https://www.gnu.org/licenses/gpl-2.0.html
+
+servers:
+  - url: /wp-json/nettertech-events/v1
+    description: WordPress REST API base
+
+tags:
+  - name: Events (Public)
+    description: Public read-only access to events
+  - name: Occurrences (Public)
+    description: Public access to event occurrences with filtering
+  - name: iCal (Public)
+    description: Calendar feed and export endpoints
+  - name: iCal (Admin)
+    description: iCal import (requires manage_options)
+  - name: Check-In
+    description: Attendee check-in operations (token-authenticated)
+  - name: Check-In (Admin)
+    description: Admin check-in operations (requires edit_posts)
+  - name: Events (Admin)
+    description: Full event management (requires manage_options)
+  - name: Attendees (Admin)
+    description: Attendee management (requires manage_options)
+  - name: Ticket Types (Admin)
+    description: Ticket type management (requires manage_options)
+
+paths:
+  /events:
+    get:
+      tags:
+        - Events (Public)
+      summary: List published events
+      security: []
+      description: |
+        Returns a list of published events with their occurrences.
+        Supports filtering by date range, venue, and category.
+      operationId: getPublicEvents
+      parameters:
+        - name: start_date
+          in: query
+          description: Filter events starting on or after this date (YYYY-MM-DD)
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          description: Filter events ending on or before this date (YYYY-MM-DD)
+          schema:
+            type: string
+            format: date
+        - name: venue_id
+          in: query
+          description: Filter by venue ID
+          schema:
+            type: integer
+        - name: category_id
+          in: query
+          description: Filter by category ID
+          schema:
+            type: integer
+        - name: per_page
+          in: query
+          description: Results per page
+          schema:
+            type: integer
+            default: 10
+            maximum: 100
+        - name: page
+          in: query
+          description: Page number
+          schema:
+            type: integer
+            default: 1
+      responses:
+        '200':
+          description: List of events
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PublicEvent'
+              example:
+                - id: 5
+                  title: "Summer Concert Series"
+                  slug: "summer-concert-series"
+                  description: "An outdoor summer concert featuring local bands and musicians."
+                  short_description: "Outdoor summer concert with local bands"
+                  featured_image: "https://example.com/wp-content/uploads/summer-concert.jpg"
+                  venue:
+                    id: 1
+                    name: "Community Arts Center"
+                    address: "123 Main Street, Anytown, ST 12345"
+                  occurrences:
+                    - id: 42
+                      start_datetime: "2026-02-15T19:00:00-06:00"
+                      end_datetime: "2026-02-15T22:00:00-06:00"
+                      status: "published"
+                    - id: 43
+                      start_datetime: "2026-03-15T19:00:00-06:00"
+                      end_datetime: "2026-03-15T22:00:00-06:00"
+                      status: "published"
+                  categories:
+                    - id: 2
+                      name: "Music"
+                      slug: "music"
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+
+  /events/{id}:
+    get:
+      tags:
+        - Events (Public)
+      summary: Get a single event
+      security: []
+      description: Returns details for a single published event
+      operationId: getPublicEvent
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Event ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Event details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicEvent'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+
+  /events/upcoming:
+    get:
+      tags:
+        - Events (Public)
+      summary: Get upcoming events
+      security: []
+      description: |
+        Returns upcoming events/occurrences sorted by start date.
+        Useful for homepage widgets and "upcoming events" sections.
+      operationId: getUpcomingEvents
+      parameters:
+        - name: limit
+          in: query
+          description: Maximum number of events to return
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 100
+      responses:
+        '200':
+          description: List of upcoming occurrences with event details
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OccurrenceWithEvent'
+              example:
+                - id: 42
+                  event_id: 5
+                  start_datetime: "2026-02-15T19:00:00-06:00"
+                  end_datetime: "2026-02-15T22:00:00-06:00"
+                  all_day: false
+                  status: "published"
+                  formatted:
+                    date: "February 15, 2026"
+                    time: "7:00 PM - 10:00 PM"
+                    date_range: "February 15, 2026"
+                  event:
+                    id: 5
+                    title: "Summer Concert Series"
+                    slug: "summer-concert-series"
+                    excerpt: "An outdoor summer concert with local bands"
+                    venue_name: "Community Arts Center"
+                    venue_address: "123 Main Street, Anytown, ST"
+                    permalink: "https://example.com/events/summer-concert-series/"
+                    image:
+                      id: 123
+                      url: "https://example.com/wp-content/uploads/event.jpg"
+                      width: 800
+                      height: 600
+                      full: "https://example.com/wp-content/uploads/event-full.jpg"
+                      alt: "Summer concert performance"
+                  tickets:
+                    available: true
+                    sold_out: false
+                    low_stock: false
+                    min_price: 15.00
+                    max_price: 35.00
+                    total_left: 45
+                    types: []
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+
+  /events/range:
+    get:
+      tags:
+        - Events (Public)
+      summary: Get events in date range
+      security: []
+      description: |
+        Returns events/occurrences within a specified date range.
+        Useful for calendar views.
+      operationId: getEventsInRange
+      parameters:
+        - name: start
+          in: query
+          required: true
+          description: Start date (ISO 8601 format YYYY-MM-DD)
+          schema:
+            type: string
+            format: date
+        - name: end
+          in: query
+          required: true
+          description: End date (ISO 8601 format YYYY-MM-DD)
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: List of occurrences in the date range
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OccurrenceWithEvent'
+        '400':
+          description: Missing or invalid date parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: "invalid_params"
+                message: "Start and end dates are required."
+                data:
+                  status: 400
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+
+  /occurrences:
+    get:
+      tags:
+        - Occurrences (Public)
+      summary: Get occurrences with filtering
+      security: []
+      description: |
+        Returns occurrences with pagination and filtering support.
+        Supports two modes:
+        1. **Date range mode** (start/end params) - for calendar views
+        2. **Paginated mode** (page/per_page params) - for grid/list views
+      operationId: getOccurrences
+      parameters:
+        - name: start
+          in: query
+          description: Start date for calendar range (ISO 8601). If provided with `end`, returns all occurrences in range.
+          schema:
+            type: string
+            format: date
+        - name: end
+          in: query
+          description: End date for calendar range (ISO 8601)
+          schema:
+            type: string
+            format: date
+        - name: page
+          in: query
+          description: Page number (for paginated mode)
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: per_page
+          in: query
+          description: Results per page (for paginated mode)
+          schema:
+            type: integer
+            default: 12
+            minimum: 1
+            maximum: 100
+        - name: category
+          in: query
+          description: Filter by category ID(s)
+          schema:
+            oneOf:
+              - type: integer
+              - type: array
+                items:
+                  type: integer
+        - name: search
+          in: query
+          description: Search in event title
+          schema:
+            type: string
+        - name: upcoming
+          in: query
+          description: Return only upcoming events (default true)
+          schema:
+            type: boolean
+            default: true
+        - name: past
+          in: query
+          description: Return past events only (overrides upcoming)
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: |
+            Paginated list of occurrences (when using page/per_page) or
+            array of occurrences (when using start/end date range)
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/PaginatedOccurrences'
+                  - type: array
+                    items:
+                      $ref: '#/components/schemas/OccurrenceWithEvent'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+
+  /ical/feed:
+    get:
+      tags:
+        - iCal (Public)
+      summary: Get calendar feed
+      security: []
+      description: |
+        Returns an iCal calendar feed of published events.
+        Use this URL for calendar subscriptions (Google Calendar, Apple Calendar, Outlook).
+      operationId: getICalFeed
+      parameters:
+        - name: limit
+          in: query
+          description: Maximum number of events
+          schema:
+            type: integer
+            default: 100
+            minimum: 1
+            maximum: 500
+        - name: start_from
+          in: query
+          description: Start date (ISO 8601), defaults to today
+          schema:
+            type: string
+            format: date
+        - name: category
+          in: query
+          description: Filter by category ID(s)
+          schema:
+            oneOf:
+              - type: integer
+              - type: array
+                items:
+                  type: integer
+      responses:
+        '200':
+          description: iCal calendar feed
+          content:
+            text/calendar:
+              schema:
+                type: string
+              example: |
+                BEGIN:VCALENDAR
+                VERSION:2.0
+                PRODID:-//NetterTech Events//EN
+                BEGIN:VEVENT
+                UID:event-5-42@example.com
+                DTSTART:20260215T190000
+                DTEND:20260215T220000
+                SUMMARY:Summer Concert Series
+                LOCATION:Community Arts Center, 123 Main Street, Anytown, ST
+                END:VEVENT
+                END:VCALENDAR
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+
+  /ical/event/{id}:
+    get:
+      tags:
+        - iCal (Public)
+      summary: Export event as iCal
+      security: []
+      description: Download a single event (all occurrences) as an iCal file
+      operationId: getICalEvent
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Event ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: iCal file download
+          content:
+            text/calendar:
+              schema:
+                type: string
+          headers:
+            Content-Disposition:
+              description: Attachment filename
+              schema:
+                type: string
+                example: 'attachment; filename="summer-concert-series.ics"'
+        '403':
+          description: Event is not published
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /ical/occurrence/{id}:
+    get:
+      tags:
+        - iCal (Public)
+      summary: Export occurrence as iCal
+      security: []
+      description: Download a single occurrence as an iCal file
+      operationId: getICalOccurrence
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Occurrence ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: iCal file download
+          content:
+            text/calendar:
+              schema:
+                type: string
+          headers:
+            Content-Disposition:
+              description: Attachment filename
+              schema:
+                type: string
+                example: 'attachment; filename="summer-concert-series-42.ics"'
+        '403':
+          description: Event is not published
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /ical/import:
+    post:
+      tags:
+        - iCal (Admin)
+      summary: Import events from iCal
+      description: Import events from iCal content (requires manage_options capability)
+      operationId: importICal
+      security:
+        - WordPressCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - content
+              properties:
+                content:
+                  type: string
+                  description: iCal file content
+                status:
+                  type: string
+                  enum: [draft, published]
+                  default: draft
+                  description: Status for imported events
+                skip_duplicates:
+                  type: boolean
+                  default: true
+                  description: Skip events that already exist (by UID)
+            example:
+              content: |
+                BEGIN:VCALENDAR
+                VERSION:2.0
+                BEGIN:VEVENT
+                UID:imported-event@example.com
+                DTSTART:20260301T190000
+                DTEND:20260301T220000
+                SUMMARY:Imported Event
+                END:VEVENT
+                END:VCALENDAR
+              status: "draft"
+              skip_duplicates: true
+      responses:
+        '200':
+          description: Import results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  imported:
+                    type: integer
+                    description: Number of events imported
+                  skipped:
+                    type: integer
+                    description: Number of events skipped (duplicates)
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                    description: Error messages for failed imports
+              example:
+                success: true
+                imported: 5
+                skipped: 2
+                errors: []
+        '400':
+          description: Missing or invalid content
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /checkin/{occurrence_id}/{token}:
+    post:
+      tags:
+        - Check-In
+      summary: Check in an attendee
+      security: []
+      description: |
+        Process attendee check-in using the occurrence ID and security token.
+        Supports partial check-ins for group registrations.
+      operationId: checkInAttendee
+      parameters:
+        - name: occurrence_id
+          in: path
+          required: true
+          description: Occurrence ID
+          schema:
+            type: integer
+        - name: token
+          in: path
+          required: true
+          description: Security token (64-character hex string)
+          schema:
+            type: string
+            pattern: '^[a-f0-9]{64}$'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - attendee_id
+              properties:
+                attendee_id:
+                  type: integer
+                  description: Attendee ID to check in
+                quantity:
+                  type: integer
+                  description: Number of guests to check in (for partial check-ins)
+                  default: 1
+                  minimum: 1
+            example:
+              attendee_id: 156
+              quantity: 2
+      responses:
+        '200':
+          description: Check-in successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckInResult'
+              example:
+                success: true
+                attendee_id: 156
+                checked_in_count: 2
+                fully_checked_in: false
+                message: "Checked in 2 of 4 guests"
+        '400':
+          description: Invalid request or already checked in
+          content:
+            application/json:
+              example:
+                code: "already_checked_in"
+                message: "This attendee has already been fully checked in."
+                data:
+                  status: 400
+        '403':
+          description: Invalid token
+          content:
+            application/json:
+              example:
+                code: "invalid_token"
+                message: "The check-in token is invalid or expired."
+                data:
+                  status: 403
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /checkin/{occurrence_id}/{token}/list:
+    get:
+      tags:
+        - Check-In
+      summary: Get attendee list for check-in
+      security: []
+      description: Returns the list of attendees for an occurrence
+      operationId: getCheckInList
+      parameters:
+        - name: occurrence_id
+          in: path
+          required: true
+          description: Occurrence ID
+          schema:
+            type: integer
+        - name: token
+          in: path
+          required: true
+          description: Security token
+          schema:
+            type: string
+            pattern: '^[a-f0-9]{64}$'
+        - name: search
+          in: query
+          description: Search by name or email
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Attendee list with check-in status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  attendees:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CheckInAttendee'
+                  stats:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                      checked_in:
+                        type: integer
+                      remaining:
+                        type: integer
+              example:
+                attendees:
+                  - id: 156
+                    name: "John Smith"
+                    email: "john@example.com"
+                    quantity: 4
+                    checked_in: true
+                    checked_in_count: 2
+                    ticket_type: "General Admission"
+                  - id: 157
+                    name: "Jane Doe"
+                    email: "jane@example.com"
+                    quantity: 2
+                    checked_in: false
+                    checked_in_count: 0
+                    ticket_type: "VIP"
+                stats:
+                  total: 6
+                  checked_in: 2
+                  remaining: 4
+        '403':
+          description: Invalid token
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /check-in/{occurrence_id}:
+    get:
+      tags:
+        - Check-In (Admin)
+      summary: List attendees for check-in
+      description: Returns the attendee list for an occurrence (admin-authenticated)
+      operationId: adminGetCheckInList
+      security:
+        - WordPressCookie: []
+      parameters:
+        - name: occurrence_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: search
+          in: query
+          description: Filter by name or email
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Attendee list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CheckInAttendee'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /check-in/{id}/toggle:
+    post:
+      tags:
+        - Check-In (Admin)
+      summary: Toggle check-in status
+      description: Toggles between all checked in and none checked in
+      operationId: toggleCheckIn
+      security:
+        - WordPressCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Attendee ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Updated check-in state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminCheckInResponse'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /check-in/{id}/check-in:
+    post:
+      tags:
+        - Check-In (Admin)
+      summary: Mark attendee as checked in
+      description: Marks all guests as checked in
+      operationId: markCheckedIn
+      security:
+        - WordPressCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Attendee ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Updated check-in state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminCheckInResponse'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags:
+        - Check-In (Admin)
+      summary: Undo check-in
+      description: Resets the check-in count to zero
+      operationId: markNotCheckedIn
+      security:
+        - WordPressCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Attendee ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Reset check-in state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminCheckInResponse'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /check-in/{id}/increment:
+    post:
+      tags:
+        - Check-In (Admin)
+      summary: Increment check-in count
+      description: Increments the checked-in count by 1
+      operationId: incrementCheckIn
+      security:
+        - WordPressCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Attendee ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Updated check-in state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminCheckInResponse'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /check-in/{id}/decrement:
+    post:
+      tags:
+        - Check-In (Admin)
+      summary: Decrement check-in count
+      description: Decrements the checked-in count by 1
+      operationId: decrementCheckIn
+      security:
+        - WordPressCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Attendee ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Updated check-in state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminCheckInResponse'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /check-in/{id}/count:
+    put:
+      tags:
+        - Check-In (Admin)
+      summary: Set check-in count
+      description: Sets the checked-in count to a specific value
+      operationId: setCheckInCount
+      security:
+        - WordPressCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Attendee ID
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - count
+              properties:
+                count:
+                  type: integer
+                  minimum: 0
+      responses:
+        '200':
+          description: Updated check-in state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminCheckInResponse'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /check-in/{occurrence_id}/stats:
+    get:
+      tags:
+        - Check-In (Admin)
+      summary: Get check-in statistics
+      description: Returns check-in statistics for an occurrence
+      operationId: getCheckInStats
+      security:
+        - WordPressCookie: []
+      parameters:
+        - name: occurrence_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Check-in statistics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total:
+                    type: integer
+                  checked_in:
+                    type: integer
+                  remaining:
+                    type: integer
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /check-in/{occurrence_id}/search:
+    get:
+      tags:
+        - Check-In (Admin)
+      summary: Search attendees
+      description: Search attendees by name or email for an occurrence
+      operationId: searchCheckInAttendees
+      security:
+        - WordPressCookie: []
+      parameters:
+        - name: occurrence_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: q
+          in: query
+          required: true
+          description: Search query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Matching attendees
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CheckInAttendee'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /check-in/lookup:
+    post:
+      tags:
+        - Check-In (Admin)
+      summary: Look up attendee by ticket code
+      description: |
+        Finds the attendee for a ticket code. Supports admin auth
+        and token-based public access via checkin_token parameter.
+      operationId: lookupByTicket
+      security:
+        - WordPressCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - ticket_code
+                - occurrence_id
+              properties:
+                ticket_code:
+                  type: string
+                  pattern: '^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$'
+                occurrence_id:
+                  type: integer
+                checkin_token:
+                  type: string
+                  description: Token for public access (alternative to admin auth)
+                auto_checkin:
+                  type: boolean
+                  default: false
+      responses:
+        '200':
+          description: Attendee found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  attendee_id:
+                    type: integer
+                  attendee_name:
+                    type: string
+                  email:
+                    type: string
+                  quantity:
+                    type: integer
+                  checked_in_count:
+                    type: integer
+                  already_checked_in:
+                    type: boolean
+                  checked_in_at:
+                    type: string
+                    nullable: true
+                  just_checked_in:
+                    type: boolean
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Ticket not found for this event
+
+  /admin/events:
+    get:
+      tags:
+        - Events (Admin)
+      summary: List all events
+      description: Returns all events (requires manage_options capability)
+      operationId: getAdminEvents
+      security:
+        - WordPressCookie: []
+      parameters:
+        - name: status
+          in: query
+          description: Filter by status
+          schema:
+            type: string
+            enum: ['', draft, published, cancelled]
+        - name: search
+          in: query
+          description: Search in title
+          schema:
+            type: string
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: orderby
+          in: query
+          schema:
+            type: string
+            enum: [id, title, created_at]
+            default: created_at
+        - name: order
+          in: query
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+      responses:
+        '200':
+          description: List of events
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AdminEvent'
+          headers:
+            X-WP-Total:
+              description: Total number of events
+              schema:
+                type: integer
+            X-WP-TotalPages:
+              description: Total number of pages
+              schema:
+                type: integer
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+    post:
+      tags:
+        - Events (Admin)
+      summary: Create an event
+      description: Create a new event (requires manage_options capability)
+      operationId: createEvent
+      security:
+        - WordPressCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventInput'
+            example:
+              title: "Beginner Yoga Workshop"
+              description: "Learn fundamental yoga poses with our certified instructor."
+              short_description: "Beginner-friendly yoga workshop"
+              venue_id: 1
+              status: "draft"
+              recurrence_rule: "FREQ=WEEKLY;BYDAY=SA;COUNT=8"
+              category_ids: [3, 5]
+      responses:
+        '201':
+          description: Event created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminEvent'
+              example:
+                id: 12
+                title: "Beginner Yoga Workshop"
+                slug: "irish-dance-workshop"
+                description: "Learn fundamental yoga poses with our certified instructor."
+                short_description: "Beginner-friendly yoga workshop"
+                status: "draft"
+                venue:
+                  id: 1
+                  name: "Community Arts Center"
+                  address: "123 Main Street, Anytown, ST 12345"
+                recurrence_rule: "FREQ=WEEKLY;BYDAY=SA;COUNT=8"
+                created_at: "2026-01-17T10:30:00Z"
+                updated_at: "2026-01-17T10:30:00Z"
+          headers:
+            Location:
+              description: URL of created resource
+              schema:
+                type: string
+                format: uri
+              example: "/wp-json/nettertech-events/v1/admin/events/12"
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /admin/events/{id}:
+    get:
+      tags:
+        - Events (Admin)
+      summary: Get a single event
+      operationId: getAdminEvent
+      security:
+        - WordPressCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Event details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminEvent'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags:
+        - Events (Admin)
+      summary: Update an event
+      operationId: updateEvent
+      security:
+        - WordPressCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventInput'
+      responses:
+        '200':
+          description: Event updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminEvent'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags:
+        - Events (Admin)
+      summary: Delete an event
+      operationId: deleteEvent
+      security:
+        - WordPressCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Event deleted
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /admin/attendees:
+    get:
+      tags:
+        - Attendees (Admin)
+      summary: List attendees for an occurrence
+      operationId: getAttendees
+      security:
+        - WordPressCookie: []
+      parameters:
+        - name: occurrence_id
+          in: query
+          required: true
+          description: Occurrence ID (required)
+          schema:
+            type: integer
+        - name: status
+          in: query
+          description: Filter by status
+          schema:
+            type: string
+            enum: ['', pending, confirmed, cancelled, refunded]
+        - name: search
+          in: query
+          description: Search by name or email
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of attendees
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Attendee'
+        '400':
+          description: Missing occurrence_id
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags:
+        - Attendees (Admin)
+      summary: Create an attendee
+      operationId: createAttendee
+      security:
+        - WordPressCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AttendeeInput'
+      responses:
+        '201':
+          description: Attendee created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Attendee'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /admin/attendees/{id}:
+    get:
+      tags:
+        - Attendees (Admin)
+      summary: Get a single attendee
+      operationId: getAttendee
+      security:
+        - WordPressCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Attendee details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Attendee'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags:
+        - Attendees (Admin)
+      summary: Update an attendee
+      operationId: updateAttendee
+      security:
+        - WordPressCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AttendeeInput'
+      responses:
+        '200':
+          description: Attendee updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Attendee'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags:
+        - Attendees (Admin)
+      summary: Delete an attendee
+      operationId: deleteAttendee
+      security:
+        - WordPressCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Attendee deleted
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /admin/ticket-types:
+    get:
+      tags:
+        - Ticket Types (Admin)
+      summary: List ticket types
+      description: |
+        List ticket types for an occurrence or event.
+        Either occurrence_id or event_id is required.
+      operationId: getTicketTypes
+      security:
+        - WordPressCookie: []
+      parameters:
+        - name: occurrence_id
+          in: query
+          description: Filter by occurrence ID
+          schema:
+            type: integer
+        - name: event_id
+          in: query
+          description: Filter by event ID
+          schema:
+            type: integer
+        - name: scope
+          in: query
+          description: Filter by scope
+          schema:
+            type: string
+            enum: ['', occurrence, event, template]
+        - name: status
+          in: query
+          description: Filter by status
+          schema:
+            type: string
+            enum: ['', active, inactive, sold_out]
+      responses:
+        '200':
+          description: List of ticket types
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TicketType'
+        '400':
+          description: Missing occurrence_id or event_id
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags:
+        - Ticket Types (Admin)
+      summary: Create a ticket type
+      operationId: createTicketType
+      security:
+        - WordPressCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TicketTypeInput'
+      responses:
+        '201':
+          description: Ticket type created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TicketType'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /admin/ticket-types/{id}:
+    get:
+      tags:
+        - Ticket Types (Admin)
+      summary: Get a single ticket type
+      operationId: getTicketType
+      security:
+        - WordPressCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Ticket type details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TicketType'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags:
+        - Ticket Types (Admin)
+      summary: Update a ticket type
+      operationId: updateTicketType
+      security:
+        - WordPressCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TicketTypeInput'
+      responses:
+        '200':
+          description: Ticket type updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TicketType'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags:
+        - Ticket Types (Admin)
+      summary: Delete a ticket type
+      description: |
+        Delete a ticket type. Cannot delete ticket types with existing sales.
+        Deactivate them instead.
+      operationId: deleteTicketType
+      security:
+        - WordPressCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Ticket type deleted
+        '400':
+          description: Cannot delete ticket type with sales
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  securitySchemes:
+    WordPressCookie:
+      type: apiKey
+      in: cookie
+      name: wordpress_logged_in
+      description: WordPress authentication cookie
+
+  responses:
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: Insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    ValidationError:
+      description: Validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    RateLimitExceeded:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/Error'
+              - type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      retry_after:
+                        type: integer
+                        description: Seconds until rate limit resets
+          example:
+            code: "rate_limit_exceeded"
+            message: "Too many requests. Please try again later."
+            data:
+              status: 429
+              retry_after: 45
+
+  schemas:
+    Error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          description: Error code
+        message:
+          type: string
+          description: Human-readable error message
+        data:
+          type: object
+          properties:
+            status:
+              type: integer
+              description: HTTP status code
+
+    OccurrenceWithEvent:
+      type: object
+      description: An occurrence with embedded event details and ticket availability
+      properties:
+        id:
+          type: integer
+          description: Occurrence ID
+        event_id:
+          type: integer
+        start_datetime:
+          type: string
+          format: date-time
+        end_datetime:
+          type: string
+          format: date-time
+        all_day:
+          type: boolean
+        status:
+          type: string
+          enum: [published, cancelled]
+        formatted:
+          type: object
+          description: Pre-formatted date/time strings for display
+          properties:
+            date:
+              type: string
+              description: Formatted date (e.g., "February 15, 2026")
+            time:
+              type: string
+              description: Formatted time range (e.g., "7:00 PM - 10:00 PM")
+            date_range:
+              type: string
+              description: Formatted date range for multi-day events
+        event:
+          type: object
+          properties:
+            id:
+              type: integer
+            title:
+              type: string
+            slug:
+              type: string
+            excerpt:
+              type: string
+            venue_name:
+              type: string
+            venue_address:
+              type: string
+            permalink:
+              type: string
+              format: uri
+            image:
+              type: object
+              nullable: true
+              properties:
+                id:
+                  type: integer
+                url:
+                  type: string
+                  format: uri
+                width:
+                  type: integer
+                height:
+                  type: integer
+                full:
+                  type: string
+                  format: uri
+                alt:
+                  type: string
+        tickets:
+          type: object
+          description: Ticket availability summary
+          properties:
+            available:
+              type: boolean
+              description: Whether any tickets are available
+            sold_out:
+              type: boolean
+              description: Whether all ticket types are sold out
+            low_stock:
+              type: boolean
+              description: Whether any ticket type is low on stock
+            min_price:
+              type: number
+              format: float
+              nullable: true
+            max_price:
+              type: number
+              format: float
+              nullable: true
+            total_left:
+              type: integer
+              nullable: true
+              description: Total tickets remaining (null if unlimited)
+            types:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  name:
+                    type: string
+                  price:
+                    type: number
+                  available:
+                    type: integer
+                  sold_out:
+                    type: boolean
+                  low_stock:
+                    type: boolean
+                  unlimited:
+                    type: boolean
+
+    PaginatedOccurrences:
+      type: object
+      description: Paginated response for occurrences list
+      properties:
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/OccurrenceWithEvent'
+        total:
+          type: integer
+          description: Total number of occurrences matching the query
+        total_pages:
+          type: integer
+          description: Total number of pages
+        page:
+          type: integer
+          description: Current page number
+        per_page:
+          type: integer
+          description: Results per page
+
+    PublicEvent:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        slug:
+          type: string
+        description:
+          type: string
+        short_description:
+          type: string
+        featured_image:
+          type: string
+          format: uri
+        venue:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            address:
+              type: string
+        occurrences:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              start_datetime:
+                type: string
+                format: date-time
+              end_datetime:
+                type: string
+                format: date-time
+              status:
+                type: string
+        categories:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              name:
+                type: string
+              slug:
+                type: string
+        _links:
+          type: object
+
+    AdminEvent:
+      allOf:
+        - $ref: '#/components/schemas/PublicEvent'
+        - type: object
+          properties:
+            status:
+              type: string
+              enum: [draft, published, cancelled]
+            organizer_id:
+              type: integer
+              nullable: true
+            recurrence_rule:
+              type: string
+              nullable: true
+            created_at:
+              type: string
+              format: date-time
+            updated_at:
+              type: string
+              format: date-time
+
+    EventInput:
+      type: object
+      required:
+        - title
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        slug:
+          type: string
+          description: Auto-generated from title if not provided
+        description:
+          type: string
+        short_description:
+          type: string
+          maxLength: 500
+        venue_id:
+          type: integer
+          nullable: true
+        organizer_id:
+          type: integer
+          nullable: true
+        featured_image_id:
+          type: integer
+          nullable: true
+        status:
+          type: string
+          enum: [draft, published, cancelled]
+          default: draft
+        recurrence_rule:
+          type: string
+          description: RFC 5545 RRULE
+          nullable: true
+        category_ids:
+          type: array
+          items:
+            type: integer
+        tag_ids:
+          type: array
+          items:
+            type: integer
+
+    Attendee:
+      type: object
+      properties:
+        id:
+          type: integer
+        occurrence_id:
+          type: integer
+        ticket_type_id:
+          type: integer
+          nullable: true
+        wc_order_id:
+          type: integer
+          nullable: true
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+          nullable: true
+        quantity:
+          type: integer
+          minimum: 1
+        status:
+          type: string
+          enum: [pending, confirmed, cancelled, refunded]
+        checked_in:
+          type: boolean
+        checked_in_count:
+          type: integer
+        checked_in_at:
+          type: string
+          format: date-time
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        accessibility_notes:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        _links:
+          type: object
+
+    AttendeeInput:
+      type: object
+      required:
+        - occurrence_id
+        - name
+        - email
+      properties:
+        occurrence_id:
+          type: integer
+        ticket_type_id:
+          type: integer
+        name:
+          type: string
+          minLength: 1
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        quantity:
+          type: integer
+          minimum: 1
+          default: 1
+        status:
+          type: string
+          enum: [pending, confirmed, cancelled, refunded]
+          default: confirmed
+        notes:
+          type: string
+        accessibility_notes:
+          type: string
+
+    CheckInAttendee:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        quantity:
+          type: integer
+        checked_in:
+          type: boolean
+        checked_in_count:
+          type: integer
+        ticket_type:
+          type: string
+          nullable: true
+
+    CheckInResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        attendee_id:
+          type: integer
+        checked_in_count:
+          type: integer
+        fully_checked_in:
+          type: boolean
+        message:
+          type: string
+
+    AdminCheckInResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        checked_in:
+          type: boolean
+        checked_in_count:
+          type: integer
+        quantity:
+          type: integer
+        checked_in_at:
+          type: string
+          nullable: true
+
+    TicketType:
+      type: object
+      properties:
+        id:
+          type: integer
+        occurrence_id:
+          type: integer
+          nullable: true
+        event_id:
+          type: integer
+          nullable: true
+        scope:
+          type: string
+          enum: [occurrence, event, template]
+        template_id:
+          type: integer
+          nullable: true
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        price:
+          type: number
+          format: float
+          minimum: 0
+        capacity_type:
+          type: string
+          enum: [fixed, unlimited, shared]
+        capacity:
+          type: integer
+          nullable: true
+        sold_count:
+          type: integer
+        stock_status:
+          type: string
+          enum: [in_stock, low_stock, out_of_stock]
+        sale_start:
+          type: string
+          format: date-time
+          nullable: true
+        sale_end:
+          type: string
+          format: date-time
+          nullable: true
+        min_per_order:
+          type: integer
+          minimum: 1
+        max_per_order:
+          type: integer
+          minimum: 1
+        sort_order:
+          type: integer
+        status:
+          type: string
+          enum: [active, inactive, sold_out]
+        wc_product_id:
+          type: integer
+          nullable: true
+        wc_variation_id:
+          type: integer
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        _links:
+          type: object
+
+    TicketTypeInput:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+        scope:
+          type: string
+          enum: [occurrence, event, template]
+          default: occurrence
+        occurrence_id:
+          type: integer
+          description: Required for occurrence scope
+        event_id:
+          type: integer
+          description: Required for event/template scope
+        description:
+          type: string
+        price:
+          type: number
+          minimum: 0
+          default: 0
+        capacity_type:
+          type: string
+          enum: [fixed, unlimited, shared]
+          default: fixed
+        capacity:
+          type: integer
+          nullable: true
+        sale_start:
+          type: string
+          format: date-time
+        sale_end:
+          type: string
+          format: date-time
+        min_per_order:
+          type: integer
+          minimum: 1
+          default: 1
+        max_per_order:
+          type: integer
+          minimum: 1
+          default: 10
+        sort_order:
+          type: integer
+          default: 0
+        status:
+          type: string
+          enum: [active, inactive, sold_out]
+          default: active

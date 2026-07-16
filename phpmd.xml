@@ -1,0 +1,139 @@
+<?xml version="1.0"?>
+<!--
+	PHPMD Ruleset for NetterTech Events.
+
+	Tuned to prevent regression on existing code complexity.
+	Thresholds are set just above current maximums so that new code
+	cannot exceed the existing ceiling without triggering a warning.
+
+	Run: composer phpmd
+-->
+<ruleset name="NetterTechEvents"
+         xmlns="http://pmd.sf.net/ruleset/1.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://pmd.sf.net/ruleset/1.0.0 https://phpmd.org/ruleset-schema/1.0.0/ruleset.xsd">
+	<description>PHPMD rules for the NetterTech Events plugin.</description>
+
+	<!-- Exclude directories that should not be analysed. -->
+	<exclude-pattern>vendor/</exclude-pattern>
+	<exclude-pattern>tests/</exclude-pattern>
+	<exclude-pattern>node_modules/</exclude-pattern>
+	<exclude-pattern>assets/dist/</exclude-pattern>
+
+	<!-- ================================================================
+	     Code Size — prevent complexity regression
+	     ================================================================ -->
+	<rule ref="rulesets/codesize.xml/CyclomaticComplexity">
+		<properties>
+			<!-- Max existing: 24.  Threshold prevents regression. -->
+			<property name="reportLevel" value="25" />
+		</properties>
+	</rule>
+	<rule ref="rulesets/codesize.xml/NPathComplexity">
+		<properties>
+			<!-- QRGeneratorPage::handle_generate_qr has NPath ~3.1M.
+			     Gate above that to prevent regression without failing now. -->
+			<property name="minimum" value="4000000" />
+		</properties>
+	</rule>
+	<rule ref="rulesets/codesize.xml/ExcessiveMethodLength">
+		<properties>
+			<!-- Max existing: 370 (QRGeneratorPage).  Prevent regression. -->
+			<property name="minimum" value="375" />
+		</properties>
+	</rule>
+	<rule ref="rulesets/codesize.xml/ExcessiveClassLength" />
+	<rule ref="rulesets/codesize.xml/ExcessiveClassComplexity">
+		<properties>
+			<!-- Max existing: 83.  Threshold prevents regression. -->
+			<property name="maximum" value="85" />
+		</properties>
+	</rule>
+	<rule ref="rulesets/codesize.xml/ExcessiveParameterList">
+		<properties>
+			<!-- NetterTechEventsSettings DTO has 57 constructor params.
+			     Set just above to prevent further growth. -->
+			<property name="minimum" value="58" />
+		</properties>
+	</rule>
+	<rule ref="rulesets/codesize.xml/TooManyFields">
+		<properties>
+			<!-- Max existing: 23 (NetterTechEventsSettings).  Prevent regression. -->
+			<property name="maxfields" value="25" />
+		</properties>
+	</rule>
+	<rule ref="rulesets/codesize.xml/TooManyMethods">
+		<properties>
+			<!-- EventQuery has 27 methods.  Prevent regression. -->
+			<property name="maxmethods" value="28" />
+		</properties>
+	</rule>
+	<rule ref="rulesets/codesize.xml/TooManyPublicMethods">
+		<properties>
+			<!-- EventQuery has 27 public methods.  Prevent regression. -->
+			<property name="maxmethods" value="28" />
+		</properties>
+	</rule>
+	<rule ref="rulesets/codesize.xml/ExcessivePublicCount">
+		<properties>
+			<property name="minimum" value="60" />
+		</properties>
+	</rule>
+
+	<!-- ================================================================
+	     Clean Code
+	     ================================================================ -->
+	<rule ref="rulesets/cleancode.xml">
+		<!-- WordPress uses static methods extensively (hooks, singletons). -->
+		<exclude name="StaticAccess" />
+		<!-- WordPress patterns require boolean arguments (e.g., $force = true). -->
+		<exclude name="BooleanArgumentFlag" />
+		<!-- Else clauses are idiomatic in WordPress conditional logic. -->
+		<exclude name="ElseExpression" />
+		<!-- Null coalescence (??) is heavily used for defaults. -->
+		<exclude name="IfStatementAssignment" />
+		<!-- MissingImport flags unqualified global function calls. -->
+		<exclude name="MissingImport" />
+		<!-- Error suppression (@) is used in controlled contexts. -->
+		<exclude name="ErrorControlOperator" />
+		<!-- UndefinedVariable has false positives with WordPress globals. -->
+		<exclude name="UndefinedVariable" />
+	</rule>
+
+	<!-- ================================================================
+	     Naming
+	     ================================================================ -->
+	<rule ref="rulesets/naming.xml/ShortVariable">
+		<properties>
+			<property name="minimum" value="2" />
+			<property name="exceptions" value="a,b,c,d,e,g,i,m,r,s,t,id,db,wp" />
+		</properties>
+	</rule>
+	<rule ref="rulesets/naming.xml/LongVariable">
+		<properties>
+			<!-- Some settings properties are necessarily descriptive. -->
+			<property name="maximum" value="40" />
+		</properties>
+	</rule>
+	<rule ref="rulesets/naming.xml/ShortMethodName">
+		<properties>
+			<property name="minimum" value="3" />
+		</properties>
+	</rule>
+	<rule ref="rulesets/naming.xml/BooleanGetMethodName" />
+
+	<!-- ================================================================
+	     Unused Code
+	     ================================================================ -->
+	<rule ref="rulesets/unusedcode.xml">
+		<!-- WordPress hook/filter callbacks and REST permission_callback
+		     signatures require parameters that the implementation may not use. -->
+		<exclude name="UnusedFormalParameter" />
+		<!-- Schema.php migrations are called dynamically via self::$method().
+		     PHPMD cannot trace dynamic dispatch and flags them as unused. -->
+		<exclude name="UnusedPrivateMethod" />
+		<!-- WordPress patterns: variables set for readability in conditionals,
+		     or extracted for template context arrays, are flagged incorrectly. -->
+		<exclude name="UnusedLocalVariable" />
+	</rule>
+</ruleset>

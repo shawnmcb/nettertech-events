@@ -1,0 +1,88 @@
+<div class="nte-qr-color-palette" role="radiogroup"
+aria-label="QR Code Color">
+<label class="nte-qr-color-option">
+<input type="radio"
+name="nte-qr-color"
+value="default"
+checked>
+<span class="nte-qr-color-swatch nte-qr-color-swatch--default"
+title="Default">
+<span class="dashicons dashicons-admin-settings"></span>
+</span>
+<span class="screen-reader-text">Default</span>
+</label>
+<label class="nte-qr-color-option">
+<input type="radio"
+name="nte-qr-color"
+value="000000"
+checked="checked">
+<span class="nte-qr-color-swatch"
+style="background-color: #000000;"
+title="Black"></span>
+<span class="screen-reader-text">Black</span>
+</label>
+<label class="nte-qr-color-option">
+<input type="radio"
+name="nte-qr-color"
+value="1e3a5f"
+>
+<span class="nte-qr-color-swatch"
+style="background-color: #1e3a5f;"
+title="Navy"></span>
+<span class="screen-reader-text">Navy</span>
+</label>
+<label class="nte-qr-color-option">
+<input type="radio"
+name="nte-qr-color"
+value="722f37"
+>
+<span class="nte-qr-color-swatch"
+style="background-color: #722f37;"
+title="Burgundy"></span>
+<span class="screen-reader-text">Burgundy</span>
+</label>
+<label class="nte-qr-color-option">
+<input type="radio"
+name="nte-qr-color"
+value="228b22"
+>
+<span class="nte-qr-color-swatch"
+style="background-color: #228b22;"
+title="Forest Green"></span>
+<span class="screen-reader-text">Forest Green</span>
+</label>
+<label class="nte-qr-color-option">
+<input type="radio"
+name="nte-qr-color"
+value="4b0082"
+>
+<span class="nte-qr-color-swatch"
+style="background-color: #4b0082;"
+title="Deep Purple"></span>
+<span class="screen-reader-text">Deep Purple</span>
+</label>
+<label class="nte-qr-color-option">
+<input type="radio"
+name="nte-qr-color"
+value="3d2314"
+>
+<span class="nte-qr-color-swatch"
+style="background-color: #3d2314;"
+title="Dark Brown"></span>
+<span class="screen-reader-text">Dark Brown</span>
+</label>
+<label class="nte-qr-color-option">
+<input type="radio"
+name="nte-qr-color"
+value=""
+class="nte-qr-custom-color-radio">
+<span class="nte-qr-color-swatch nte-qr-color-swatch--custom"
+title="Custom">
+<span class="dashicons dashicons-color-picker"></span>
+</span>
+<span class="screen-reader-text">Custom</span>
+<input type="color" value="#000000" class="nte-qr-custom-color-picker"
+style="position: absolute; opacity: 0; pointer-events: none;"
+aria-hidden="true" tabindex="-1">
+</label>
+</div>

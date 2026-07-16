@@ -1,0 +1,44 @@
+/**
+ * Shared editor preview styles for NetterTech Events Gutenberg blocks.
+ *
+ * @package NetterTechEvents\Blocks
+ */
+
+.nte-block-preview {
+	background: #f9f9f9;
+	border: 1px solid #ddd;
+	border-radius: 4px;
+	padding: 16px 20px;
+}
+
+.nte-block-preview__header {
+	align-items: center;
+	border-bottom: 1px solid #e0e0e0;
+	display: flex;
+	gap: 8px;
+	margin-bottom: 12px;
+	padding-bottom: 10px;
+}
+
+.nte-block-preview__icon {
+	color: #1e1e1e;
+	font-size: 20px;
+	height: 20px;
+	width: 20px;
+}
+
+.nte-block-preview__title {
+	color: #1e1e1e;
+	font-size: 14px;
+	font-weight: 600;
+}
+
+.nte-block-preview__content p {
+	color: #757575;
+	font-size: 13px;
+	margin: 4px 0;
+}
+
+.nte-block-preview__content strong {
+	color: #1e1e1e;
+}

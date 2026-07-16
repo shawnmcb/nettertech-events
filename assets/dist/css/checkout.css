@@ -1,0 +1,179 @@
+/**
+ * NetterTech Events - Checkout Donations
+ *
+ * Styles for the donation UI at WooCommerce checkout.
+ *
+ * @package NetterTechEvents
+ */
+
+/* Donation Field Container */
+.nte-donation-field {
+	margin: 20px 0;
+	padding: 20px;
+	background: var(--nte-color-background-alt, #f9fafb);
+	border: 1px solid var(--nte-color-border, #82858c);
+	border-radius: 6px;
+}
+
+.nte-donation-field.nte-loading {
+	opacity: 0.6;
+	pointer-events: none;
+}
+
+/* Title */
+.nte-donation-field__title {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin: 0 0 8px 0;
+	font-size: 1.1em;
+	font-weight: 600;
+	color: var(--nte-color-text, #1f2937);
+}
+
+.nte-donation-field__heart {
+	color: var(--nte-color-error, #ef4444);
+	font-size: 1.2em;
+}
+
+/* Cause/message text */
+.nte-donation-field__cause {
+	margin: 0 0 16px 0;
+	font-size: 0.95em;
+	color: var(--nte-color-text-muted, #5a616e);
+}
+
+/* Options container */
+.nte-donation-field__options {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+}
+
+/* Individual option */
+.nte-donation-field__option {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 10px 16px;
+	background: var(--nte-color-background, #fff);
+	border: 2px solid var(--nte-color-border, #82858c);
+	border-radius: 6px;
+	cursor: pointer;
+	transition: border-color 0.2s, background-color 0.2s;
+	flex-shrink: 0;
+}
+
+.nte-donation-field__option:hover {
+	border-color: var(--nte-color-text-muted, #5a616e);
+}
+
+.nte-donation-field__option:has(input:checked) {
+	border-color: var(--nte-color-success, #10b981);
+	background-color: color-mix(in srgb, var(--nte-color-success, #10b981) 15%, var(--nte-color-background, #fff));
+}
+
+/* Hide default radio */
+.nte-donation-field__option input[type="radio"] {
+	position: absolute;
+	opacity: 0;
+	width: 0;
+	height: 0;
+}
+
+/* Custom radio indicator */
+.nte-donation-field__option::before {
+	content: "";
+	display: inline-block;
+	width: 18px;
+	height: 18px;
+	border: 2px solid var(--nte-color-text-muted, #5a616e);
+	border-radius: 50%;
+	background: var(--nte-color-background, #fff);
+	flex-shrink: 0;
+	transition: border-color 0.2s, background-color 0.2s;
+}
+
+.nte-donation-field__option:has(input:checked)::before {
+	border-color: var(--nte-color-success, #10b981);
+	background: var(--nte-color-success, #10b981);
+	box-shadow: inset 0 0 0 3px var(--nte-color-background, #fff);
+}
+
+/* Label text */
+.nte-donation-field__label {
+	font-size: 0.95em;
+	color: var(--nte-color-text, #1f2937);
+	white-space: nowrap;
+}
+
+/* Custom amount option */
+.nte-donation-field__option--custom {
+	flex-grow: 1;
+	min-width: 200px;
+}
+
+.nte-donation-field__currency {
+	font-weight: 600;
+	color: var(--nte-color-text-muted, #5a616e);
+}
+
+.nte-donation-custom-amount {
+	width: 80px;
+	padding: 6px 10px;
+	border: 1px solid var(--nte-color-border, #82858c);
+	border-radius: 4px;
+	font-size: 0.95em;
+	text-align: right;
+}
+
+.nte-donation-custom-amount:focus {
+	outline: none;
+	border-color: var(--nte-color-success, #10b981);
+	box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+}
+
+.nte-donation-custom-amount:focus-visible {
+	outline: 2px solid var(--nte-color-primary, #2563eb);
+	outline-offset: 2px;
+}
+
+.nte-donation-custom-amount:disabled {
+	background: var(--nte-color-background-alt, #f9fafb);
+	color: var(--nte-color-text-muted, #5a616e);
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+
+	.nte-donation-field__options {
+		flex-direction: column;
+	}
+
+	.nte-donation-field__option {
+		width: 100%;
+		justify-content: flex-start;
+	}
+
+	.nte-donation-field__option--custom {
+		min-width: auto;
+	}
+
+	.nte-donation-custom-amount {
+		margin-left: auto;
+	}
+}
+
+/* WooCommerce cart/checkout fee display styling */
+.woocommerce-checkout-review-order-table .fee .amount,
+.woocommerce-cart-form .fee .amount {
+	color: var(--nte-color-success, #10b981);
+}
+
+/* Print styles */
+@media print {
+
+	.nte-donation-field {
+		display: none;
+	}
+}

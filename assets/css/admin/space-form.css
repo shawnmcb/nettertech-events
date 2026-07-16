@@ -1,0 +1,99 @@
+/**
+ * Space admin form styles.
+ *
+ * Styles for the Featured Image picker, Gallery picker, and Accessibility
+ * features editor on the NTE Spaces add/edit page.
+ */
+
+.nte-media-picker {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	align-items: center;
+	max-width: 720px;
+}
+
+.nte-media-picker__preview {
+	flex: 1 1 100%;
+	margin-bottom: 8px;
+}
+
+.nte-media-picker__preview img {
+	max-width: 300px;
+	height: auto;
+	border-radius: 4px;
+	border: 1px solid #c3c4c7;
+}
+
+.nte-media-picker__gallery {
+	display: flex;
+	flex: 1 1 100%;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin-bottom: 8px;
+}
+
+.nte-media-picker__thumb img {
+	width: 80px;
+	height: 80px;
+	object-fit: cover;
+	border-radius: 4px;
+	border: 1px solid #c3c4c7;
+	display: block;
+}
+
+.nte-media-picker__select,
+.nte-media-picker__clear {
+	flex: 0 0 auto;
+}
+
+.nte-a11y-editor {
+	max-width: 960px;
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+	padding: 12px;
+	background: #fbfbfc;
+}
+
+.nte-a11y-editor__rows {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	margin-bottom: 12px;
+}
+
+.nte-a11y-editor__rows:empty {
+	display: none;
+}
+
+.nte-a11y-row {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+	padding: 8px;
+	background: #fff;
+	border: 1px solid #e0e0e0;
+	border-radius: 4px;
+}
+
+.nte-a11y-row select,
+.nte-a11y-row input[type="text"] {
+	flex: 0 1 auto;
+}
+
+.nte-a11y-row input[type="number"] {
+	width: 70px;
+}
+
+.nte-a11y-row label {
+	font-size: 12px;
+	color: #50575e;
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.nte-a11y-row .button-link-delete {
+	margin-left: auto;
+}

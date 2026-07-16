@@ -1,0 +1,62 @@
+{
+	"extends": [
+		"plugin:@wordpress/eslint-plugin/recommended",
+		"plugin:no-unsanitized/DOM"
+	],
+	"env": {
+		"browser": true,
+		"jquery": true
+	},
+	"globals": {
+		"wp": "readonly",
+		"ajaxurl": "readonly",
+		"nettertechEvents": "readonly",
+		"nettertechEventsAdmin": "readonly",
+		"nettertechEventsDonation": "readonly",
+		"nettertechEventsWaitlist": "readonly",
+		"nettertechEventsTicketForm": "readonly",
+		"nettertechEventsQRGenerator": "readonly",
+		"nettertechEventsQrLogoSettings": "readonly",
+		"nettertechEventsTicketFormAssets": "readonly",
+		"nettertechEventsEventQr": "readonly",
+		"nettertechEventsEventRecurrence": "readonly",
+		"nettertechEventsEventTickets": "readonly"
+	},
+	"rules": {
+		"prettier/prettier": "off",
+		"no-console": "off",
+		"jsdoc/check-line-alignment": "off",
+		"jsdoc/empty-tags": "off",
+		"jsdoc/require-param": "off",
+		"jsdoc/require-param-description": "off",
+		"jsdoc/require-param-type": "off",
+		"jsdoc/require-returns-description": "off",
+		"jsdoc/require-returns-type": "off",
+		"jsdoc/no-undefined-types": "off",
+		"@wordpress/no-unused-vars-before-return": "off",
+		"@wordpress/no-global-active-element": "off",
+		"curly": "off",
+		"object-shorthand": "off",
+		"no-var": "off",
+		"no-lonely-if": "off",
+		"no-nested-ternary": "off",
+		"no-redeclare": "off",
+		"prefer-const": "off",
+		"eqeqeq": ["error", "smart"],
+		"no-restricted-syntax": [
+			"error",
+			{
+				"selector": "CallExpression[callee.property.name='html']:not([arguments.length=0])",
+				"message": "jQuery .html(arg) is an XSS vector. See FRONTEND-GATE-RULES.md Rule 5."
+			},
+			{
+				"selector": "CallExpression[callee.object.name='$'][callee.property.name='parseHTML']",
+				"message": "$.parseHTML does not sanitize. See FRONTEND-GATE-RULES.md Rule 5."
+			},
+			{
+				"selector": "CallExpression[callee.property.name='then']",
+				"message": "Prefer async/await over .then() chains. See FRONTEND-GATE-RULES.md Rule 4."
+			}
+		]
+	}
+}

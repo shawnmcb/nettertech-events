@@ -1,0 +1,76 @@
+# Dependencies
+/vendor/
+/node_modules/
+
+# Composer
+# (composer.lock is tracked for deterministic installs)
+
+# npm
+# (package-lock.json is tracked for deterministic installs)
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# Build artifacts (keep dist for deployment)
+# /assets/dist/
+
+# Testing
+/tests/coverage/
+/build/
+/test-results/
+/playwright-report/
+.phpunit.result.cache
+.phpunit.cache/
+
+# QR code test artifacts
+ABCD1234EFGH5678.png
+/nettertech-events/
+
+# Debug
+*.log
+debug.log
+
+# Local environment
+.env
+.env.local
+
+# Backup files
+*.bak
+*~
+*.swp
+*.swo
+
+# Claude Code backup
+.claudeBAK/
+
+# Process artifacts (moved to ~/Local Sites/)
+.claude/
+.gemini/
+.remediation/
+/architecture/
+
+# Audit reports (moved to ~/Local Sites/)
+.audit/
+.obsidian/
+
+# AI assistant context files
+GEMINI.md
+
+# Generated audit/report YAMLs (excluded from dist via .distignore; not for version control)
+complexity_report.yaml
+gap_analysis_report.yaml
+quality_assessment.yaml
+security-audit-report-2026-01-18.yaml
+
+# Serena MCP
+.serena/
+
+# Local developer tooling
+scripts/git-hours.sh

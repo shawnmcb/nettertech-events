@@ -1,0 +1,50 @@
+<div class="postbox">
+<div class="postbox-header">
+<h2>Date &amp; Time</h2>
+</div>
+<div class="inside">
+<p>
+<label>
+<input type="checkbox" name="all_day" value="1" >
+All-day event </label>
+</p>
+<fieldset style="margin: 0; padding: 0; border: 0;">
+<legend><strong>Start:</strong></legend>
+<label for="start_date" class="screen-reader-text">Start Date</label>
+<input type="date" name="start_date" id="start_date"
+value="" style="width: 55%;"
+required>
+<label for="start_time" class="screen-reader-text">Start Time</label>
+<input type="time" name="start_time" id="start_time"
+value="" style="width: 40%;">
+</fieldset>
+<div class="nte-end-time-section" style="margin-top: 10px;">
+<button type="button"
+class="button button-secondary nte-end-time-toggle"
+id="nte-end-time-toggle"
+aria-expanded="false"
+aria-controls="nte-end-time-fields">
+<span class="nte-toggle-show">Set end time</span>
+<span class="nte-toggle-hide">Hide end time</span>
+</button>
+<fieldset id="nte-end-time-fields"
+style="margin: 10px 0 0; padding: 0; border: 0; display: none;">
+<legend><strong>End:</strong></legend>
+<label for="end_date" class="screen-reader-text">End Date</label>
+<input type="date" name="end_date" id="end_date"
+value="" style="width: 55%;"
+>
+<label for="end_time" class="screen-reader-text">End Time</label>
+<input type="time" name="end_time" id="end_time"
+value="" style="width: 40%;"
+>
+</fieldset>
+</div>
+<p>
+<label for="occurrence_capacity"><strong>Capacity:</strong></label><br>
+<input type="number" name="occurrence_capacity" id="occurrence_capacity"
+value="" min="0" style="width: 100%;"
+placeholder="Unlimited">
+</p>
+</div>
+</div>
