@@ -17,6 +17,16 @@ use NetterTechEvents\Models\Occurrence;
  */
 class OccurrenceTest extends \NetterTechEventsTestCase {
 
+	/**
+	 * Reset static URL-generation state between tests.
+	 *
+	 * @return void
+	 */
+	protected function tearDown(): void {
+		Occurrence::set_date_counter( null );
+		parent::tearDown();
+	}
+
 	// =========================================================================
 	// from_row Tests
 	// =========================================================================
@@ -833,6 +843,190 @@ class OccurrenceTest extends \NetterTechEventsTestCase {
 
 		$this->assertStringContainsString( 'events/test-event', $url );
 		$this->assertStringContainsString( '2026-06-15-1400', $url );
+	}
+
+	/**
+	 * Build a single-type event + occurrence pair with URL stubs in place.
+	 *
+	 * @return Occurrence
+	 */
+	private function make_single_type_occurrence(): Occurrence {
+		$occurrence                 = new Occurrence();
+		$occurrence->id             = 123;
+		$occurrence->event_id       = 5;
+		$occurrence->start_datetime = '2026-11-06 17:00:00';
+		$occurrence->end_datetime   = '2026-11-06 23:00:00';
+
+		$event             = new Event();
+		$event->id         = 5;
+		$event->slug       = 'test-event';
+		$event->event_type = 'single';
+
+		$occurrence->set_event( $event );
+
+		\Brain\Monkey\Functions\when( 'home_url' )->alias(
+			function ( $path = '' ) {
+				return 'https://example.com' . $path;
+			}
+		);
+
+		\Brain\Monkey\Functions\when( 'get_option' )->alias(
+			function ( $option, $default = array() ) {
+				if ( 'nettertech_events_settings' === $option ) {
+					return array( 'events_base_path' => 'events' );
+				}
+				return $default;
+			}
+		);
+
+		return $occurrence;
+	}
+
+	/**
+	 * Single-type event with multiple scheduled dates must get the
+	 * datetime-suffixed occurrence URL, matching the router's series
+	 * predicate (NTE-199 / NTE-208).
+	 *
+	 * @return void
+	 */
+	public function test_get_url_single_type_with_multiple_dates_uses_occurrence_url(): void {
+		$occurrence = $this->make_single_type_occurrence();
+
+		Occurrence::set_date_counter(
+			function ( int $event_id ): int {
+				return 5 === $event_id ? 2 : 0;
+			}
+		);
+
+		$url = $occurrence->get_url();
+
+		$this->assertStringContainsString( 'events/test-event', $url );
+		$this->assertStringContainsString( '2026-11-06-1700', $url );
+	}
+
+	/**
+	 * Single-type event with one scheduled date keeps the plain event permalink.
+	 *
+	 * @return void
+	 */
+	public function test_get_url_single_type_with_one_date_uses_event_permalink(): void {
+		$occurrence = $this->make_single_type_occurrence();
+
+		Occurrence::set_date_counter(
+			function (): int {
+				return 1;
+			}
+		);
+
+		$url = $occurrence->get_url();
+
+		$this->assertSame( 'https://example.com/events/test-event/', $url );
+	}
+
+	/**
+	 * With no counter resolvable (no bootstrapped container), single-type
+	 * events fall back to the legacy permalink rather than fataling.
+	 *
+	 * @return void
+	 */
+	public function test_get_url_single_type_without_counter_falls_back_to_permalink(): void {
+		$occurrence = $this->make_single_type_occurrence();
+
+		$url = $occurrence->get_url();
+
+		$this->assertSame( 'https://example.com/events/test-event/', $url );
+	}
+
+	/**
+	 * A throwing counter must degrade to the legacy permalink, never the
+	 * occurrence URL.
+	 *
+	 * @return void
+	 */
+	public function test_get_url_single_type_counter_throwing_falls_back_to_permalink(): void {
+		$occurrence = $this->make_single_type_occurrence();
+
+		Occurrence::set_date_counter(
+			function (): int {
+				throw new \RuntimeException( 'no database here' );
+			}
+		);
+
+		$url = $occurrence->get_url();
+
+		$this->assertSame( 'https://example.com/events/test-event/', $url );
+	}
+
+	/**
+	 * An event without a persisted ID (id 0 or null) never consults the
+	 * counter and keeps the permalink.
+	 *
+	 * @return void
+	 */
+	public function test_get_url_single_type_unpersisted_event_skips_counter(): void {
+		$occurrence = $this->make_single_type_occurrence();
+		$event      = $occurrence->get_event();
+		$event->id  = 0;
+
+		$counter_calls = 0;
+		Occurrence::set_date_counter(
+			function () use ( &$counter_calls ): int {
+				++$counter_calls;
+				return 5;
+			}
+		);
+
+		$this->assertSame( 'https://example.com/events/test-event/', $occurrence->get_url() );
+
+		$event->id = null;
+		$this->assertSame( 'https://example.com/events/test-event/', $occurrence->get_url() );
+
+		$this->assertSame( 0, $counter_calls );
+	}
+
+	/**
+	 * Non-integer counter results are truncated, not float-compared: a
+	 * defective counter returning 1.5 means one date, not "more than one".
+	 *
+	 * @return void
+	 */
+	public function test_get_url_single_type_counter_result_is_cast_to_int(): void {
+		$occurrence = $this->make_single_type_occurrence();
+
+		Occurrence::set_date_counter(
+			function (): float {
+				return 1.5;
+			}
+		);
+
+		$url = $occurrence->get_url();
+
+		$this->assertSame( 'https://example.com/events/test-event/', $url );
+	}
+
+	/**
+	 * Counter results are memoized per event for the request; the counter
+	 * runs once no matter how many URLs are generated.
+	 *
+	 * @return void
+	 */
+	public function test_get_url_memoizes_date_count_per_event(): void {
+		$occurrence = $this->make_single_type_occurrence();
+
+		$counter_calls = 0;
+		Occurrence::set_date_counter(
+			function () use ( &$counter_calls ): int {
+				++$counter_calls;
+				return 2;
+			}
+		);
+
+		$first  = $occurrence->get_url();
+		$second = $occurrence->get_url();
+
+		$this->assertStringContainsString( '2026-11-06-1700', $first );
+		$this->assertSame( $first, $second );
+		$this->assertSame( 1, $counter_calls );
 	}
 
 	/**

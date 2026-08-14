@@ -183,7 +183,11 @@ echo ""
 THRESHOLD=72
 echo "Checking coverage threshold (minimum ${THRESHOLD}%)..."
 
-php vendor/bin/phpunit --coverage-text --colors=never > "$COVERAGE_TMP" 2>&1
+# 1024M: phpunit.xml also emits the HTML coverage report during this run,
+# and the suite outgrew 512M there in 2026-08 (fatal OOM read as a silent
+# gate failure — the hook printed nothing between "Checking coverage" and
+# git's refusal).
+php -d memory_limit=1024M vendor/bin/phpunit --coverage-text --colors=never > "$COVERAGE_TMP" 2>&1
 PHPUNIT_EXIT=$?
 
 if [ "$PHPUNIT_EXIT" -ne 0 ]; then

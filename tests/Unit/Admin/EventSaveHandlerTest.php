@@ -19,6 +19,7 @@ use NetterTechEvents\Contracts\OccurrenceRepositoryInterface;
 use NetterTechEvents\Exceptions\ValidationException;
 use NetterTechEvents\Models\Event;
 use NetterTechEvents\Models\Occurrence;
+use NetterTechEvents\Models\TicketType;
 use NetterTechEvents\Services\RecurrenceService;
 use NetterTechEvents\Services\TicketTypeSaver;
 
@@ -88,6 +89,10 @@ class EventSaveHandlerTest extends \NetterTechEventsTestCase {
 		$this->mock_category_repo      = Mockery::mock( CategoryRepositoryInterface::class );
 		$this->mock_recurrence_service = Mockery::mock( RecurrenceService::class );
 		$this->mock_ticket_saver       = Mockery::mock( TicketTypeSaver::class );
+		// Event-scoped ticket saving is now unconditional (R6); it self-guards on rendered
+		// markers, so most process_save tests neither set it up nor care. Allow it by default;
+		// tests asserting the call override this with a specific expectation.
+		$this->mock_ticket_saver->shouldReceive( 'save_for_event' )->byDefault();
 
 		$mock_layout_service = Mockery::mock( \NetterTechEvents\Services\LayoutService::class );
 		$mock_layout_service->shouldIgnoreMissing();
@@ -122,6 +127,7 @@ class EventSaveHandlerTest extends \NetterTechEventsTestCase {
 		Functions\when( 'absint' )->alias( fn( $v ) => abs( (int) $v ) );
 		Functions\when( '__' )->returnArg();
 		Functions\when( 'esc_html__' )->returnArg();
+		Functions\when( 'number_format_i18n' )->returnArg();
 	}
 
 	/**
@@ -1499,7 +1505,7 @@ class EventSaveHandlerTest extends \NetterTechEventsTestCase {
 			->shouldReceive( 'apply_templates_to_occurrences' )
 			->andReturn( 0 );
 
-		$method = new \ReflectionMethod( EventSaveHandler::class, 'add_manual_date' );
+		$method = new \ReflectionMethod( EventSaveHandler::class, 'add_manual_dates' );
 		$method->invoke( $this->handler, $event, $post );
 	}
 
@@ -1592,7 +1598,11 @@ class EventSaveHandlerTest extends \NetterTechEventsTestCase {
 	}
 
 	/**
-	 * The fields ride along on every event save, so blank must mean "no date", not a blank date.
+	 * A wholly blank row (no date, no times) creates nothing.
+	 *
+	 * The legacy single-date fields ride along on every event save, so a blank set must mean
+	 * "no date", not an empty date. Only a missing *date* drops the row now (NTE-184); missing
+	 * times are derived, exercised in the derivation tests below.
 	 *
 	 * @return void
 	 */
@@ -1601,16 +1611,626 @@ class EventSaveHandlerTest extends \NetterTechEventsTestCase {
 
 		$this->call_add_manual_date( 7, array() );
 
+		$this->assertTrue( true );
+	}
+
+	/**
+	 * A date with only its date and start persists; the end is derived (NTE-184).
+	 *
+	 * The prior behavior dropped any row missing start OR end, silently discarding a date the
+	 * operator entered. Blank end now derives start + default duration (default 120 min), exactly
+	 * as the primary Date & Time path does.
+	 *
+	 * @return void
+	 */
+	public function test_add_manual_date_derives_blank_end_from_default_duration(): void {
+		Functions\when( 'wp_timezone_string' )->justReturn( 'UTC' );
+
+		$this->mock_occurrence_repo
+			->shouldReceive( 'for_event' )
+			->with( 7, array( 'limit' => 1 ) )
+			->andReturn( array() );
+
+		$saved = null;
+		$this->mock_occurrence_repo
+			->shouldReceive( 'save' )
+			->once()
+			->andReturnUsing(
+				function ( $occurrence ) use ( &$saved ) {
+					$saved     = $occurrence;
+					$saved->id = 42;
+					return $occurrence;
+				}
+			);
+
+		$this->call_add_manual_date(
+			7,
+			array(
+				'nettertech_events_new_date'       => '2026-09-03',
+				'nettertech_events_new_start_time' => '14:30',
+				'nettertech_events_new_end_time'   => '',
+			)
+		);
+
+		$this->assertNotNull( $saved );
+		$this->assertSame( '2026-09-03 14:30:00', $saved->start_datetime );
+		// 14:30 + 120 min default duration = 16:30.
+		$this->assertSame( '2026-09-03 16:30:00', $saved->end_datetime );
+		$this->assertTrue( $saved->is_override );
+	}
+
+	/**
+	 * A date with only its date persists; both start and end are derived (NTE-184).
+	 *
+	 * @return void
+	 */
+	public function test_add_manual_date_derives_blank_start_from_default_setting(): void {
+		Functions\when( 'wp_timezone_string' )->justReturn( 'UTC' );
+
+		$this->mock_occurrence_repo
+			->shouldReceive( 'for_event' )
+			->with( 7, array( 'limit' => 1 ) )
+			->andReturn( array() );
+
+		$saved = null;
+		$this->mock_occurrence_repo
+			->shouldReceive( 'save' )
+			->once()
+			->andReturnUsing(
+				function ( $occurrence ) use ( &$saved ) {
+					$saved     = $occurrence;
+					$saved->id = 42;
+					return $occurrence;
+				}
+			);
+
 		$this->call_add_manual_date(
 			7,
 			array(
 				'nettertech_events_new_date'       => '2026-09-03',
 				'nettertech_events_new_start_time' => '',
+				'nettertech_events_new_end_time'   => '',
+			)
+		);
+
+		$this->assertNotNull( $saved );
+		// Default start 19:00, + 120 min = 21:00.
+		$this->assertSame( '2026-09-03 19:00:00', $saved->start_datetime );
+		$this->assertSame( '2026-09-03 21:00:00', $saved->end_datetime );
+	}
+
+	/**
+	 * With require_end_time enabled, a date missing its end is a validation error, not a derivation.
+	 *
+	 * @return void
+	 */
+	public function test_add_manual_date_blank_end_is_error_when_end_required(): void {
+		Functions\when( 'wp_timezone_string' )->justReturn( 'UTC' );
+		Functions\when( 'get_option' )->justReturn( array( 'require_end_time' => true ) );
+
+		$this->mock_occurrence_repo->shouldNotReceive( 'save' );
+
+		$this->expectException( \NetterTechEvents\Exceptions\ValidationException::class );
+
+		$this->call_add_manual_date(
+			7,
+			array(
+				'nettertech_events_new_date'       => '2026-09-03',
+				'nettertech_events_new_start_time' => '14:30',
+				'nettertech_events_new_end_time'   => '',
+			)
+		);
+	}
+
+	/**
+	 * An inverted manual row (end before start) is rejected, not persisted verbatim (F7).
+	 *
+	 * The shared resolver's span check catches both inverted and sub-10-minute rows.
+	 *
+	 * @return void
+	 */
+	public function test_add_manual_dates_rejects_an_inverted_row(): void {
+		$this->mock_occurrence_repo->shouldNotReceive( 'save' );
+
+		$this->expectException( \NetterTechEvents\Exceptions\ValidationException::class );
+
+		$this->call_add_manual_date(
+			7,
+			array(
+				'nettertech_events_new_date'       => '2026-09-03',
+				'nettertech_events_new_start_time' => '20:00',
+				'nettertech_events_new_end_time'   => '19:00',
+			)
+		);
+	}
+
+	/**
+	 * Templates applied to a hand-picked date are named (with product count) in the notice (R1).
+	 *
+	 * Operator ruling 2026-07-20 (spec-001 invention audit): applying templates to an added date
+	 * can mint tiers and WooCommerce products, so what was created must be surfaced, not silent.
+	 *
+	 * @return void
+	 */
+	public function test_add_manual_dates_reports_created_tiers_in_notice(): void {
+		Functions\when( 'wp_timezone_string' )->justReturn( 'UTC' );
+
+		$captured = null;
+		Functions\when( 'set_transient' )->alias(
+			function ( $key, $value ) use ( &$captured ) {
+				if ( str_contains( (string) $key, 'save_notice' ) ) {
+					$captured = $value;
+				}
+				return true;
+			}
+		);
+
+		$this->mock_occurrence_repo
+			->shouldReceive( 'for_event' )
+			->with( 7, array( 'limit' => 1 ) )
+			->andReturn( array() );
+		$this->mock_occurrence_repo
+			->shouldReceive( 'save' )
+			->once()
+			->andReturnUsing(
+				function ( $occurrence ) {
+					$occurrence->id = 99;
+					return $occurrence;
+				}
+			);
+
+		// Two templates applied (created > 0); one is priced, so one product is reported.
+		$this->mock_recurrence_service
+			->shouldReceive( 'apply_templates_to_occurrences' )
+			->andReturn( 2 );
+
+		$general        = new TicketType();
+		$general->name  = 'General Admission';
+		$general->price = 25.0;
+		$comp           = new TicketType();
+		$comp->name     = 'Comp';
+		$comp->price    = 0.0;
+		$this->mock_recurrence_service
+			->shouldReceive( 'get_active_templates' )
+			->with( 7 )
+			->andReturn( array( $general, $comp ) );
+
+		$event     = new Event();
+		$event->id = 7;
+
+		$method = new \ReflectionMethod( EventSaveHandler::class, 'add_manual_dates' );
+		$method->invoke(
+			$this->handler,
+			$event,
+			array(
+				'nettertech_events_new_date'       => '2026-09-03',
+				'nettertech_events_new_start_time' => '14:30',
 				'nettertech_events_new_end_time'   => '16:00',
 			)
 		);
 
+		$this->assertNotNull( $captured );
+		$this->assertStringContainsString( 'General Admission', $captured );
+		$this->assertStringContainsString( 'Comp', $captured );
+		// Exactly one priced template → one product reported.
+		$this->assertStringContainsString( '1 WooCommerce product', $captured );
+	}
+
+	/**
+	 * N indexed rows create N override occurrences in one save (NTE-177, FR-002).
+	 *
+	 * @return void
+	 */
+	public function test_add_manual_dates_creates_one_occurrence_per_indexed_row(): void {
+		Functions\when( 'wp_timezone_string' )->justReturn( 'UTC' );
+
+		$this->mock_occurrence_repo
+			->shouldReceive( 'for_event' )
+			->with( 7, array( 'limit' => 1 ) )
+			->andReturn( array() );
+
+		$saved = array();
+		$this->mock_occurrence_repo
+			->shouldReceive( 'save' )
+			->times( 3 )
+			->andReturnUsing(
+				function ( $occurrence ) use ( &$saved ) {
+					$occurrence->id = count( $saved ) + 1;
+					$saved[]        = $occurrence;
+					return $occurrence;
+				}
+			);
+
+		$this->call_add_manual_date(
+			7,
+			array(
+				'nettertech_events_manual_dates' => array(
+					array(
+						'date'       => '2026-09-03',
+						'start_time' => '14:30',
+						'end_time'   => '16:00',
+					),
+					array(
+						'date'       => '2026-09-10',
+						'start_time' => '18:00',
+						'end_time'   => '20:00',
+					),
+					array(
+						'date'       => '2026-09-17',
+						'start_time' => '18:00',
+						'end_time'   => '20:00',
+					),
+				),
+			)
+		);
+
+		$this->assertCount( 3, $saved );
+		$this->assertSame( '2026-09-03 14:30:00', $saved[0]->start_datetime );
+		$this->assertSame( '2026-09-17 20:00:00', $saved[2]->end_datetime );
+		$this->assertTrue( $saved[0]->is_override );
+		$this->assertTrue( $saved[2]->is_override );
+	}
+
+	/**
+	 * Only date-less rows are skipped; a row missing just its time is derived, not dropped (NTE-184).
+	 *
+	 * The prior behavior dropped the partial (missing end time) row silently. It now persists with a
+	 * derived end. A wholly empty row and a non-array entry are the only things that create nothing.
+	 *
+	 * @return void
+	 */
+	public function test_add_manual_dates_skips_only_dateless_rows(): void {
+		Functions\when( 'wp_timezone_string' )->justReturn( 'UTC' );
+
+		$this->mock_occurrence_repo
+			->shouldReceive( 'for_event' )
+			->with( 7, array( 'limit' => 1 ) )
+			->andReturn( array() );
+
+		$saved = array();
+		$this->mock_occurrence_repo
+			->shouldReceive( 'save' )
+			->times( 2 )
+			->andReturnUsing(
+				function ( $occurrence ) use ( &$saved ) {
+					$occurrence->id = count( $saved ) + 1;
+					$saved[]        = $occurrence;
+					return $occurrence;
+				}
+			);
+
+		$this->call_add_manual_date(
+			7,
+			array(
+				'nettertech_events_manual_dates' => array(
+					// Valid.
+					array(
+						'date'       => '2026-09-03',
+						'start_time' => '14:30',
+						'end_time'   => '16:00',
+					),
+					// Entirely empty — skipped (no date).
+					array(
+						'date'       => '',
+						'start_time' => '',
+						'end_time'   => '',
+					),
+					// Partial (missing end time) — now KEPT with a derived end.
+					array(
+						'date'       => '2026-09-10',
+						'start_time' => '18:00',
+						'end_time'   => '',
+					),
+					// Not an array — ignored.
+					'garbage',
+				),
+			)
+		);
+
+		$this->assertCount( 2, $saved );
+		$this->assertSame( '2026-09-03 14:30:00', $saved[0]->start_datetime );
+		$this->assertSame( '2026-09-10 18:00:00', $saved[1]->start_datetime );
+		// 18:00 + 120 min default duration = 20:00.
+		$this->assertSame( '2026-09-10 20:00:00', $saved[1]->end_datetime );
+	}
+
+	/**
+	 * A valid row is kept even when it follows an empty row (skip, don't stop).
+	 *
+	 * Guards the loop's `continue` against a `break` mutation: `break` would abandon
+	 * every row after the first blank one, silently dropping good dates.
+	 *
+	 * @return void
+	 */
+	public function test_add_manual_dates_keeps_a_valid_row_after_an_empty_row(): void {
+		Functions\when( 'wp_timezone_string' )->justReturn( 'UTC' );
+
+		$this->mock_occurrence_repo
+			->shouldReceive( 'for_event' )
+			->with( 7, array( 'limit' => 1 ) )
+			->andReturn( array() );
+
+		$saved = array();
+		$this->mock_occurrence_repo
+			->shouldReceive( 'save' )
+			->once()
+			->andReturnUsing(
+				function ( $occurrence ) use ( &$saved ) {
+					$occurrence->id = 1;
+					$saved[]        = $occurrence;
+					return $occurrence;
+				}
+			);
+
+		$this->call_add_manual_date(
+			7,
+			array(
+				'nettertech_events_manual_dates' => array(
+					// Empty row FIRST.
+					array(
+						'date'       => '',
+						'start_time' => '',
+						'end_time'   => '',
+					),
+					// Valid row AFTER — must still be created.
+					array(
+						'date'       => '2026-09-10',
+						'start_time' => '18:00',
+						'end_time'   => '20:00',
+					),
+				),
+			)
+		);
+
+		$this->assertCount( 1, $saved );
+		$this->assertSame( '2026-09-10 18:00:00', $saved[0]->start_datetime );
+	}
+
+	/**
+	 * A null event ID creates nothing: no orphan occurrence rows on a failed insert (FR-010).
+	 *
+	 * @return void
+	 */
+	public function test_add_manual_dates_bails_when_event_id_is_null(): void {
+		$this->mock_occurrence_repo->shouldNotReceive( 'save' );
+
+		$event     = new Event();
+		$event->id = null;
+
+		$method = new \ReflectionMethod( EventSaveHandler::class, 'add_manual_dates' );
+		$method->invoke(
+			$this->handler,
+			$event,
+			array(
+				'nettertech_events_manual_dates' => array(
+					array(
+						'date'       => '2026-09-03',
+						'start_time' => '14:30',
+						'end_time'   => '16:00',
+					),
+				),
+			)
+		);
+
 		$this->assertTrue( true );
+	}
+
+	/**
+	 * process_buffered_tickets bails when the event has no real ID (FR-010).
+	 *
+	 * @return void
+	 */
+	public function test_process_buffered_tickets_bails_when_event_id_is_null(): void {
+		$this->mock_occurrence_repo->shouldNotReceive( 'for_event' );
+
+		$event     = new Event();
+		$event->id = null;
+
+		$method = new \ReflectionMethod( EventSaveHandler::class, 'process_buffered_tickets' );
+		$method->invoke(
+			$this->handler,
+			$event,
+			array(
+				'nte_tickets_metabox_rendered' => '1',
+				'ticketing_enabled'            => '1',
+			)
+		);
+
+		$this->assertTrue( true );
+	}
+
+	/**
+	 * process_buffered_tickets does nothing unless BOTH markers are present.
+	 *
+	 * Guards the `||` short-circuit against an `&&` mutation: with `&&` a form that
+	 * rendered but has ticketing switched off would still try to bind rows.
+	 *
+	 * @return void
+	 */
+	public function test_process_buffered_tickets_requires_both_markers(): void {
+		$this->mock_occurrence_repo->shouldNotReceive( 'for_event' );
+
+		$event     = new Event();
+		$event->id = 42;
+
+		$method = new \ReflectionMethod( EventSaveHandler::class, 'process_buffered_tickets' );
+
+		// Rendered, but ticketing disabled → must return without querying occurrences.
+		$method->invoke(
+			$this->handler,
+			$event,
+			array( 'nte_tickets_metabox_rendered' => '1' )
+		);
+
+		$this->assertTrue( true );
+	}
+
+	/**
+	 * With no non-override date, buffered tiers fall back to the earliest occurrence (NTE-187).
+	 *
+	 * An event whose only date was hand-picked (an override) would previously drop its buffered
+	 * occurrence tiers silently. They now bind to that override rather than vanishing.
+	 *
+	 * @return void
+	 */
+	public function test_process_buffered_tickets_falls_back_to_override_occurrence(): void {
+		$event     = new Event();
+		$event->id = 42;
+
+		$override              = new Occurrence();
+		$override->id          = 77;
+		$override->is_override = true;
+
+		$this->mock_occurrence_repo
+			->shouldReceive( 'for_event' )
+			->andReturn( array( $override ) );
+
+		$this->mock_ticket_saver
+			->shouldReceive( 'save_for_occurrence' )
+			->once()
+			->with( 77, Mockery::type( 'array' ), 42 );
+
+		$method = new \ReflectionMethod( EventSaveHandler::class, 'process_buffered_tickets' );
+		$method->invoke(
+			$this->handler,
+			$event,
+			array(
+				'nte_tickets_metabox_rendered' => '1',
+				'ticketing_enabled'            => '1',
+				'ticket_types'                 => array(
+					'occurrence' => array( array( 'name' => 'GA' ) ),
+				),
+			)
+		);
+
+		$this->assertTrue( true );
+	}
+
+	/**
+	 * With no occurrence at all, buffered tiers are reported by name, not dropped (NTE-187).
+	 *
+	 * @return void
+	 */
+	public function test_process_buffered_tickets_reports_tiers_when_no_occurrence(): void {
+		$event     = new Event();
+		$event->id = 42;
+
+		$this->mock_occurrence_repo
+			->shouldReceive( 'for_event' )
+			->andReturn( array() );
+
+		$this->mock_ticket_saver->shouldNotReceive( 'save_for_occurrence' );
+
+		$captured = null;
+		Functions\when( 'set_transient' )->alias(
+			function ( $key, $value ) use ( &$captured ) {
+				$captured = $value;
+				return true;
+			}
+		);
+
+		$method = new \ReflectionMethod( EventSaveHandler::class, 'process_buffered_tickets' );
+		$method->invoke(
+			$this->handler,
+			$event,
+			array(
+				'nte_tickets_metabox_rendered' => '1',
+				'ticketing_enabled'            => '1',
+				'ticket_types'                 => array(
+					'occurrence' => array(
+						array( 'name' => 'VIP Pass' ),
+						array( 'name' => 'GA' ),
+					),
+				),
+			)
+		);
+
+		$this->assertNotNull( $captured );
+		$this->assertStringContainsString( 'VIP Pass', $captured );
+		$this->assertStringContainsString( 'GA', $captured );
+	}
+
+	/**
+	 * On a first save, buffered occurrence tickets bind to the primary occurrence (FR-008).
+	 *
+	 * A new event (posted event_id 0) with the buffered ticket markers must route its
+	 * rows through the ticket saver against the primary (non-override) occurrence. Guards
+	 * the `0 === $event_id` call-site gate and the call itself.
+	 *
+	 * @return void
+	 */
+	public function test_process_save_binds_buffered_tickets_for_new_event(): void {
+		Functions\when( 'current_user_can' )->justReturn( true );
+		Functions\when( 'wp_verify_nonce' )->justReturn( true );
+		Functions\when( 'admin_url' )->alias( fn( $path ) => 'http://example.com/wp-admin/' . $path );
+		Functions\when( 'esc_url_raw' )->returnArg();
+		Functions\when( 'sanitize_key' )->returnArg();
+		Functions\when( 'get_current_user_id' )->justReturn( 1 );
+		Functions\when( 'set_transient' )->justReturn( true );
+
+		$_POST['nettertech_events_event_nonce'] = 'valid';
+		$_POST['event_title']                   = 'Buffered Event';
+		$_POST['event_type']                    = 'single';
+		// No start_date → no primary occurrence is created by process_occurrences;
+		// the buffered path is exercised in isolation.
+		$_POST['nte_tickets_metabox_rendered'] = '1';
+		$_POST['ticketing_enabled']            = '1';
+		$_POST['ticket_types']                 = array(
+			'occurrence' => array(
+				array( 'name' => 'General Admission', 'price' => 25 ),
+			),
+		);
+
+		$saved_event     = new Event();
+		$saved_event->id = 42;
+
+		$this->mock_event_repo->shouldReceive( 'generate_unique_slug' )->andReturn( 'buffered-event' );
+		$this->mock_event_repo->shouldReceive( 'save' )->once()->andReturn( $saved_event );
+		$this->mock_category_repo->shouldReceive( 'sync_event_categories' )->once();
+
+		// A single event with <= 1 scheduled occurrence does not take the event-scope path.
+		$this->mock_occurrence_repo->shouldReceive( 'count_for_event' )->andReturn( 0 );
+
+		// The primary occurrence the buffered rows must bind to.
+		$primary              = new Occurrence();
+		$primary->id          = 10;
+		$primary->is_override = false;
+		$this->mock_occurrence_repo
+			->shouldReceive( 'for_event' )
+			->with( 42, Mockery::type( 'array' ) )
+			->andReturn( array( $primary ) );
+
+		// The assertion under test: buffered occurrence rows reach the ticket saver
+		// against occurrence 10, event 42.
+		$this->mock_ticket_saver
+			->shouldReceive( 'save_for_occurrence' )
+			->once()
+			->with( 10, Mockery::type( 'array' ), 42 );
+
+		$mock_attendee_fields_saver = Mockery::mock( \NetterTechEvents\Admin\Metaboxes\AttendeeFieldsSaveHandler::class );
+		$mock_attendee_fields_saver->shouldIgnoreMissing();
+		$mock_layout_service = Mockery::mock( \NetterTechEvents\Services\LayoutService::class );
+		$mock_layout_service->shouldIgnoreMissing();
+		$mock_rrule_builder = Mockery::mock( \NetterTechEvents\Services\RecurrenceRuleBuilder::class );
+		$mock_rrule_builder->shouldIgnoreMissing();
+		$mock_checkin_email_saver = Mockery::mock( \NetterTechEvents\Services\CheckInEmailSaver::class );
+		$mock_checkin_email_saver->shouldIgnoreMissing();
+
+		$handler = new EventSaveHandler(
+			$this->mock_event_repo,
+			$this->mock_occurrence_repo,
+			$this->mock_category_repo,
+			$this->mock_recurrence_service,
+			$this->mock_ticket_saver,
+			$mock_layout_service,
+			$mock_rrule_builder,
+			$mock_attendee_fields_saver,
+			$mock_checkin_email_saver
+		);
+
+		$result = $handler->process_save();
+
+		$this->assertStringContainsString( 'message=created', $result );
 	}
 
 	// =========================================================================
@@ -1972,12 +2592,12 @@ class EventSaveHandlerTest extends \NetterTechEventsTestCase {
 	}
 
 	/**
-	 * A single event carrying more than one date still gets its event-scoped tickets (NTE-156).
+	 * Every event saves its event-scoped tickets — the >1-occurrence gate is gone (R6, NTE-156).
 	 *
-	 * Series passes belong to any event whose dates a pass could span — recurring, or a single
-	 * event with extra hand-picked dates. The gate is `'recurring' === type OR count > 1`; a
-	 * two-date single satisfies only the second half. Kills the LogicalOr→LogicalAnd mutant on
-	 * line 255, which would require BOTH and so skip save_for_event() for the multi-date single.
+	 * Series passes belong to any event whose dates a pass could span. The old gate was
+	 * `'recurring' === type OR count > 1`; operator ruling 2026-07-20 removed it because
+	 * save_for_event self-guards on rendered markers (NTE-178). A two-date single still reaches
+	 * save_for_event; the companion test below proves a one-date single now does too.
 	 *
 	 * @return void
 	 */
@@ -2010,13 +2630,58 @@ class EventSaveHandlerTest extends \NetterTechEventsTestCase {
 		$this->mock_occurrence_repo->shouldReceive( 'save' )->with( $occurrence );
 		$this->mock_ticket_saver->shouldReceive( 'save_for_occurrence' );
 
-		// The single event carries two scheduled dates, so the pass gate opens on count alone.
+		// The event-scoped ticket save fires unconditionally now.
+		$this->mock_ticket_saver
+			->shouldReceive( 'save_for_event' )
+			->once()
+			->with( 42, Mockery::type( 'array' ) );
+
+		$result = $this->handler->process_save();
+
+		$this->assertStringContainsString( 'message=created', $result );
+	}
+
+	/**
+	 * A plain single event (one occurrence) now also reaches save_for_event (R6).
+	 *
+	 * The removed gate blocked this call whenever count <= 1. Operator ruling 2026-07-20: the call
+	 * is unconditional and save_for_event self-guards, so a single-date event that rendered a
+	 * series-pass section can save it. Kills a mutant re-introducing a count gate.
+	 *
+	 * @return void
+	 */
+	public function test_process_save_single_date_event_still_saves_event_scoped_tickets(): void {
+		$this->stub_process_save_wp_functions();
+
+		$_POST['nettertech_events_event_nonce'] = 'valid';
+		$_POST['event_title'] = 'One Night Only';
+		$_POST['event_slug']  = 'one-night-only';
+		$_POST['event_type']  = 'single';
+		$_POST['start_date']  = '2026-06-15';
+		$_POST['start_time']  = '19:00';
+		$_POST['end_date']    = '2026-06-15';
+		$_POST['end_time']    = '21:00';
+
+		$saved_event     = new Event();
+		$saved_event->id = 42;
+
+		$this->mock_event_repo->shouldReceive( 'save' )->once()->andReturn( $saved_event );
+		$this->mock_category_repo->shouldReceive( 'sync_event_categories' );
+
+		$occurrence     = new Occurrence();
+		$occurrence->id = 10;
+		$this->mock_recurrence_service
+			->shouldReceive( 'create_single_occurrence' )
+			->once()
+			->andReturn( $occurrence );
+		$this->mock_occurrence_repo->shouldReceive( 'save' )->with( $occurrence );
+		$this->mock_ticket_saver->shouldReceive( 'save_for_occurrence' );
+
+		// Only one scheduled date — the old gate would have skipped this call.
 		$this->mock_occurrence_repo
 			->shouldReceive( 'count_for_event' )
-			->with( 42, 'scheduled' )
-			->andReturn( 2 );
+			->andReturn( 1 );
 
-		// The event-scoped ticket save is the branch under test; it must fire exactly once.
 		$this->mock_ticket_saver
 			->shouldReceive( 'save_for_event' )
 			->once()
@@ -2194,7 +2859,7 @@ class EventSaveHandlerTest extends \NetterTechEventsTestCase {
 			)
 			->andReturn( 0 );
 
-		$method = new \ReflectionMethod( EventSaveHandler::class, 'add_manual_date' );
+		$method = new \ReflectionMethod( EventSaveHandler::class, 'add_manual_dates' );
 		$method->invoke(
 			$this->handler,
 			$event,
@@ -2206,5 +2871,80 @@ class EventSaveHandlerTest extends \NetterTechEventsTestCase {
 		);
 
 		$this->assertSame( 99, $saved->id );
+	}
+
+	/**
+	 * Adding a manual date flushes the memoized date count, so URLs generated
+	 * later in the same request see the event as multi-date (NTE-208).
+	 *
+	 * Without the flush, a count memoized before the save keeps get_url()
+	 * emitting the plain permalink after the event just gained a second date.
+	 *
+	 * @return void
+	 */
+	public function test_create_manual_occurrence_flushes_date_count_cache(): void {
+		Functions\when( 'wp_timezone_string' )->justReturn( 'UTC' );
+		Functions\when( 'home_url' )->alias(
+			function ( $path = '' ) {
+				return 'https://example.com' . $path;
+			}
+		);
+		Functions\when( 'get_option' )->alias(
+			function ( $option, $default = array() ) {
+				if ( 'nettertech_events_settings' === $option ) {
+					return array( 'events_base_path' => 'events' );
+				}
+				return $default;
+			}
+		);
+
+		$event             = new Event();
+		$event->id         = 42;
+		$event->slug       = 'manual-date-event';
+		$event->event_type = 'single';
+
+		$probe                 = new Occurrence();
+		$probe->event_id       = 42;
+		$probe->start_datetime = '2026-09-01 19:00:00';
+		$probe->end_datetime   = '2026-09-01 21:00:00';
+		$probe->set_event( $event );
+
+		// The counter reflects live state: one date before the save, two after.
+		$date_count = 1;
+		Occurrence::set_date_counter(
+			function () use ( &$date_count ): int {
+				return $date_count;
+			}
+		);
+
+		// Memoize the single-date answer, then move the live state to two dates:
+		// the memo must keep answering until the save path flushes it.
+		$this->assertSame( 'https://example.com/events/manual-date-event/', $probe->get_url() );
+		$date_count = 2;
+		$this->assertSame( 'https://example.com/events/manual-date-event/', $probe->get_url() );
+
+		$this->mock_occurrence_repo
+			->shouldReceive( 'for_event' )
+			->with( 42, array( 'limit' => 1 ) )
+			->andReturn( array() );
+		$this->mock_occurrence_repo
+			->shouldReceive( 'save' )
+			->once()
+			->andReturnUsing(
+				function ( $occurrence ) {
+					$occurrence->id = 99;
+					return $occurrence;
+				}
+			);
+		$this->mock_recurrence_service
+			->shouldReceive( 'apply_templates_to_occurrences' )
+			->andReturn( 0 );
+
+		$method = new \ReflectionMethod( EventSaveHandler::class, 'create_manual_occurrence' );
+		$method->invoke( $this->handler, $event, 42, '2026-09-03', '14:30', '16:00' );
+
+		$this->assertStringContainsString( '2026-09-01-1900', $probe->get_url() );
+
+		Occurrence::set_date_counter( null );
 	}
 }

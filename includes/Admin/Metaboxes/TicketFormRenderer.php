@@ -86,7 +86,7 @@ class TicketFormRenderer {
 					<div class="nte-field">
 						<label><?php esc_html_e( 'Price', 'nettertech-events' ); ?></label>
 						<div class="nte-input-group">
-							<span class="nte-input-prefix"><?php echo esc_html( get_woocommerce_currency_symbol() ); ?></span>
+							<span class="nte-input-prefix"><?php echo esc_html( function_exists( 'get_woocommerce_currency_symbol' ) ? get_woocommerce_currency_symbol() : '$' ); ?></span>
 							<input type="number" name="<?php echo esc_attr( $prefix ); ?>[price]"
 									value="<?php echo esc_attr( (string) $ticket->price ); ?>"
 									min="0" step="0.01" placeholder="0.00">
@@ -191,20 +191,56 @@ class TicketFormRenderer {
 								min="1">
 					</div>
 
-					<!-- Sale Dates -->
-					<div class="nte-field">
-						<label><?php esc_html_e( 'Sale Start', 'nettertech-events' ); ?></label>
-						<input type="datetime-local" name="<?php echo esc_attr( $prefix ); ?>[sale_start]"
-								value="<?php echo esc_attr( $ticket->sale_start ? gmdate( 'Y-m-d\TH:i', (int) strtotime( $ticket->sale_start ) ) : '' ); ?>">
+					<?php
+					// Sale window (NTE-190): split date + suggest-and-type time replaces
+					// the combined datetime spinner control. Values recombine to the
+					// legacy wire format server-side, so storage semantics are unchanged.
+					// Labels wrap their inputs (no for/id) because rows clone via
+					// {{INDEX}} templating and cannot share ids; same as Add-a-date.
+					?>
+					<fieldset class="nte-field nte-sale-window">
+						<legend><?php esc_html_e( 'Sale starts', 'nettertech-events' ); ?></legend>
+						<label class="nte-sale-window__part">
+							<span class="screen-reader-text"><?php esc_html_e( 'Sale start date', 'nettertech-events' ); ?></span>
+							<input type="date" name="<?php echo esc_attr( $prefix ); ?>[sale_start_date]"
+									value="<?php echo esc_attr( $ticket->sale_start ? gmdate( 'Y-m-d', (int) strtotime( $ticket->sale_start ) ) : '' ); ?>">
+						</label>
+						<label class="nte-sale-window__part">
+							<span class="screen-reader-text"><?php esc_html_e( 'Sale start time', 'nettertech-events' ); ?></span>
+							<input type="time" name="<?php echo esc_attr( $prefix ); ?>[sale_start_time]"
+									value="<?php echo esc_attr( $ticket->sale_start ? gmdate( 'H:i', (int) strtotime( $ticket->sale_start ) ) : '' ); ?>"
+									data-nte-time-combobox>
+						</label>
+						<button type="button" class="button-link nte-sale-window__preset" data-nte-sale-preset="now">
+							<?php esc_html_e( 'Now', 'nettertech-events' ); ?>
+						</button>
 						<span class="nte-field-hint"><?php esc_html_e( 'Leave blank for immediately', 'nettertech-events' ); ?></span>
-					</div>
+					</fieldset>
 
-					<div class="nte-field">
-						<label><?php esc_html_e( 'Sale End', 'nettertech-events' ); ?></label>
-						<input type="datetime-local" name="<?php echo esc_attr( $prefix ); ?>[sale_end]"
-								value="<?php echo esc_attr( $ticket->sale_end ? gmdate( 'Y-m-d\TH:i', (int) strtotime( $ticket->sale_end ) ) : '' ); ?>">
+					<fieldset class="nte-field nte-sale-window">
+						<legend><?php esc_html_e( 'Sale ends', 'nettertech-events' ); ?></legend>
+						<label class="nte-sale-window__part">
+							<span class="screen-reader-text"><?php esc_html_e( 'Sale end date', 'nettertech-events' ); ?></span>
+							<input type="date" name="<?php echo esc_attr( $prefix ); ?>[sale_end_date]"
+									value="<?php echo esc_attr( $ticket->sale_end ? gmdate( 'Y-m-d', (int) strtotime( $ticket->sale_end ) ) : '' ); ?>">
+						</label>
+						<label class="nte-sale-window__part">
+							<span class="screen-reader-text"><?php esc_html_e( 'Sale end time', 'nettertech-events' ); ?></span>
+							<input type="time" name="<?php echo esc_attr( $prefix ); ?>[sale_end_time]"
+									value="<?php echo esc_attr( $ticket->sale_end ? gmdate( 'H:i', (int) strtotime( $ticket->sale_end ) ) : '' ); ?>"
+									data-nte-time-combobox>
+						</label>
+						<button type="button" class="button-link nte-sale-window__preset" data-nte-sale-preset="event-start">
+							<?php esc_html_e( 'At event start', 'nettertech-events' ); ?>
+						</button>
 						<span class="nte-field-hint"><?php esc_html_e( 'Leave blank for no end', 'nettertech-events' ); ?></span>
-					</div>
+						<span class="nte-timezone-hint">
+							<?php
+							/* translators: %s: timezone name, e.g. America/Chicago. */
+							echo esc_html( sprintf( __( 'Times are in %s', 'nettertech-events' ), wp_timezone_string() ) );
+							?>
+						</span>
+					</fieldset>
 
 					<?php
 					/**

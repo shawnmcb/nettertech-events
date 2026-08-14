@@ -89,6 +89,21 @@ interface TicketTypeRepositoryInterface {
 	public function get_on_sale_for_occurrences( array $occurrence_ids ): array;
 
 	/**
+	 * Get event-scope (series pass) ticket types currently on sale for an event.
+	 *
+	 * Series passes belong to no single occurrence, so the occurrence lookups
+	 * never surface them. The sale window is read in the passed zone (the caller
+	 * anchors it to the event's next occurrence to agree with the cart gate).
+	 *
+	 * @since 1.1.3
+	 *
+	 * @param int                $event_id Event ID.
+	 * @param \DateTimeZone|null $zone     Zone the sale window is read in (default: site zone).
+	 * @return array<TicketType>
+	 */
+	public function get_on_sale_for_event( int $event_id, ?\DateTimeZone $zone = null ): array;
+
+	/**
 	 * Find by WooCommerce product ID.
 	 *
 	 * @since 0.9.0

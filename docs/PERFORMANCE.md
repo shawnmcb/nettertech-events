@@ -357,7 +357,7 @@ if ( false === $total ) {
 
 ### Event List Shortcode
 
-The `[nte_list]` shortcode uses:
+The `[nettertech_events_list]` shortcode uses:
 
 1. **Cached queries** with hourly granularity for time-based filtering
 2. **AJAX pagination** to avoid full page reloads
@@ -431,7 +431,7 @@ wp eval 'echo shell_exec("curl -s -o /dev/null -w \"%{time_total}\" https://exam
 wp eval '
 global $wpdb;
 $start = $wpdb->num_queries;
-do_shortcode("[nte_list limit=12]");
+do_shortcode("[nettertech_events_list limit=12]");
 echo "Queries: " . ($wpdb->num_queries - $start);
 '
 ```

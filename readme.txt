@@ -3,7 +3,7 @@ Contributors: shawnmcburnie
 Tags: events, calendar, tickets, recurring events, rsvp
 Requires at least: 6.5
 Tested up to: 7.0
-Stable tag: 1.1.3
+Stable tag: 1.4.3
 Requires PHP: 8.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -143,6 +143,64 @@ NetterTech Events uses its own custom tables and a dedicated URL namespace (`/ev
 10. Mobile single event page with ticket type selector and add-to-cart
 
 == Changelog ==
+
+= 1.4.3 =
+* Fixed: on a single event with extra dates added by hand, the "Upcoming Dates" cards linked back to the page they were on, so visitors could never reach a specific date's page or its ticket form. Date cards, calendar entries, and related links now go to the chosen date whenever an event has more than one date.
+* Fixed: embedded event/RSVP markup once again strips inline style attributes. WordPress 7.0 began allowing certain inline styles through its sanitizer, which silently widened the plugin's embed output rules; the plugin now enforces its own stricter rule regardless of WordPress version.
+
+= 1.4.2 =
+* Fixed: on WordPress 7.0+, clicking "Export All" on the Attendees / Purchases screen was blocked by a new core bulk-actions validator with "Please select a bulk action to perform." The button now submits under its own name, which the core validator correctly ignores.
+
+= 1.4.1 =
+* Fixed: "Export All" on an event's Purchases view now exports that event's purchase records — previously it exported every attendee in the database while the button promised the event's count.
+* Improved: the attendees list states its counts in both units ("Showing 5 purchase records (32 tickets)"), and the Export All button says how many records it will export, so the list, summary, and export figures can be compared at a glance.
+* Improved: ticking the select-all checkbox now explains that selection covers only the current page's rows and points to Export All for everything matching the filters (announced to screen readers too).
+* Fixed: the Tickets & Attendance summary no longer squeezes the Issued figure against the Checked-in column ("12 issued0").
+
+= 1.4.0 =
+* Fixed: recurring events created with the "Weekly" pattern no longer drift to a different day of the week (or duplicate their dates) when the calendar automatically extends further into the future.
+* Security: hardened the way the plugin identifies a visitor's IP for rate limiting so a forged proxy header can no longer spoof it; tightened rate limiting on the admin attendee and ticket-type endpoints.
+* Improved: the calendar tooltip's availability text ("Sold out", "Low stock", "Tickets available") is now translatable instead of hardcoded English.
+* Improved: attendee CSV exports now come out in the order shown on the Attendees list — including the first/last-name alphabetization mode — instead of always newest-first.
+* Improved: setting event times is faster and friendlier — time fields now suggest quarter-hour options as you type (end times show the resulting duration), while still accepting any exact time like 7:05 pm.
+* Improved: ticket sale windows are entered as a clear date + time pair with one-click "Now" and "At event start" presets, replacing the fiddly combined picker. Existing saved windows are unaffected.
+* Improved: date and time validation messages now appear next to the field and are announced to screen readers, instead of a blocking browser alert.
+* Improved: time fields show which timezone your entries are interpreted in.
+
+= 1.3.2 =
+* Fixed: an extra date added with just a date and start time now saves — the end time is filled in from your default event duration instead of the date being silently discarded. Anything skipped or auto-filled is reported in a notice after saving.
+* Fixed: re-saving a single event no longer overwrites an earlier hand-picked date.
+* Fixed: saving an event from a screen without the ticket section no longer deletes a date's ticket types.
+* Fixed: tickets for an unrecognized event now default to draft (not purchasable) instead of active.
+* Fixed: editing a single date validates its times (minimum length, end after start) the same way the main editor does.
+* Improved: "apply to all dates" leaves individually customized dates alone and lists them in the save notice.
+* Improved: editing a date no longer resets its rescheduled status.
+* Improved: converting a recurring event to a single event now warns which hand-picked dates would be removed.
+* Improved: unpublishing an event no longer creates shop products; it only unpublishes existing ones.
+* Improved: series passes and ticket templates can be managed on single-date events.
+* Improved: choosing a shared-capacity type on an event-level ticket now shows an error instead of silently changing to fixed capacity.
+
+= 1.3.1 =
+* Fixed: re-saving a recurring event no longer silently loses a date when one of its dates has been individually customized — most visibly the first day of a short daily run.
+* Fixed: event cards and calendar entries now link to the specific date you clicked instead of the event's series page.
+* Fixed: a date-specific featured image now appears everywhere the image is shown, including event grids and the calendar hover preview.
+
+= 1.3.0 =
+* Fixed: editing an event from a screen that didn't show its ticket template (or series pass) section no longer silently deletes those ticket types — a save only touches the ticket sections it actually displayed.
+* Added: the Seating add-on can now resolve which date a ticket product belongs to, so seat selection works reliably on multi-venue sites (requires NetterTech Events Seating 1.0.2).
+
+= 1.2.0 =
+* Added: build a whole event before saving once — add several extra dates and set up ticket types on a brand-new event; everything is created together on first save.
+* Added: draft events stay fully dark — their tickets and shop products are not purchasable until the event is published, and revert to non-purchasable if the event goes back to draft. Existing orders are never affected.
+* Added: the recurrence pattern editor now collapses to a one-line summary once a pattern is set, with a toggle to expand.
+* Fixed: editing a single date of a recurring event no longer brings the original date back as a duplicate on the next save.
+* Fixed: dates that carry their own ticket types now survive schedule regeneration (their tickets and products previously lost their connection on re-save).
+* Fixed: a per-date featured image now shows on event cards and grids, not just the event page.
+
+= 1.1.4 =
+* Added: a series pass now has a clear buy button on the public event page — its own "Series Pass" section ("valid for every date of this event"), shown once whether the event lists as single or recurring, instead of being scattered across each date's ticket form.
+* Fixed: the per-date ticket form no longer repeats an event's series pass; each date's form lists only that date's own ticket types.
+* Changed: refreshed the Events admin-menu icon.
 
 = 1.1.3 =
 * Changed: test and tooling configuration now reads environment variables with portable defaults instead of machine-specific fallback paths; integration-test setup is documented in tests/Integration/README.md.

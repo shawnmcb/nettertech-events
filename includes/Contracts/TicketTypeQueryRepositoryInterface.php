@@ -129,4 +129,15 @@ interface TicketTypeQueryRepositoryInterface {
 	 * @return array<int, array<\NetterTechEvents\Models\TicketType>> Map of occurrence_id => list of on-sale ticket types.
 	 */
 	public function get_on_sale_for_occurrences( array $occurrence_ids ): array;
+
+	/**
+	 * Get event-scope (series pass) on-sale ticket types for an event.
+	 *
+	 * @since 1.1.3
+	 *
+	 * @param int                $event_id Event ID.
+	 * @param \DateTimeZone|null $zone     Zone the sale window is read in (default: site zone).
+	 * @return array<\NetterTechEvents\Models\TicketType>
+	 */
+	public function get_on_sale_for_event( int $event_id, ?\DateTimeZone $zone = null ): array;
 }

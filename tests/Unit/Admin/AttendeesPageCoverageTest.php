@@ -286,9 +286,90 @@ class AttendeesPageCoverageTest extends TestCase {
 		$this->assertStringContainsString( 'name="bulk_action"', $html );
 		$this->assertStringContainsString( 'value="delete"', $html );
 		$this->assertStringContainsString( 'value="export"', $html );
-		$this->assertStringContainsString( 'value="export_all"', $html );
-		// Total count substituted into Export All label.
-		$this->assertStringContainsString( '42', $html );
+		// The Export All button must NOT be named bulk_action — WP 7.0's
+		// common.js blocks .bulkactions form submits from a submitter of that
+		// name when core's own bulk select is absent.
+		$this->assertStringContainsString( 'name="nettertech_events_export_all"', $html );
+		$this->assertStringNotContainsString( 'value="export_all"', $html );
+		// Total count substituted into Export All label, with the record unit
+		// so the button's number can't be misread as a guest/ticket count.
+		$this->assertStringContainsString( 'Export All (42 records)', $html );
+	}
+
+	/**
+	 * The select-all scope hint renders hidden; admin.js reveals it when the
+	 * header checkbox is ticked so operators learn selection is page-scoped
+	 * before running the wrong export.
+	 *
+	 * @covers ::render_bulk_actions
+	 */
+	public function test_render_bulk_actions_emits_hidden_select_scope_hint(): void {
+		$page = $this->build_page();
+
+		$html = $this->capture_output(
+			fn() => $this->invoke_private( $page, 'render_bulk_actions', array( 42 ) )
+		);
+
+		$this->assertStringContainsString( 'id="nte-select-scope-hint"', $html );
+		$this->assertStringContainsString( 'hidden', $html );
+		$this->assertStringContainsString( 'only the rows on this page', $html );
+	}
+
+	// =========================================================================
+	// render_name_header (NTE-195)
+	// =========================================================================
+
+	/**
+	 * The Name header offers first/last alphabetization mode links; the
+	 * inactive default marks First as current and links both modes ascending.
+	 *
+	 * @covers ::render_name_header
+	 */
+	public function test_render_name_header_offers_first_last_modes(): void {
+		$page = $this->build_page();
+
+		$html = $this->capture_output(
+			fn() => $this->invoke_private( $page, 'render_name_header', array( '', 'DESC' ) )
+		);
+
+		$this->assertStringContainsString( 'nte-name-sort-mode', $html );
+		$this->assertStringContainsString( 'orderby=name_last', $html );
+		$this->assertStringContainsString( 'order=asc', $html );
+		// First mode is current when not sorting by last name.
+		$this->assertMatchesRegularExpression( '/aria-current="true"[^>]*>\s*First/s', $html );
+	}
+
+	/**
+	 * Last-name mode renders as the sorted, current mode and the main label
+	 * toggles direction within that mode.
+	 *
+	 * @covers ::render_name_header
+	 */
+	public function test_render_name_header_last_mode_active(): void {
+		$page = $this->build_page();
+
+		$html = $this->capture_output(
+			fn() => $this->invoke_private( $page, 'render_name_header', array( 'name_last', 'ASC' ) )
+		);
+
+		$this->assertStringContainsString( 'sorted asc', $html );
+		$this->assertMatchesRegularExpression( '/aria-current="true"[^>]*>\s*Last/s', $html );
+		// Direction toggle stays in last-name mode.
+		$this->assertStringContainsString( 'orderby=name_last', $html );
+		$this->assertStringContainsString( 'order=desc', $html );
+	}
+
+	/**
+	 * Last-name mode builds a final-token sort key with a same-direction
+	 * full-name tiebreak, via the whitelist only (NTE-195).
+	 *
+	 * @covers ::get_attendees
+	 */
+	public function test_last_name_order_clause_uses_substring_index_with_tiebreak(): void {
+		$constant = ( new \ReflectionClassConstant( \NetterTechEvents\Admin\AttendeesPage::class, 'SORTABLE_COLUMNS' ) )->getValue();
+
+		$this->assertArrayHasKey( 'name_last', $constant );
+		$this->assertSame( "SUBSTRING_INDEX( a.name, ' ', -1 )", $constant['name_last'] );
 	}
 
 	// =========================================================================
@@ -1096,5 +1177,40 @@ class AttendeesPageCoverageTest extends TestCase {
 		$this->assertStringContainsString( 'nte-attendees-summary', $html );
 		// An unhooked extension point must not leave an empty card behind.
 		$this->assertStringNotContainsString( 'nte-summary-card--wide', $html );
+	}
+
+	/**
+	 * Test build_order_clause maps whitelisted keys and normalizes direction.
+	 *
+	 * Shared by the list query and the CSV exporter (NTE-195); this pins the
+	 * contract both consumers rely on.
+	 *
+	 * @covers ::build_order_clause
+	 *
+	 * @return void
+	 */
+	public function test_build_order_clause_maps_whitelisted_keys(): void {
+		$this->assertSame( 'a.name ASC', AttendeesPage::build_order_clause( 'name', 'asc' ) );
+		$this->assertSame( 'a.email DESC', AttendeesPage::build_order_clause( 'email', 'desc' ) );
+		$this->assertSame(
+			"SUBSTRING_INDEX( a.name, ' ', -1 ) ASC, a.name ASC",
+			AttendeesPage::build_order_clause( 'name_last', 'asc' )
+		);
+		$this->assertSame( 'tt.name DESC', AttendeesPage::build_order_clause( 'ticket_type', 'DESC' ) );
+	}
+
+	/**
+	 * Test build_order_clause falls back to id DESC for unknown input.
+	 *
+	 * @covers ::build_order_clause
+	 *
+	 * @return void
+	 */
+	public function test_build_order_clause_rejects_unknown_input(): void {
+		$this->assertSame( 'a.id DESC', AttendeesPage::build_order_clause( '', '' ) );
+		$this->assertSame( 'a.id DESC', AttendeesPage::build_order_clause( 'not_a_column', 'asc' ) );
+		$this->assertSame( 'a.id DESC', AttendeesPage::build_order_clause( '1; DROP TABLE x', 'asc' ) );
+		// Unknown direction normalizes to DESC even on a valid key.
+		$this->assertSame( 'a.name DESC', AttendeesPage::build_order_clause( 'name', 'sideways' ) );
 	}
 }

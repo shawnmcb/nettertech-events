@@ -124,6 +124,7 @@ Each template receives specific variables. These are documented in the template 
 | `$show_time` | bool | Whether to show time |
 | `$show_venue` | bool | Whether to show venue info |
 | `$show_excerpt` | bool | Whether to show description excerpt |
+| `$prefetched_availability` | array | Optional availability verdict (`'sold_out' => bool`), supplied by listing controllers when an extension opts in via the `nettertech_events_cards_need_availability` filter. Exposed as the `nte-event-card--sold-out` class and to the `nettertech_events_event_card_status` action; base renders no label itself. |
 
 **Example usage:**
 ```php
@@ -412,7 +413,7 @@ Create `nettertech-events/emails/customer-confirmation.php`:
 
 ```php
 // In your theme's functions.php
-add_filter( 'nte_template_args', function( $args, $file ) {
+add_filter( 'nettertech_events_template_args', function( $args, $file ) {
     // Add custom data to event card
     if ( str_contains( $file, 'event-card.php' ) ) {
         $args['custom_field'] = get_option( 'my_custom_field' );
@@ -425,7 +426,7 @@ add_filter( 'nte_template_args', function( $args, $file ) {
 
 ```php
 // Add a custom template directory with higher priority
-add_filter( 'nte_template_paths', function( $paths ) {
+add_filter( 'nettertech_events_template_paths', function( $paths ) {
     // Priority 5 = higher than parent theme (10)
     $paths[5] = get_stylesheet_directory() . '/custom-venue-templates/';
     return $paths;
@@ -436,7 +437,7 @@ add_filter( 'nte_template_paths', function( $paths ) {
 
 ```php
 // Use different template for specific category (via URL query parameter)
-add_filter( 'nte_get_template_part', function( $templates, $slug, $name ) {
+add_filter( 'nettertech_events_get_template_part', function( $templates, $slug, $name ) {
     if ( $slug === 'parts/event-card' && isset( $_GET['category'] ) && $_GET['category'] === 'concerts' ) {
         array_unshift( $templates, 'parts/event-card-concert.php' );
     }
@@ -500,7 +501,7 @@ After updating NetterTech Events, check for template changes that might affect y
 ### Variables Not Available
 
 1. Check the documented variables for that template
-2. Use the `nte_template_args` filter to inspect available variables
+2. Use the `nettertech_events_template_args` filter to inspect available variables
 3. Verify you're not overwriting variables (use different names for custom vars)
 
 ### Styles Not Applying

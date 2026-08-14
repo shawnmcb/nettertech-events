@@ -707,6 +707,100 @@ class RecurrenceServiceTest extends \NetterTechEventsTestCase {
 	}
 
 	/**
+	 * An earlier hand-picked override date is not clobbered; the primary date is updated (NTE-185).
+	 *
+	 * for_event returns the override first (it sorts earliest). The old code took element [0] and
+	 * overwrote it, moving the operator's added date onto the main Date & Time slot. The fix skips
+	 * override rows and updates the first non-override occurrence instead.
+	 *
+	 * @return void
+	 */
+	public function test_create_single_occurrence_skips_earlier_override(): void {
+		$event = EventFactory::single();
+
+		$override                 = OccurrenceFactory::create( array(
+			'id'             => 501,
+			'event_id'       => $event->id,
+			'start_datetime' => '2026-02-10 09:00:00',
+			'end_datetime'   => '2026-02-10 11:00:00',
+		) );
+		$override->is_override    = true;
+
+		$primary                  = OccurrenceFactory::create( array(
+			'id'             => 502,
+			'event_id'       => $event->id,
+			'start_datetime' => '2026-02-25 18:00:00',
+			'end_datetime'   => '2026-02-25 20:00:00',
+		) );
+		$primary->is_override     = false;
+
+		$start = new \DateTimeImmutable( '2026-03-05 18:00:00' );
+		$end   = new \DateTimeImmutable( '2026-03-05 20:00:00' );
+
+		// Earliest first, exactly as ORDER BY start_datetime ASC returns them.
+		$this->occurrence_repo
+			->method( 'for_event' )
+			->willReturn( array( $override, $primary ) );
+
+		$saved = null;
+		$this->occurrence_repo
+			->expects( $this->once() )
+			->method( 'save' )
+			->willReturnCallback( function ( $occ ) use ( &$saved ) {
+				$saved = $occ;
+				return $occ;
+			} );
+
+		$result = $this->service->create_single_occurrence( $event, $start, $end );
+
+		// The primary (non-override) row was updated; the override was left untouched.
+		$this->assertSame( 502, $result->id );
+		$this->assertSame( 502, $saved->id );
+		$this->assertSame( '2026-03-05 18:00:00', $saved->start_datetime );
+	}
+
+	/**
+	 * When only an override date exists, a new occurrence is created rather than overwriting it (NTE-185).
+	 *
+	 * @return void
+	 */
+	public function test_create_single_occurrence_creates_new_when_only_override_exists(): void {
+		$event = EventFactory::single();
+
+		$override              = OccurrenceFactory::create( array(
+			'id'             => 601,
+			'event_id'       => $event->id,
+			'start_datetime' => '2026-02-10 09:00:00',
+			'end_datetime'   => '2026-02-10 11:00:00',
+		) );
+		$override->is_override = true;
+
+		$start = new \DateTimeImmutable( '2026-03-05 18:00:00' );
+		$end   = new \DateTimeImmutable( '2026-03-05 20:00:00' );
+
+		$this->occurrence_repo
+			->method( 'for_event' )
+			->willReturn( array( $override ) );
+
+		$saved = null;
+		$this->occurrence_repo
+			->expects( $this->once() )
+			->method( 'save' )
+			->willReturnCallback( function ( $occ ) use ( &$saved ) {
+				$saved     = $occ;
+				$saved->id = 999;
+				return $occ;
+			} );
+
+		$this->service->create_single_occurrence( $event, $start, $end );
+
+		// A brand-new occurrence — not the override (id 601).
+		$this->assertNotSame( 601, $saved->id );
+		$this->assertFalse( $saved->is_override );
+		$this->assertSame( '2026-03-05 18:00:00', $saved->start_datetime );
+	}
+
+	/**
 	 * Test create_single_occurrence handles all-day events.
 	 *
 	 * @return void
@@ -788,59 +882,53 @@ class RecurrenceServiceTest extends \NetterTechEventsTestCase {
 	}
 
 	// =========================================================================
-	// calculate_generation_window Tests
+	// Regeneration anchor Tests (NTE-200)
 	// =========================================================================
 
 	/**
-	 * Test calculate_generation_window preserves time-of-day when anchor is past.
+	 * Regeneration expands from the ORIGINAL anchor with a future-only
+	 * collection boundary (NTE-200).
 	 *
-	 * Regression: when the original start_date is in the past, the method
-	 * previously substituted $now directly — causing the generator to stamp
-	 * NOW's wall-clock time onto every future occurrence (the "11:18 pm"
-	 * carousel bug on CJAC migrated recurring events). The fix preserves the
-	 * time-of-day from the original start_date while moving the date forward.
-	 *
-	 * @return void
-	 */
-	public function test_calculate_generation_window_preserves_time_when_anchor_is_past(): void {
-		$past_start = new \DateTimeImmutable( '2025-11-02 13:30:00' );
-		$past_end   = new \DateTimeImmutable( '2025-11-02 15:00:00' );
-
-		$reflection = new \ReflectionClass( $this->service );
-		$method     = $reflection->getMethod( 'calculate_generation_window' );
-
-		$window = $method->invoke( $this->service, $past_start, $past_end );
-
-		$this->assertInstanceOf( \DateTimeInterface::class, $window['start'] );
-		$this->assertSame( '13:30:00', $window['start']->format( 'H:i:s' ), 'window.start must preserve the past anchor time-of-day, not adopt NOW()' );
-
-		// Sanity: the date should have moved forward to "today or later", not Nov 2 2025.
-		$this->assertGreaterThanOrEqual(
-			( new \DateTimeImmutable( 'today' ) )->format( 'Y-m-d' ),
-			$window['start']->format( 'Y-m-d' ),
-			'window.start date should be today or later when original anchor is in the past'
-		);
-
-		// Duration must be preserved (90 minutes here).
-		$diff = $window['start']->diff( $window['end'] );
-		$this->assertSame( 90, $diff->h * 60 + $diff->i, 'window duration must equal original event duration' );
-	}
-
-	/**
-	 * Test calculate_generation_window leaves future anchor untouched.
+	 * The predecessor logic relocated the window start to "today" when the
+	 * anchor had passed. Per RFC 5545 a BYDAY-less rule derives its weekday
+	 * from DTSTART, so relocation moved whole series to a different day of
+	 * the week and restarted COUNT (oz event 20: 8 Mondays became 13 rows
+	 * ending in Fridays). The generator must receive the untouched anchor —
+	 * which also carries the original time-of-day, covering the older
+	 * "11:18 pm carousel" wall-clock regression — plus a collection boundary
+	 * at now.
 	 *
 	 * @return void
 	 */
-	public function test_calculate_generation_window_uses_future_anchor_directly(): void {
-		$future_start = new \DateTimeImmutable( '+1 month 13:30:00' );
-		$future_end   = new \DateTimeImmutable( '+1 month 15:00:00' );
+	public function test_regenerate_expands_from_original_anchor_with_future_collection_boundary(): void {
+		$event = EventFactory::recurring();
+		$start = new \DateTimeImmutable( '2025-11-03 19:00:00' ); // A Monday, well in the past.
+		$end   = new \DateTimeImmutable( '2025-11-03 21:00:00' );
+		$rule  = RecurrenceRule::weekly();
 
-		$reflection = new \ReflectionClass( $this->service );
-		$method     = $reflection->getMethod( 'calculate_generation_window' );
+		$this->parser->method( 'parse' )->willReturn( $rule );
+		$this->occurrence_repo->method( 'for_event' )->willReturn( array() );
+		$this->occurrence_repo->method( 'save_batch' )->willReturn( 0 );
 
-		$window = $method->invoke( $this->service, $future_start, $future_end );
+		$captured = array();
+		$this->generator
+			->expects( $this->once() )
+			->method( 'generate' )
+			->willReturnCallback(
+				function ( $ev, $s, $e, $r, $horizon = null, $collect_from = null ) use ( &$captured ) {
+					$captured = array( $s, $e, $collect_from );
+					return array();
+				}
+			);
 
-		$this->assertSame( $future_start->format( 'Y-m-d H:i:s' ), $window['start']->format( 'Y-m-d H:i:s' ), 'future anchor should be returned as-is' );
+		$this->service->regenerate_future_occurrences( $event, $start, $end, 'FREQ=WEEKLY' );
+
+		list( $anchor_start, $anchor_end, $collect_from ) = $captured;
+
+		$this->assertSame( '2025-11-03 19:00:00', $anchor_start->format( 'Y-m-d H:i:s' ), 'NTE-200: the anchor must never be relocated' );
+		$this->assertSame( '2025-11-03 21:00:00', $anchor_end->format( 'Y-m-d H:i:s' ), 'Duration companion must be the original end' );
+		$this->assertInstanceOf( \DateTimeInterface::class, $collect_from, 'A collection boundary must be supplied' );
+		$this->assertEqualsWithDelta( time(), $collect_from->getTimestamp(), 10, 'Collection boundary must be now, so only future rows are created' );
 	}
 
 	// =========================================================================
@@ -1130,6 +1218,21 @@ class RecurrenceServiceTest extends \NetterTechEventsTestCase {
 		$result = $this->service->apply_templates_to_occurrences( $event, array() );
 
 		$this->assertSame( 0, $result );
+	}
+
+	/**
+	 * get_active_templates passes the event's templates straight through (R1).
+	 *
+	 * @return void
+	 */
+	public function test_get_active_templates_returns_repo_templates(): void {
+		$templates = array( new \NetterTechEvents\Models\TicketType() );
+		$this->ticket_type_repo
+			->method( 'get_templates' )
+			->with( 42 )
+			->willReturn( $templates );
+
+		$this->assertSame( $templates, $this->service->get_active_templates( 42 ) );
 	}
 
 	/**
@@ -1695,5 +1798,124 @@ class RecurrenceServiceTest extends \NetterTechEventsTestCase {
 
 		$this->assertSame( 101, $result['kept'] );
 		$this->assertSame( 2, $result['deleted'] );
+	}
+
+	// =========================================================================
+	// remove_occurrences_colliding_with_survivors() Tests (NTE-177)
+	// =========================================================================
+
+	/**
+	 * Build an Occurrence with a start datetime and sequence number.
+	 *
+	 * @param string $start    Start datetime.
+	 * @param int    $sequence Sequence number.
+	 * @return Occurrence
+	 */
+	private function make_occurrence( string $start, int $sequence ): Occurrence {
+		$occurrence                  = new Occurrence();
+		$occurrence->start_datetime  = $start;
+		$occurrence->sequence_number = $sequence;
+		return $occurrence;
+	}
+
+	/**
+	 * Build a survivor with a current slot and the origin slot it was generated at.
+	 *
+	 * @param string      $start  Current start datetime.
+	 * @param string|null $origin Origin start datetime (rule slot at generation).
+	 * @return Occurrence
+	 */
+	private function make_survivor( string $start, ?string $origin ): Occurrence {
+		$occurrence                        = new Occurrence();
+		$occurrence->start_datetime        = $start;
+		$occurrence->origin_start_datetime = $origin;
+		return $occurrence;
+	}
+
+	/**
+	 * A generated occurrence is dropped when a survivor already holds its slot —
+	 * by current start datetime or by a moved override's origin slot (NTE-177).
+	 *
+	 * Survivors: a row at slot A, and an override moved from origin slot B to a
+	 * custom datetime. Generated: slot-A collision (dropped), origin-slot-B
+	 * resurrection (dropped), and a clean row (kept, re-indexed from zero).
+	 *
+	 * @return void
+	 */
+	public function test_remove_occurrences_colliding_with_survivors_filters_by_slot_and_origin(): void {
+		$survivors = array(
+			$this->make_survivor( '2026-06-10 19:00:00', '2026-06-10 19:00:00' ),
+			$this->make_survivor( '2026-06-20 17:30:00', '2026-06-17 19:00:00' ),
+		);
+
+		$this->occurrence_repo
+			->method( 'for_event' )
+			->willReturn( $survivors );
+
+		$g_slot_collision   = $this->make_occurrence( '2026-06-10 19:00:00', 1 );
+		$g_origin_collision = $this->make_occurrence( '2026-06-17 19:00:00', 2 );
+		$g_clean            = $this->make_occurrence( '2026-09-01 19:00:00', 9 );
+
+		$generated = array( $g_slot_collision, $g_origin_collision, $g_clean );
+
+		$method = new \ReflectionMethod( RecurrenceService::class, 'remove_occurrences_colliding_with_survivors' );
+		$result = $method->invoke( $this->service, 55, $generated );
+
+		$this->assertSame( array( $g_clean ), $result );
+	}
+
+	/**
+	 * Regression (NTE-182): a survivor's historical sequence number must never
+	 * suppress a fresh occurrence at a genuinely new datetime.
+	 *
+	 * Scenario that lost the first day of a short daily run: the day-1 override
+	 * survives protection holding sequence 1; the event start then moves and
+	 * regeneration numbers the new first row 1 as well. Matching by sequence
+	 * silently discarded that row. With datetime-only slot identity all three
+	 * new dates survive.
+	 *
+	 * @return void
+	 */
+	public function test_remove_occurrences_colliding_with_survivors_keeps_new_first_occurrence(): void {
+		// Day-1 override of the original run (Nov 27), never moved: origin == start.
+		$survivor                  = $this->make_survivor( '2026-11-27 18:00:00', '2026-11-27 18:00:00' );
+		$survivor->sequence_number = 1;
+
+		$this->occurrence_repo
+			->method( 'for_event' )
+			->willReturn( array( $survivor ) );
+
+		// Re-save with the run moved to Dec 4-6; the new first row is numbered 1 again.
+		$generated = array(
+			$this->make_occurrence( '2026-12-04 18:00:00', 1 ),
+			$this->make_occurrence( '2026-12-05 18:00:00', 2 ),
+			$this->make_occurrence( '2026-12-06 18:00:00', 3 ),
+		);
+
+		$method = new \ReflectionMethod( RecurrenceService::class, 'remove_occurrences_colliding_with_survivors' );
+		$result = $method->invoke( $this->service, 55, $generated );
+
+		$this->assertSame( $generated, $result );
+	}
+
+	/**
+	 * With no survivors, every generated occurrence passes through unchanged.
+	 *
+	 * @return void
+	 */
+	public function test_remove_occurrences_colliding_with_survivors_passes_through_without_survivors(): void {
+		$this->occurrence_repo
+			->method( 'for_event' )
+			->willReturn( array() );
+
+		$generated = array(
+			$this->make_occurrence( '2026-06-10 19:00:00', 1 ),
+			$this->make_occurrence( '2026-06-17 19:00:00', 2 ),
+		);
+
+		$method = new \ReflectionMethod( RecurrenceService::class, 'remove_occurrences_colliding_with_survivors' );
+		$result = $method->invoke( $this->service, 55, $generated );
+
+		$this->assertSame( $generated, $result );
 	}
 }

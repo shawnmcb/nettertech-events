@@ -23,6 +23,7 @@ use NetterTechEvents\Exceptions\ValidationException;
 use NetterTechEvents\Models\Event;
 use NetterTechEvents\Models\Occurrence;
 use NetterTechEvents\Models\RecurrenceRule;
+use NetterTechEvents\Services\OccurrenceTimeResolver;
 use NetterTechEvents\Services\RecurrenceService;
 use NetterTechEvents\Services\TicketTypeSaver;
 
@@ -268,10 +269,14 @@ class OccurrenceSaveHandler {
 		}
 		$occurrence->set_event( $event );
 
-		$scope  = $this->sanitize_scope( isset( $post['scope'] ) ? (string) $post['scope'] : 'this' );
-		$fields = $this->extract_fields( $post );
+		$scope = $this->sanitize_scope( isset( $post['scope'] ) ? (string) $post['scope'] : 'this' );
 
 		try {
+			// Inside the try: extract_fields now derives and validates times and can
+			// throw ValidationException (blank end with require_end_time, zero-length
+			// or inverted span — NTE-189).
+			$fields = $this->extract_fields( $post );
+
 			switch ( $scope ) {
 				case 'following':
 					$this->apply_following( $occurrence, $event, $fields );
@@ -476,11 +481,24 @@ class OccurrenceSaveHandler {
 		}
 		$this->event_repo->save( $event );
 
-		$future = $this->occurrence_repo->for_event( (int) $event->id, array( 'upcoming' => true ) );
+		$future  = $this->occurrence_repo->for_event( (int) $event->id, array( 'upcoming' => true ) );
+		$skipped = array();
 		foreach ( $future as $sibling ) {
 			if ( null === $sibling->id ) {
 				continue;
 			}
+
+			// Hand-picked (is_override) dates carry times/capacity the operator set deliberately;
+			// an "apply to all" must not steamroll them. Skip and name them in the save notice
+			// (operator ruling 2026-07-20, spec-001 invention audit — R2).
+			if ( $sibling->is_override ) {
+				$skipped[] = (string) wp_date(
+					get_option( 'date_format' ) . ' ' . get_option( 'time_format' ),
+					$sibling->get_start()->getTimestamp()
+				);
+				continue;
+			}
+
 			$start_date = substr( $sibling->start_datetime, 0, 10 );
 			$end_date   = substr( $sibling->end_datetime, 0, 10 );
 
@@ -489,6 +507,18 @@ class OccurrenceSaveHandler {
 			$sibling->all_day        = $fields['all_day'];
 			$sibling->capacity       = $fields['capacity'];
 			$this->occurrence_repo->save( $sibling );
+		}
+
+		if ( ! empty( $skipped ) ) {
+			set_transient(
+				'nettertech_events_save_notice_' . get_current_user_id(),
+				sprintf(
+					/* translators: %s: comma-separated list of dates. */
+					esc_html__( 'These hand-picked dates kept their own time and capacity: %s.', 'nettertech-events' ),
+					esc_html( implode( '; ', $skipped ) )
+				),
+				60
+			);
 		}
 	}
 
@@ -507,12 +537,35 @@ class OccurrenceSaveHandler {
 
 		$occurrence->all_day                = $fields['all_day'];
 		$occurrence->capacity               = $fields['capacity'];
-		$occurrence->status                 = $fields['status'];
+		$occurrence->status                 = $this->resolve_occurrence_status( (string) $occurrence->status, $fields['status'] );
 		$occurrence->description_override   = $fields['description_override'];
 		$occurrence->venue_name_override    = $fields['venue_name_override'];
 		$occurrence->venue_address_override = $fields['venue_address_override'];
 		$occurrence->virtual_url_override   = $fields['virtual_url_override'];
 		$occurrence->featured_image_id      = $fields['featured_image_id'];
+	}
+
+	/**
+	 * Decide an occurrence's status from its current status and the form's posted intent.
+	 *
+	 * The editor's status control offers only Active (scheduled) and Cancelled, and pre-selects
+	 * Active for ANY non-cancelled status. A plain save of a `rescheduled` date therefore posts
+	 * 'scheduled', which the old squash rewrote to 'scheduled' — quietly discarding the reschedule.
+	 * Preserve the current status unless the operator made an explicit change: cancelling, or
+	 * un-cancelling a cancelled date (operator ruling 2026-07-20, spec-001 invention audit — R3).
+	 *
+	 * @param string $current_status The occurrence's stored status.
+	 * @param string $posted_status  The form's posted intent ('scheduled' or 'cancelled').
+	 * @return string The status to persist.
+	 */
+	private function resolve_occurrence_status( string $current_status, string $posted_status ): string {
+		if ( 'cancelled' === $posted_status ) {
+			return 'cancelled';
+		}
+
+		// Posted 'scheduled': un-cancel a cancelled date; otherwise keep what was there so a
+		// 'rescheduled' (or any other non-cancelled) status survives an unrelated edit.
+		return 'cancelled' === $current_status ? 'scheduled' : $current_status;
 	}
 
 	/**
@@ -672,6 +725,8 @@ class OccurrenceSaveHandler {
 	 *
 	 * @param array<string, mixed> $post Unslashed POST data.
 	 * @return array<string, mixed> Sanitized field values.
+	 * @throws ValidationException When end derivation is blocked by require_end_time,
+	 *                             or the resulting span is under the 10-minute minimum.
 	 */
 	private function extract_fields( array $post ): array {
 		$start_date = sanitize_text_field( (string) ( $post['start_date'] ?? '' ) );
@@ -684,12 +739,20 @@ class OccurrenceSaveHandler {
 			$end_date = $start_date;
 		}
 
-		if ( $all_day ) {
-			$start_time = '' !== $start_time ? $start_time : '00:00';
-			$end_time   = '' !== $end_time ? $end_time : '23:59';
-		} else {
-			$start_time = '' !== $start_time ? $start_time : '00:00';
-			$end_time   = '' !== $end_time ? $end_time : $start_time;
+		// One derivation path for editor, occurrence editor, and manual rows (NTE-189):
+		// blank start -> default start time; blank end -> start + default duration.
+		$times      = OccurrenceTimeResolver::derive_times( $start_date, $start_time, $end_time, $all_day );
+		$start_time = $times['start_time'];
+		$end_time   = $times['end_time'];
+
+		// Reject a zero-length or inverted span (previously blank end = start, saving a
+		// zero-length occurrence with no validation). Skip when start_date is blank —
+		// apply_fields_to_occurrence leaves the stored datetimes untouched in that case.
+		if ( '' !== $start_date ) {
+			OccurrenceTimeResolver::validate_span(
+				new \DateTimeImmutable( $start_date . ' ' . $start_time . ':00' ),
+				new \DateTimeImmutable( $end_date . ' ' . $end_time . ':00' )
+			);
 		}
 
 		$status   = 'cancelled' === sanitize_text_field( (string) ( $post['status'] ?? 'scheduled' ) )

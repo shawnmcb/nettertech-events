@@ -119,6 +119,8 @@ class HooksTest extends \NetterTechEventsTestCase {
 			'WAITLIST_PROMOTED'         => array( 'WAITLIST_PROMOTED', 'nettertech_events_waitlist_promoted' ),
 			'HAS_WAITLIST'              => array( 'HAS_WAITLIST', 'nettertech_events_has_waitlist' ),
 			'AFTER_SOLD_OUT'            => array( 'AFTER_SOLD_OUT', 'nettertech_events_after_sold_out' ),
+			'CARDS_NEED_AVAILABILITY'   => array( 'CARDS_NEED_AVAILABILITY', 'nettertech_events_cards_need_availability' ),
+			'EVENT_CARD_STATUS'         => array( 'EVENT_CARD_STATUS', 'nettertech_events_event_card_status' ),
 			'WAITLIST_ENTRY_JOINED'     => array( 'WAITLIST_ENTRY_JOINED', 'nettertech_events_waitlist_entry_joined' ),
 			'WAITLIST_LEAVE_AUTHORIZED' => array( 'WAITLIST_LEAVE_AUTHORIZED', 'nettertech_events_waitlist_leave_authorized' ),
 			'WAITLIST_LEAVE_TOKEN_TTL'  => array( 'WAITLIST_LEAVE_TOKEN_TTL', 'nettertech_events_waitlist_leave_token_ttl' ),

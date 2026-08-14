@@ -147,6 +147,8 @@ class EventMetaboxHandlerTest extends \NetterTechEventsTestCase {
 		Functions\when( 'wp_enqueue_style' )->justReturn( null );
 		Functions\when( 'wp_register_script' )->justReturn( true );
 		Functions\when( 'wp_enqueue_script' )->justReturn( null );
+		Functions\when( 'wp_enqueue_style' )->justReturn( null );
+		Functions\when( 'wp_script_is' )->justReturn( false );
 		Functions\when( 'wp_add_inline_script' )->justReturn( true );
 		Functions\when( 'wp_enqueue_media' )->justReturn( null );
 		Functions\when( 'wp_localize_script' )->justReturn( true );
@@ -1125,7 +1127,7 @@ class EventMetaboxHandlerTest extends \NetterTechEventsTestCase {
 	 *
 	 * @return void
 	 */
-	public function test_render_ticket_types_box_shows_save_prompt_for_new(): void {
+	public function test_render_ticket_types_box_shows_buffered_form_for_new(): void {
 		$new_event     = new Event();
 		$new_event->id = 0;
 		$handler       = $this->create_handler( $new_event, 0 );
@@ -1134,7 +1136,9 @@ class EventMetaboxHandlerTest extends \NetterTechEventsTestCase {
 		$handler->render_ticket_types_box( null );
 		$output = ob_get_clean();
 
-		$this->assertStringContainsString( 'Save the event first', $output );
+		// New events render a working buffered ticket form (NTE-177).
+		$this->assertStringNotContainsString( 'Save the event first', $output );
+		$this->assertStringContainsString( 'ticketing_enabled', $output );
 	}
 
 	/**

@@ -160,7 +160,28 @@ class OccurrenceEditor {
 		$event      = $this->event;
 		$nte_editor = $this;
 
+		// Surface save feedback carried across the post-save redirect: validation errors
+		// (e.g. a rejected zero-length span — NTE-189) and informational notices such as the
+		// hand-picked dates skipped by an "apply to all" (R2).
+		$nte_save_error  = $this->take_transient( 'nettertech_events_save_error_' . get_current_user_id() );
+		$nte_save_notice = $this->take_transient( 'nettertech_events_save_notice_' . get_current_user_id() );
+
 		require dirname( __DIR__, 2 ) . '/templates/admin/occurrence-edit.php';
+	}
+
+	/**
+	 * Read and delete a one-shot transient, returning its string value or ''.
+	 *
+	 * @param string $key Transient key.
+	 * @return string
+	 */
+	private function take_transient( string $key ): string {
+		$value = get_transient( $key );
+		if ( false === $value ) {
+			return '';
+		}
+		delete_transient( $key );
+		return (string) $value;
 	}
 
 	/**
@@ -170,6 +191,9 @@ class OccurrenceEditor {
 	 */
 	private function enqueue_assets(): void {
 		wp_enqueue_media();
+
+		// Shared suggest-and-type time combobox + inline validation (NTE-190).
+		Metaboxes\DateTimeMetaboxHandler::enqueue_time_combobox_assets();
 
 		$style_handle = 'nettertech-events-occurrence-editor';
 		wp_register_style( $style_handle, false, array(), NETTERTECH_EVENTS_VERSION );

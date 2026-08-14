@@ -41,16 +41,6 @@ interface EventRepositoryInterface {
 	public function find_by_slug( string $slug ): ?Event;
 
 	/**
-	 * Check if an event has any ticket types.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @param int $event_id Event ID.
-	 * @return bool
-	 */
-	public function has_ticket_types( int $event_id ): bool;
-
-	/**
 	 * Save an event.
 	 *
 	 * @since 0.1.0

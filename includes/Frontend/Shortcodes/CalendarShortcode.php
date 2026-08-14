@@ -419,7 +419,7 @@ class CalendarShortcode {
 				}
 				$event = $occ->get_event();
 				$title = $event ? $event->title : __( 'Event', 'nettertech-events' );
-				$url   = $event ? $event->get_permalink() : '#';
+				$url   = $event ? $occ->get_url() : '#';
 				echo '<a href="' . esc_url( $url ) . '" class="nte-calendar__event">' . esc_html( $title ) . '</a>';
 				++$shown;
 			}
@@ -501,7 +501,7 @@ class CalendarShortcode {
 					if ( $event_hour === $hour ) {
 						$event = $occ->get_event();
 						$title = $event ? $event->title : __( 'Event', 'nettertech-events' );
-						$url   = $event ? $event->get_permalink() : '#';
+						$url   = $event ? $occ->get_url() : '#';
 						$time  = gmdate( 'g:i A', (int) strtotime( $occ->start_datetime ) );
 						echo '<a href="' . esc_url( $url ) . '" class="nte-calendar__event nte-calendar__event--week">';
 						echo '<span class="nte-calendar__event-time">' . esc_html( $time ) . '</span>';
@@ -560,7 +560,7 @@ class CalendarShortcode {
 			foreach ( $hour_events as $occ ) {
 				$event = $occ->get_event();
 				$title = $event ? $event->title : __( 'Event', 'nettertech-events' );
-				$url   = $event ? $event->get_permalink() : '#';
+				$url   = $event ? $occ->get_url() : '#';
 				$time  = gmdate( 'g:i A', (int) strtotime( $occ->start_datetime ) );
 				$venue = $event ? $event->venue_name : '';
 

@@ -34,7 +34,7 @@ class OccurrenceFilterRepository implements OccurrenceFilterRepositoryInterface 
 	 *
 	 * @var string
 	 */
-	private const JOIN_LIST_COLUMNS = 'o.id, o.event_id, o.start_datetime, o.end_datetime, o.all_day, o.timezone, o.title_override, o.featured_image_id, o.status, o.capacity, o.sequence_number, o.is_rescheduled, o.is_override, o.venue_name_override, o.virtual_url_override, o.checkin_token, o.created_at, o.updated_at';
+	private const JOIN_LIST_COLUMNS = 'o.id, o.event_id, o.start_datetime, o.end_datetime, o.all_day, o.timezone, o.title_override, o.featured_image_id, o.status, o.capacity, o.sequence_number, o.origin_start_datetime, o.is_rescheduled, o.is_override, o.venue_name_override, o.virtual_url_override, o.checkin_token, o.created_at, o.updated_at';
 
 	/**
 	 * WordPress database instance.

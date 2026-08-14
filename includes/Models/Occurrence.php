@@ -14,6 +14,7 @@ defined( 'ABSPATH' ) || exit;
 use DateTimeImmutable;
 use DateTimeZone;
 use NetterTechEvents\Contracts\EventRepositoryInterface;
+use NetterTechEvents\Core\ServiceRegistry;
 use NetterTechEvents\Utilities\ImageHelper;
 use NetterTechEvents\Utilities\PathHelper;
 
@@ -91,6 +92,18 @@ class Occurrence {
 	 * @var int|null
 	 */
 	public ?int $featured_image_id = null;
+
+	/**
+	 * The rule slot this occurrence was generated at (start datetime at creation).
+	 *
+	 * Unlike start_datetime it never changes when the occurrence is moved by a
+	 * scope-"this" edit, so regeneration can suppress a moved override's origin
+	 * slot by datetime instead of by sequence number (NTE-182: sequence matching
+	 * silently dropped legitimate new occurrences after the event start moved).
+	 *
+	 * @var string|null
+	 */
+	public ?string $origin_start_datetime = null;
 
 	/**
 	 * Occurrence status.
@@ -179,6 +192,23 @@ class Occurrence {
 	private ?EventRepositoryInterface $event_repo = null;
 
 	/**
+	 * Counter used to resolve an event's scheduled-date count for URL generation.
+	 *
+	 * Injectable for tests; defaults to the occurrence repository from the
+	 * service registry. Receives an event ID, returns the scheduled count.
+	 *
+	 * @var \Closure|null
+	 */
+	private static ?\Closure $date_counter = null;
+
+	/**
+	 * Per-request cache of "event has multiple scheduled dates" lookups, keyed by event ID.
+	 *
+	 * @var array<int, bool>
+	 */
+	private static array $multi_date_cache = array();
+
+	/**
 	 * Valid statuses.
 	 *
 	 * @var array<string>
@@ -206,6 +236,7 @@ class Occurrence {
 		$occurrence->title_override         = $row->title_override ?? null;
 		$occurrence->description_override   = $row->description_override ?? null;
 		$occurrence->featured_image_id      = isset( $row->featured_image_id ) ? (int) $row->featured_image_id : null;
+		$occurrence->origin_start_datetime  = $row->origin_start_datetime ?? null;
 		$occurrence->status                 = $row->status ?? 'scheduled';
 		$occurrence->capacity               = isset( $row->capacity ) ? (int) $row->capacity : null;
 		$occurrence->sequence_number        = (int) ( $row->sequence_number ?? 1 );
@@ -243,6 +274,7 @@ class Occurrence {
 			'title_override'         => $this->title_override,
 			'description_override'   => $this->description_override,
 			'featured_image_id'      => $this->featured_image_id,
+			'origin_start_datetime'  => $this->origin_start_datetime,
 			'status'                 => $this->status,
 			'capacity'               => $this->capacity,
 			'sequence_number'        => $this->sequence_number,
@@ -272,6 +304,7 @@ class Occurrence {
 			'%s', // Title override.
 			'%s', // Description override.
 			'%d', // Featured image ID.
+			'%s', // Origin start datetime.
 			'%s', // Status.
 			'%d', // Capacity.
 			'%d', // Sequence number.
@@ -352,6 +385,74 @@ class Occurrence {
 	 */
 	public function set_event_repository( EventRepositoryInterface $event_repo ): void {
 		$this->event_repo = $event_repo;
+	}
+
+	/**
+	 * Inject the scheduled-date counter used by {@see self::get_url()}.
+	 *
+	 * Pass null to restore the default (occurrence repository via the service
+	 * registry). Injecting also flushes the per-request count cache.
+	 *
+	 * @since 1.4.3
+	 *
+	 * @param callable|null $counter Callable receiving an event ID and returning the scheduled occurrence count.
+	 * @return void
+	 */
+	public static function set_date_counter( ?callable $counter ): void {
+		self::$date_counter = null === $counter ? null : \Closure::fromCallable( $counter );
+		self::flush_date_count_cache();
+	}
+
+	/**
+	 * Flush the per-request scheduled-date count cache.
+	 *
+	 * Call after writing occurrences when URLs may be generated later in the
+	 * same request.
+	 *
+	 * @since 1.4.3
+	 *
+	 * @return void
+	 */
+	public static function flush_date_count_cache(): void {
+		self::$multi_date_cache = array();
+	}
+
+	/**
+	 * Whether an event has more than one scheduled occurrence.
+	 *
+	 * Mirrors the router's series predicate (Router::SERIES_OCCURRENCE_STATUS,
+	 * NTE-199): counting 'scheduled' keeps URL generation and routing agreeing
+	 * on whether occurrence-specific pages are in play. Falls back to false —
+	 * the legacy single-event link — when no counter can be resolved (e.g. unit
+	 * contexts without a bootstrapped container).
+	 *
+	 * @since 1.4.3
+	 *
+	 * @param int $event_id Event ID.
+	 * @return bool
+	 */
+	private static function event_has_multiple_dates( int $event_id ): bool {
+		if ( $event_id <= 0 ) {
+			return false;
+		}
+
+		if ( isset( self::$multi_date_cache[ $event_id ] ) ) {
+			return self::$multi_date_cache[ $event_id ];
+		}
+
+		try {
+			if ( null !== self::$date_counter ) {
+				$count = (int) call_user_func( self::$date_counter, $event_id );
+			} else {
+				$count = ServiceRegistry::occurrence_repository()->count_for_event( $event_id, 'scheduled' );
+			}
+		} catch ( \Throwable $unused ) {
+			return false;
+		}
+
+		self::$multi_date_cache[ $event_id ] = $count > 1;
+
+		return self::$multi_date_cache[ $event_id ];
 	}
 
 	/**
@@ -471,12 +572,16 @@ class Occurrence {
 			return '';
 		}
 
-		// Single events link directly to the event page.
-		if ( 'single' === $event->event_type ) {
+		// Single events link directly to the event page — unless the event carries
+		// manually added dates. The router serves the series page on date count, not
+		// event_type (NTE-199), so URL generation must apply the same predicate or a
+		// 'single' event with several dates yields occurrence cards that link back to
+		// the series page, leaving the occurrence view unreachable (NTE-208).
+		if ( 'single' === $event->event_type && ! self::event_has_multiple_dates( (int) $event->id ) ) {
 			return $event->get_permalink();
 		}
 
-		// Recurring events use datetime-suffixed URLs.
+		// Multi-date events use datetime-suffixed URLs.
 		$datetime_slug = $this->get_start()->format( 'Y-m-d-Hi' );
 		return PathHelper::get_occurrence_url( $event->slug, $datetime_slug );
 	}

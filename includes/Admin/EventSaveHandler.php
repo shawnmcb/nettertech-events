@@ -18,6 +18,7 @@ use NetterTechEvents\Contracts\EventRepositoryInterface;
 use NetterTechEvents\Database\Schema;
 use NetterTechEvents\Contracts\OccurrenceRepositoryInterface;
 use NetterTechEvents\Contracts\OrganizerRepositoryInterface;
+use NetterTechEvents\Contracts\TagRepositoryInterface;
 use NetterTechEvents\Enums\EventStatus;
 use NetterTechEvents\Exceptions\ValidationException;
 use NetterTechEvents\Models\Event;
@@ -27,6 +28,7 @@ use NetterTechEvents\Contracts\AttendeeFieldRepositoryInterface;
 use NetterTechEvents\Contracts\AttendeeFieldValueRepositoryInterface;
 use NetterTechEvents\Services\CheckInEmailSaver;
 use NetterTechEvents\Services\LayoutService;
+use NetterTechEvents\Services\OccurrenceTimeResolver;
 use NetterTechEvents\Services\RecurrenceRuleBuilder;
 use NetterTechEvents\Services\RecurrenceService;
 use NetterTechEvents\Services\TicketTypeSaver;
@@ -68,6 +70,14 @@ class EventSaveHandler {
 	 * @var OrganizerRepositoryInterface
 	 */
 	private ?OrganizerRepositoryInterface $organizer_repo;
+
+	/**
+	 * Tag repository for event-tag associations. Injected; the
+	 * ServiceRegistry fallback covers un-provided construction (tests).
+	 *
+	 * @var TagRepositoryInterface|null
+	 */
+	private ?TagRepositoryInterface $tag_repo;
 
 	/**
 	 * Recurrence service for occurrence generation.
@@ -124,6 +134,7 @@ class EventSaveHandler {
 	 * @param AttendeeFieldsSaveHandler         $attendee_fields_saver     Attendee fields save handler.
 	 * @param CheckInEmailSaver|null            $checkin_email_saver       Check-in email saver (null-safe for Pro absence).
 	 * @param OrganizerRepositoryInterface|null $organizer_repo            Organizer repository.
+	 * @param TagRepositoryInterface|null       $tag_repo                  Tag repository (ServiceRegistry fallback when null).
 	 */
 	public function __construct(
 		EventRepositoryInterface $event_repo,
@@ -135,7 +146,8 @@ class EventSaveHandler {
 		RecurrenceRuleBuilder $rrule_builder,
 		AttendeeFieldsSaveHandler $attendee_fields_saver,
 		?CheckInEmailSaver $checkin_email_saver = null,
-		?OrganizerRepositoryInterface $organizer_repo = null
+		?OrganizerRepositoryInterface $organizer_repo = null,
+		?TagRepositoryInterface $tag_repo = null
 	) {
 		$this->event_repo            = $event_repo;
 		$this->occurrence_repo       = $occurrence_repo;
@@ -147,6 +159,7 @@ class EventSaveHandler {
 		$this->attendee_fields_saver = $attendee_fields_saver;
 		$this->checkin_email_saver   = $checkin_email_saver;
 		$this->organizer_repo        = $organizer_repo;
+		$this->tag_repo              = $tag_repo;
 	}
 
 	/**
@@ -248,15 +261,14 @@ class EventSaveHandler {
 				throw new \RuntimeException( 'Event save did not assign an ID.' );
 			}
 
-			// Event-scoped tickets (series passes, templates) belong to any event whose
-			// dates a pass could span — recurring, or a single event carrying extra
-			// hand-picked dates (NTE-156). Gating on the type alone left a two-date
-			// festival with no way to sell one ticket covering both days.
-			if ( 'recurring' === $event->event_type
-				|| $this->occurrence_repo->count_for_event( $saved_id, 'scheduled' ) > 1 ) {
-				$post_sanitized = map_deep( $post, 'sanitize_textarea_field' );
-				$this->ticket_saver->save_for_event( $saved_id, $post_sanitized );
-			}
+			// Event-scoped tickets (series passes, templates) are saved for every event. The old
+			// "recurring OR >1 occurrence" gate is removed (operator ruling 2026-07-20, spec-001
+			// invention audit — R6): it is redundant now that save_for_event self-guards on
+			// per-scope rendered markers (NTE-178). An event whose series-pass/template section
+			// never rendered posts no marker, so this call changes nothing there; an event that
+			// did render one — including a plain single event — can now save it.
+			$post_sanitized = map_deep( $post, 'sanitize_textarea_field' );
+			$this->ticket_saver->save_for_event( $saved_id, $post_sanitized );
 
 			if ( $converting_to_single ) {
 				// The surviving date keeps its OWN start and end. Do not run process_occurrences():
@@ -272,8 +284,14 @@ class EventSaveHandler {
 				$this->process_occurrences( $event, $this->occurrence_repo, $post );
 			}
 
-			// After the pattern has had its say, so regeneration cannot collide with the new date.
-			$this->add_manual_date( $event, $post );
+			// After the pattern has had its say, so regeneration cannot collide with the new dates.
+			$this->add_manual_dates( $event, $post );
+
+			// Buffered ticket rows entered on a not-yet-saved event bind to the
+			// primary occurrence once it exists (NTE-177); only for a first save.
+			if ( 0 === $event_id ) {
+				$this->process_buffered_tickets( $event, $post );
+			}
 
 			$this->save_pro_extensions( $saved_id, $post );
 			$this->save_event_associations( $saved_id, $post );
@@ -422,25 +440,182 @@ class EventSaveHandler {
 	 *
 	 * @since 1.1.2
 	 *
-	 * @param Event                $event The event that gets the date.
+	 * @param Event                $event The event that gets the dates.
 	 * @param array<string, mixed> $post  Unslashed POST data from the nonce-verified boundary.
 	 * @return void
 	 */
-	private function add_manual_date( Event $event, array $post ): void {
+	private function add_manual_dates( Event $event, array $post ): void {
 		$event_id = $event->id;
 
+		// No real event means no rows: an occurrence cannot exist before its
+		// event, and a failed insert must leave no orphan dates (FR-010).
 		if ( null === $event_id ) {
 			return;
 		}
 
-		$date  = sanitize_text_field( (string) ( $post['nettertech_events_new_date'] ?? '' ) );
-		$start = sanitize_text_field( (string) ( $post['nettertech_events_new_start_time'] ?? '' ) );
-		$end   = sanitize_text_field( (string) ( $post['nettertech_events_new_end_time'] ?? '' ) );
+		$collected = $this->collect_manual_date_rows( $post );
+		$notices   = array();
 
-		if ( '' === $date || '' === $start || '' === $end ) {
-			return;
+		if ( $collected['skipped'] > 0 ) {
+			$notices[] = sprintf(
+				/* translators: %d: number of added-date rows skipped for having no date. */
+				_n(
+					'%d added-date row was skipped because it had no date.',
+					'%d added-date rows were skipped because they had no date.',
+					$collected['skipped'],
+					'nettertech-events'
+				),
+				number_format_i18n( $collected['skipped'] )
+			);
 		}
 
+		foreach ( $collected['rows'] as $row ) {
+			$report = $this->create_manual_occurrence( $event, $event_id, $row['date'], $row['start'], $row['end'] );
+
+			if ( ! empty( $row['derived'] ) ) {
+				$notices[] = sprintf(
+					/* translators: 1: the added date (Y-m-d); 2: comma-separated field labels (e.g. "end time"). */
+					__( 'Added date %1$s: used the default %2$s.', 'nettertech-events' ),
+					$row['date'],
+					implode( ', ', $row['derived'] )
+				);
+			}
+
+			// R1: name any ticket tiers (and count any products) the templates just created.
+			if ( ! empty( $report['tier_names'] ) ) {
+				$notices[] = sprintf(
+					/* translators: 1: the added date (Y-m-d); 2: comma-separated ticket tier names. */
+					__( 'Added date %1$s: created ticket tiers %2$s from the event templates.', 'nettertech-events' ),
+					$row['date'],
+					implode( ', ', $report['tier_names'] )
+				);
+
+				if ( ! empty( $report['products'] ) ) {
+					$notices[] = sprintf(
+						/* translators: %d: number of WooCommerce products created. */
+						_n(
+							'%d WooCommerce product was created for the added date.',
+							'%d WooCommerce products were created for the added date.',
+							$report['products'],
+							'nettertech-events'
+						),
+						number_format_i18n( $report['products'] )
+					);
+				}
+			}
+		}
+
+		if ( ! empty( $notices ) ) {
+			set_transient( 'nettertech_events_save_notice_' . get_current_user_id(), implode( ' ', $notices ), 60 );
+		}
+	}
+
+	/**
+	 * Gather the manual date rows the operator submitted, deriving blank times.
+	 *
+	 * Rows post as an indexed array `nettertech_events_manual_dates[<i>][date|start_time|end_time]`
+	 * (repeatable "+ Add another date"). The legacy single-field set
+	 * (`nettertech_events_new_date` / `_new_start_time` / `_new_end_time`) is still honoured as one
+	 * additional row for backward compatibility.
+	 *
+	 * Only a row missing its *date* is dropped — a date is the one thing that cannot be derived. A
+	 * blank start is filled from the `default_event_start_time` setting and a blank end from
+	 * start + `default_event_duration_minutes`, exactly as the primary Date & Time path does in
+	 * process_occurrences(); dropping such rows silently discarded operator-entered dates (NTE-184).
+	 * When `require_end_time` is enabled a blank end is a validation error, not a derivation. Skipped
+	 * (date-less) rows and any derived values are reported to the caller so the save notice can name
+	 * them (spec-001 Edge Cases, line 82; FR-002 requires persisting all rows).
+	 *
+	 * @param array<string, mixed> $post Unslashed POST data from the nonce-verified boundary.
+	 * @return array{rows: array<int, array{date: string, start: string, end: string, derived: array<int, string>}>, skipped: int}
+	 * @throws ValidationException When a row omits its end time and require_end_time is enabled,
+	 *                             or a row's span is under the 10-minute minimum (e.g. inverted).
+	 */
+	private function collect_manual_date_rows( array $post ): array {
+		$raw_rows = array();
+
+		if ( isset( $post['nettertech_events_manual_dates'] ) && is_array( $post['nettertech_events_manual_dates'] ) ) {
+			foreach ( $post['nettertech_events_manual_dates'] as $row ) {
+				if ( is_array( $row ) ) {
+					$raw_rows[] = $row;
+				}
+			}
+		}
+
+		// Legacy single-date fields as one more row (backward compatibility).
+		$raw_rows[] = array(
+			'date'       => $post['nettertech_events_new_date'] ?? '',
+			'start_time' => $post['nettertech_events_new_start_time'] ?? '',
+			'end_time'   => $post['nettertech_events_new_end_time'] ?? '',
+		);
+
+		$rows    = array();
+		$skipped = 0;
+
+		foreach ( $raw_rows as $row ) {
+			$date  = sanitize_text_field( (string) ( $row['date'] ?? '' ) );
+			$start = sanitize_text_field( (string) ( $row['start_time'] ?? '' ) );
+			$end   = sanitize_text_field( (string) ( $row['end_time'] ?? '' ) );
+
+			if ( '' === $date ) {
+				// A row carrying a time but no date is a real half-filled row the operator can see
+				// and fix; count it for the notice. A wholly blank row (the always-appended legacy
+				// set, or an untouched "+ add" slot) is nothing and is not worth reporting.
+				if ( '' !== $start || '' !== $end ) {
+					++$skipped;
+				}
+				continue;
+			}
+
+			// One derivation path shared with the event and occurrence editors (NTE-189).
+			$times   = OccurrenceTimeResolver::derive_times( $date, $start, $end, false, $date );
+			$start   = $times['start_time'];
+			$end     = $times['end_time'];
+			$derived = $times['derived'];
+
+			// Reject inverted or sub-10-minute rows rather than persisting them verbatim (F7).
+			// Manual dates stamp start and end on the SAME date, so a derived end that crosses
+			// midnight also lands here.
+			OccurrenceTimeResolver::validate_span(
+				new \DateTimeImmutable( $date . ' ' . $start . ':00' ),
+				new \DateTimeImmutable( $date . ' ' . $end . ':00' )
+			);
+
+			$rows[] = array(
+				'date'    => $date,
+				'start'   => $start,
+				'end'     => $end,
+				'derived' => $derived,
+			);
+		}
+
+		return array(
+			'rows'    => $rows,
+			'skipped' => $skipped,
+		);
+	}
+
+	/**
+	 * Create one override occurrence for a hand-picked date.
+	 *
+	 * The date is stamped `is_override`, which is the whole trick. That flag already means "the
+	 * operator put this here; regeneration must not touch it", and the guards that honour it already
+	 * exist and already work — deletion guards in delete_unprotected_occurrences_for_event() and
+	 * delete_future_unattended_occurrences(), and a re-creation guard in
+	 * remove_occurrences_colliding_with_survivors(). So an added date survives a later save of the
+	 * pattern, for free.
+	 *
+	 * @since 1.1.2
+	 *
+	 * @param Event  $event    The event that gets the date.
+	 * @param int    $event_id Saved event ID (already confirmed non-null by the caller).
+	 * @param string $date     Date component (Y-m-d).
+	 * @param string $start    Start time component (H:i).
+	 * @param string $end      End time component (H:i).
+	 * @return array{tier_names?: array<int, string>, products?: int} What the template application
+	 *                                                                created, for the save notice (R1).
+	 */
+	private function create_manual_occurrence( Event $event, int $event_id, string $date, string $start, string $end ): array {
 		$occurrence                 = new Occurrence();
 		$occurrence->event_id       = $event_id;
 		$occurrence->status         = 'scheduled';
@@ -459,11 +634,152 @@ class EventSaveHandler {
 
 		$saved = $this->occurrence_repo->save( $occurrence );
 
+		// A new date can flip the event from single-date to multi-date, which changes the
+		// URL shape get_url() emits (NTE-208) — drop any count cached earlier this request.
+		Occurrence::flush_date_count_cache();
+
 		// A date the pattern generated is given the event's ticket templates. A date added by hand is
 		// still a date the event runs on, so it gets them too — otherwise an added date would be the
 		// one date in the series that could sell nothing, and the operator would have no way to tell
 		// why. Events with no templates are left alone; this creates nothing out of nothing.
-		$this->recurrence_service->apply_templates_to_occurrences( $event, array( $saved ) );
+		$created = $this->recurrence_service->apply_templates_to_occurrences( $event, array( $saved ) );
+
+		// Applying templates can mint tiers and their WooCommerce products. Report what was created
+		// so the operator sees it rather than discovering minted products later (operator ruling
+		// 2026-07-20, spec-001 invention audit — R1).
+		if ( $created <= 0 ) {
+			return array();
+		}
+
+		$tier_names = array();
+		$products   = 0;
+		foreach ( $this->recurrence_service->get_active_templates( $event_id ) as $template ) {
+			$tier_names[] = $template->name;
+			if ( $template->price > 0 ) {
+				++$products;
+			}
+		}
+
+		return array(
+			'tier_names' => $tier_names,
+			'products'   => $products,
+		);
+	}
+
+	/**
+	 * Persist ticket rows buffered on a not-yet-saved event (NTE-177).
+	 *
+	 * On a brand-new event the tickets metabox renders a working form with no occurrence to bind to
+	 * yet. Once the first save has created the event and its occurrences, the buffered occurrence-scope
+	 * rows attach to the *primary* occurrence — the one created from the main Date & Time fields, not
+	 * any hand-picked override date (spec D / FR-008). Series- and template-scope rows are already
+	 * handled by save_for_event() during the same save, so this only fills the occurrence gap.
+	 *
+	 * When the event has no non-override date, the rows fall back to the earliest occurrence of any
+	 * kind rather than vanishing (NTE-187). When there is no occurrence at all, the tiers cannot be
+	 * bound, so they are reported by name in the save error (spec-001 edge case line 79: preserved
+	 * or clearly reported) instead of being dropped silently.
+	 *
+	 * Bails without a real event ID, so a failed insert leaves no orphan ticket rows (FR-010).
+	 *
+	 * @param Event                $event The freshly-saved event.
+	 * @param array<string, mixed> $post  Unslashed POST data from the nonce-verified boundary.
+	 * @return void
+	 */
+	private function process_buffered_tickets( Event $event, array $post ): void {
+		$event_id = $event->id;
+		if ( null === $event_id ) {
+			return;
+		}
+
+		// Nothing to do unless the tickets metabox rendered its (buffered) form.
+		if ( empty( $post['nte_tickets_metabox_rendered'] ) || empty( $post['ticketing_enabled'] ) ) {
+			return;
+		}
+
+		// The primary occurrence is the earliest scheduled, non-override date — the
+		// one the main Date & Time fields produced. Hand-picked dates are overrides
+		// and never the binding target for buffered occurrence tickets.
+		$occurrences = $this->occurrence_repo->for_event(
+			$event_id,
+			array(
+				'status'  => 'scheduled',
+				'orderby' => 'start_datetime',
+				'order'   => 'ASC',
+			)
+		);
+
+		$primary = null;
+		foreach ( $occurrences as $occurrence ) {
+			if ( ! $occurrence->is_override ) {
+				$primary = $occurrence;
+				break;
+			}
+		}
+
+		// Fallback: with no non-override date — e.g. a single event whose only date was
+		// hand-picked — bind to the earliest occurrence of any kind rather than dropping the
+		// operator's buffered tiers (NTE-187; spec-001 edge case line 79: preserved or clearly
+		// reported). An override date is still a real date the event runs on.
+		if ( null === $primary && ! empty( $occurrences ) ) {
+			$primary = $occurrences[0];
+		}
+
+		if ( null === $primary || null === $primary->id ) {
+			// No occurrence exists to attach the tiers to. Report them by name instead of
+			// discarding them silently (NTE-187).
+			$names = $this->buffered_tier_names( $post );
+			if ( ! empty( $names ) ) {
+				set_transient(
+					'nettertech_events_save_error_' . get_current_user_id(),
+					sprintf(
+						/* translators: %s: comma-separated ticket tier names. */
+						esc_html__( 'These ticket tiers could not be saved because the event has no date to attach them to: %s. Add a date, then re-enter them.', 'nettertech-events' ),
+						esc_html( implode( ', ', $names ) )
+					),
+					60
+				);
+			}
+			return;
+		}
+
+		// Reuse the saved-event ticket path by naming the occurrence the buffered
+		// rows should bind to; save_for_occurrence() reads occurrence_id_for_tickets.
+		$post['occurrence_id_for_tickets'] = (string) $primary->id;
+		$post_sanitized                    = map_deep( $post, 'sanitize_textarea_field' );
+		$this->ticket_saver->save_for_occurrence( (int) $primary->id, $post_sanitized, $event_id );
+	}
+
+	/**
+	 * Collect the non-empty ticket tier names from a buffered occurrence-scope submission.
+	 *
+	 * Used only to name tiers in the save error when there is no occurrence to bind them to
+	 * (NTE-187). Rows post either nested by scope (ticket_types[occurrence][N]) or flat.
+	 *
+	 * @param array<string, mixed> $post Unslashed POST data from the nonce-verified boundary.
+	 * @return array<int, string> Tier names, empties removed.
+	 */
+	private function buffered_tier_names( array $post ): array {
+		$ticket_types = $post['ticket_types'] ?? array();
+		if ( ! is_array( $ticket_types ) ) {
+			return array();
+		}
+
+		$rows = isset( $ticket_types['occurrence'] ) && is_array( $ticket_types['occurrence'] )
+			? $ticket_types['occurrence']
+			: $ticket_types;
+
+		$names = array();
+		foreach ( $rows as $row ) {
+			if ( is_array( $row ) ) {
+				$name = sanitize_text_field( (string) ( $row['name'] ?? '' ) );
+				if ( '' !== $name ) {
+					$names[] = $name;
+				}
+			}
+		}
+
+		return $names;
 	}
 
 	/**
@@ -558,7 +874,7 @@ class EventSaveHandler {
 		$new_tag_csv = isset( $post['new_tag_names'] ) && is_string( $post['new_tag_names'] )
 			? sanitize_text_field( $post['new_tag_names'] )
 			: '';
-		$tag_repo    = \NetterTechEvents\Core\ServiceRegistry::tag_repository();
+		$tag_repo    = $this->tag_repo ?? \NetterTechEvents\Core\ServiceRegistry::tag_repository();
 		if ( '' !== $new_tag_csv ) {
 			foreach ( explode( ',', $new_tag_csv ) as $raw_name ) {
 				$name = trim( $raw_name );
@@ -651,29 +967,14 @@ class EventSaveHandler {
 			$end_date = $start_date;
 		}
 
-		// Time fallbacks: all-day events span midnight to end-of-day; timed
-		// events default to the configured start time + duration when the
-		// author supplied a date but left the time blank. Defaults are
-		// site-tunable in Settings → Display (default_event_start_time /
-		// default_event_duration_minutes); ship defaults are 19:00 / 120 min
-		// (venue evening-performance pattern). Industry-standard rationale
-		// surveyed Google/Apple/Outlook vs Eventbrite/Tito/TEC/MEC.
-		if ( $all_day ) {
-			$start_time = ! empty( $start_time_raw ) ? $start_time_raw : '00:00';
-			$end_time   = ! empty( $end_time_raw ) ? $end_time_raw : '23:59';
-		} else {
-			$display          = \NetterTechEvents\Core\NetterTechEventsSettings::from_option()->display;
-			$default_start    = $display->default_event_start_time;
-			$default_duration = $display->default_event_duration_minutes;
-			$start_time       = ! empty( $start_time_raw ) ? $start_time_raw : $default_start;
-			if ( ! empty( $end_time_raw ) ) {
-				$end_time = $end_time_raw;
-			} else {
-				$end_time = ( new \DateTimeImmutable( $start_date . ' ' . $start_time . ':00' ) )
-					->modify( '+' . $default_duration . ' minutes' )
-					->format( 'H:i' );
-			}
-		}
+		// Time fallbacks via the shared resolver (NTE-189): all-day events span
+		// midnight to end-of-day; timed events default to the configured start time
+		// (default_event_start_time) and start + default duration
+		// (default_event_duration_minutes) when the author left a time blank. Ship
+		// defaults are 19:00 / 120 min (venue evening-performance pattern).
+		$times      = OccurrenceTimeResolver::derive_times( $start_date, $start_time_raw, $end_time_raw, $all_day );
+		$start_time = $times['start_time'];
+		$end_time   = $times['end_time'];
 
 		$start_datetime = new \DateTimeImmutable( $start_date . ' ' . $start_time . ':00' );
 		$end_datetime   = new \DateTimeImmutable( $end_date . ' ' . $end_time . ':00' );
@@ -705,13 +1006,8 @@ class EventSaveHandler {
 		\DateTimeImmutable $end_datetime,
 		mixed $capacity
 	): void {
-		// Validate: event must be at least 10 minutes long.
-		$duration_seconds = $end_datetime->getTimestamp() - $start_datetime->getTimestamp();
-		if ( $duration_seconds < 600 ) {
-			throw ValidationException::fromErrors(
-				array( esc_html__( 'Event must be at least 10 minutes long. Please adjust the end time.', 'nettertech-events' ) )
-			);
-		}
+		// Event must be at least 10 minutes long (shared rule — NTE-189).
+		OccurrenceTimeResolver::validate_span( $start_datetime, $end_datetime );
 
 		// Validate: capacity must be a positive integer if provided.
 		if ( null !== $capacity && '' !== $capacity && ( ! is_numeric( $capacity ) || (int) $capacity < 0 ) ) {
@@ -848,8 +1144,8 @@ class EventSaveHandler {
 	 * Sanitize the per-event image vertical crop anchor.
 	 *
 	 * Allowlists top|center|bottom; anything else (missing, invalid type, or an
-	 * unrecognized value) falls back to 'center' per FR-005. Callers store NULL
-	 * for 'center' to keep the column clean.
+	 * unrecognized value) falls back to 'center', the neutral default crop. Callers
+	 * store NULL for 'center' to keep the column clean.
 	 *
 	 * @param mixed $raw Raw input.
 	 * @return string One of 'top', 'center', or 'bottom'.

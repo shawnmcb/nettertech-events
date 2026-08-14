@@ -552,6 +552,81 @@ class TicketTypeQueryRepositoryTest extends \NetterTechEventsTestCase {
 	}
 
 	// =========================================================================
+	// get_on_sale_for_event() Tests (NTE-156)
+	// =========================================================================
+
+	/**
+	 * Event-scope (series pass) tiers on sale are returned; those outside their
+	 * window are dropped — the same sale-window semantics as the occurrence path.
+	 *
+	 * @covers \NetterTechEvents\Repositories\TicketTypeQueryRepository::get_on_sale_for_event
+	 */
+	public function test_get_on_sale_for_event_returns_only_on_sale_event_tiers(): void {
+		list( $mock_wpdb, $repo, $original_wpdb ) = $this->create_repo();
+
+		try {
+			$captured_sql = '';
+			$mock_wpdb->method( 'prepare' )
+				->willReturnCallback(
+					function ( $sql ) use ( &$captured_sql ) {
+						$captured_sql = $sql;
+						return $sql;
+					}
+				);
+
+			$pass_open = $this->make_ticket_row(
+				array(
+					'id'            => 1,
+					'scope'         => 'event',
+					'occurrence_id' => null,
+					'status'        => 'active',
+				)
+			);
+			$pass_future = $this->make_ticket_row(
+				array(
+					'id'            => 2,
+					'scope'         => 'event',
+					'occurrence_id' => null,
+					'status'        => 'active',
+					'sale_start'    => '2099-01-01 00:00:00',
+				)
+			);
+
+			$mock_wpdb->method( 'get_results' )
+				->willReturn( array( $pass_open, $pass_future ) );
+
+			$result = $repo->get_on_sale_for_event( 100, new \DateTimeZone( 'UTC' ) );
+
+			// Scoped to event-level tiers only.
+			$this->assertStringContainsString( 'scope = %s', $captured_sql );
+			$this->assertCount( 1, $result );
+			$this->assertSame( 1, $result[0]->id );
+		} finally {
+			$this->restore_wpdb( $original_wpdb );
+		}
+	}
+
+	/**
+	 * An event with no event-scope tiers yields an empty list (a plain event with
+	 * only per-date tickets has no pass to surface).
+	 *
+	 * @covers \NetterTechEvents\Repositories\TicketTypeQueryRepository::get_on_sale_for_event
+	 */
+	public function test_get_on_sale_for_event_returns_empty_without_event_tiers(): void {
+		list( $mock_wpdb, $repo, $original_wpdb ) = $this->create_repo();
+
+		try {
+			$mock_wpdb->method( 'get_results' )->willReturn( array() );
+
+			$result = $repo->get_on_sale_for_event( 100, new \DateTimeZone( 'UTC' ) );
+
+			$this->assertSame( array(), $result );
+		} finally {
+			$this->restore_wpdb( $original_wpdb );
+		}
+	}
+
+	// =========================================================================
 	// for_event() Tests
 	// =========================================================================
 

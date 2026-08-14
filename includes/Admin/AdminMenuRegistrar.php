@@ -219,16 +219,37 @@ class AdminMenuRegistrar {
 	}
 
 	/**
+	 * Ticket-with-star icon path data (NTE-176), distinct from TEC's calendar
+	 * icon. Single source for every surface that renders the event brand mark
+	 * (dashboard menu, front-end admin-bar Edit node — NTE-194); render it via
+	 * icon_svg() so consumers can't drift.
+	 *
+	 * @var string
+	 */
+	// phpcs:ignore Generic.Files.LineLength.TooLong -- SVG path data.
+	private const ICON_PATH_D = 'M3.5 4.5h13A1.5 1.5 0 0118 6v2a2 2 0 000 4v2a1.5 1.5 0 01-1.5 1.5h-13A1.5 1.5 0 012 14v-2a2 2 0 000-4V6A1.5 1.5 0 013.5 4.5zM3.5 5.7h13v2H16v-1.5H4v1.5h-0.5zM3.5 14.3h13v-2H16v1.5H4v-1.5h-0.5zM10 8.22L10.37 8.63L10.89 8.46L11 9L11.54 9.11L11.37 9.63L11.78 10L11.37 10.37L11.54 10.89L11 11L10.89 11.54L10.37 11.37L10 11.78L9.63 11.37L9.11 11.54L9 11L8.46 10.89L8.63 10.37L8.22 10L8.63 9.63L8.46 9.11L9 9L9.11 8.46L9.63 8.63z';
+
+	/**
+	 * Render the ticket-with-star icon as an inline SVG.
+	 *
+	 * @param string $fill  Fill color (hex or 'currentColor').
+	 * @param string $style Optional inline style attribute value (e.g. sizing).
+	 * @return string SVG markup.
+	 */
+	public static function icon_svg( string $fill, string $style = '' ): string {
+		$style_attr = '' !== $style ? ' style="' . esc_attr( $style ) . '"' : '';
+
+		return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="' . esc_attr( $fill ) . '"' . $style_attr . '>'
+			. '<path fill-rule="evenodd" d="' . self::ICON_PATH_D . '"/></svg>';
+	}
+
+	/**
 	 * Get the custom menu icon as a base64-encoded SVG data URI.
 	 *
 	 * @return string SVG data URI for the menu icon.
 	 */
 	private static function get_menu_icon(): string {
-		// Ticket-shaped icon distinct from TEC's calendar icon.
-		// phpcs:ignore Generic.Files.LineLength.TooLong -- Base64 SVG data URI.
-		$svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="#a0a5aa"><g transform="translate(0 1) scale(1 0.9)"><path d="M2 4.5A1.5 1.5 0 013.5 3h13A1.5 1.5 0 0118 4.5v2.879a.5.5 0 01-.354.476A2 2 0 0016 9.787v.426a2 2 0 001.646 1.932.5.5 0 01.354.476V15.5a1.5 1.5 0 01-1.5 1.5h-13A1.5 1.5 0 012 15.5v-2.879a.5.5 0 01.354-.476A2 2 0 004 10.213v-.426a2 2 0 00-1.646-1.932A.5.5 0 012 7.379V4.5z"/><path d="M7 7h6v1H7zM6 9h8v5H6z" fill-opacity="0.3"/></g></svg>';
-
 		// phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode -- Required for SVG data URI.
-		return 'data:image/svg+xml;base64,' . base64_encode( $svg );
+		return 'data:image/svg+xml;base64,' . base64_encode( self::icon_svg( '#a7aaad' ) );
 	}
 }

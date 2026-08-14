@@ -67,13 +67,27 @@ final class ClientIpResolver {
 	private const SAMPLE_TTL = 604800;
 
 	/**
-	 * Forwarded headers in trust priority order.
+	 * Known forwarded headers — presence detection only, never a trust
+	 * priority list. Exactly ONE header is consulted per trust reason
+	 * (NTE-SEC-2026-07-A): scanning a priority list let an attacker pick
+	 * the winning header by supplying one the real proxy doesn't strip.
 	 */
 	private const FORWARDED_HEADERS = array(
 		'HTTP_CF_CONNECTING_IP', // Cloudflare.
 		'HTTP_X_REAL_IP',        // Nginx reverse proxy.
 		'HTTP_X_FORWARDED_FOR',  // Standard proxy chain.
 	);
+
+	/**
+	 * The single header consulted for a Cloudflare-range connection.
+	 */
+	private const CLOUDFLARE_HEADER = 'HTTP_CF_CONNECTING_IP';
+
+	/**
+	 * The single header consulted for a generic trusted proxy. Filterable
+	 * for X-Real-IP-only setups via nettertech_events_forwarded_header.
+	 */
+	private const GENERIC_PROXY_HEADER = 'HTTP_X_FORWARDED_FOR';
 
 	/**
 	 * Published Cloudflare IP ranges (www.cloudflare.com/ips, retrieved
@@ -171,36 +185,100 @@ final class ClientIpResolver {
 		}
 
 		if ( self::MODE_PROXIED === $mode ) {
-			// Operator vouched for the proxy: accept any valid forwarded
-			// IP, including private ones (internal clients behind an LB).
-			$forwarded = $this->forwarded_ip( false );
+			// Operator vouched for the proxy: accept a valid forwarded IP,
+			// including private ones (internal clients behind an LB) — but
+			// only from the ONE header the vouched-for proxy writes.
+			$forwarded = $this->forwarded_ip( $this->generic_proxy_header(), false );
 			$this->record( 'forced_proxied' );
 			return $forwarded ?? $remote;
 		}
 
-		// Auto rules. Forwarded values must be public: reserved-space
-		// header values have no meaning from a real proxy chain edge.
-		$forwarded = $this->forwarded_ip( true );
+		// Auto rules. Exactly one header is consulted per trust reason
+		// (NTE-SEC-2026-07-A): the trust signal names the proxy, and the
+		// proxy names the header it overwrites. Scanning a priority list
+		// instead let an attacker behind a generic proxy win with a
+		// fabricated CF-Connecting-IP the proxy passed through untouched.
+		// Forwarded values must be public: reserved-space header values
+		// have no meaning from a real proxy chain edge.
+		//
+		// Cloudflare's OWN published ranges are the only trust reason that
+		// maps to CF-Connecting-IP. Operator-declared ranges (the filter)
+		// and private sources are generic proxies that write the generic
+		// header (X-Forwarded-For's last hop by default).
+		if ( $this->ip_in_ranges( $remote, self::CLOUDFLARE_RANGES ) ) {
+			$forwarded = $this->forwarded_ip( self::CLOUDFLARE_HEADER, true );
 
-		if ( null === $forwarded ) {
+			if ( null !== $forwarded ) {
+				$this->record( 'known_proxy_range' );
+				return $forwarded;
+			}
+		} elseif ( $this->ip_in_ranges( $remote, $this->trusted_ranges() ) ) {
+			$forwarded = $this->forwarded_ip( $this->generic_proxy_header(), true );
+
+			if ( null !== $forwarded ) {
+				$this->record( 'known_proxy_range' );
+				return $forwarded;
+			}
+		} elseif ( ! $this->is_public_ip( $remote ) ) {
+			$forwarded = $this->forwarded_ip( $this->generic_proxy_header(), true );
+
+			if ( null !== $forwarded ) {
+				$this->record( 'private_source_proxy' );
+				return $forwarded;
+			}
+		}
+
+		if ( ! $this->any_forwarded_header_present() ) {
 			$this->record( 'direct' );
 			return $remote;
 		}
 
-		if ( ! $this->is_public_ip( $remote ) ) {
-			$this->record( 'private_source_proxy' );
-			return $forwarded;
-		}
-
-		if ( $this->ip_in_ranges( $remote, $this->trusted_ranges() ) ) {
-			$this->record( 'known_proxy_range' );
-			return $forwarded;
-		}
-
-		// Headers present but the source proved nothing — the unknown-CDN
+		// Headers present but the source proved nothing (or the trusted
+		// header for this source was absent/invalid) — the unknown-CDN
 		// signature Site Health watches for.
 		$this->record( 'headers_ignored' );
 		return $remote;
+	}
+
+	/**
+	 * The single forwarded header consulted for a generic trusted proxy.
+	 *
+	 * @return string $_SERVER key.
+	 */
+	private function generic_proxy_header(): string {
+		/**
+		 * Filters the forwarded header trusted for generic (non-Cloudflare)
+		 * proxies.
+		 *
+		 * Exactly one header is consulted per trust reason; the default is
+		 * X-Forwarded-For's proxy-appended last hop. Set to HTTP_X_REAL_IP
+		 * for proxies that write X-Real-IP and do not append to XFF.
+		 *
+		 * @since 1.4.0
+		 *
+		 * @param string $header $_SERVER key of the trusted forwarded header.
+		 */
+		$header = apply_filters( 'nettertech_events_forwarded_header', self::GENERIC_PROXY_HEADER );
+
+		return in_array( $header, self::FORWARDED_HEADERS, true ) ? $header : self::GENERIC_PROXY_HEADER;
+	}
+
+	/**
+	 * Whether any known forwarded header arrived with the request.
+	 *
+	 * Presence detection for Site Health's unknown-CDN signature only —
+	 * never used to pick which header to trust.
+	 *
+	 * @return bool
+	 */
+	private function any_forwarded_header_present(): bool {
+		foreach ( self::FORWARDED_HEADERS as $header ) {
+			if ( isset( $_SERVER[ $header ] ) && '' !== $_SERVER[ $header ] ) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	/**
@@ -255,45 +333,44 @@ final class ClientIpResolver {
 	}
 
 	/**
-	 * First usable IP from the forwarded headers, in priority order.
+	 * Usable IP from exactly ONE forwarded header.
 	 *
 	 * X-Forwarded-For uses the LAST hop: proxies append the connecting
 	 * address, so the final entry is the one written by the proxy that
 	 * actually fronted this request. The first entry is client-supplied
-	 * whenever the proxy appends rather than overwrites.
+	 * whenever the proxy appends rather than overwrites. Which header to
+	 * consult is the caller's decision, keyed to its trust reason
+	 * (NTE-SEC-2026-07-A) — this method never scans alternatives.
 	 *
-	 * @param bool $require_public Whether the forwarded IP must be globally routable.
+	 * @param string $header         $_SERVER key of the trusted forwarded header.
+	 * @param bool   $require_public Whether the forwarded IP must be globally routable.
 	 * @return string|null Valid IP or null.
 	 */
-	private function forwarded_ip( bool $require_public ): ?string {
-		foreach ( self::FORWARDED_HEADERS as $header ) {
-			if ( ! isset( $_SERVER[ $header ] ) ) {
-				continue;
-			}
-
-			$value = sanitize_text_field( wp_unslash( $_SERVER[ $header ] ) );
-
-			if ( '' === $value ) {
-				continue;
-			}
-
-			if ( str_contains( $value, ',' ) ) {
-				$parts = array_map( 'trim', explode( ',', $value ) );
-				$value = (string) end( $parts );
-			}
-
-			if ( ! filter_var( $value, FILTER_VALIDATE_IP ) ) {
-				continue;
-			}
-
-			if ( $require_public && ! $this->is_public_ip( $value ) ) {
-				continue;
-			}
-
-			return $value;
+	private function forwarded_ip( string $header, bool $require_public ): ?string {
+		if ( ! isset( $_SERVER[ $header ] ) ) {
+			return null;
 		}
 
-		return null;
+		$value = sanitize_text_field( wp_unslash( $_SERVER[ $header ] ) );
+
+		if ( '' === $value ) {
+			return null;
+		}
+
+		if ( str_contains( $value, ',' ) ) {
+			$parts = array_map( 'trim', explode( ',', $value ) );
+			$value = (string) end( $parts );
+		}
+
+		if ( ! filter_var( $value, FILTER_VALIDATE_IP ) ) {
+			return null;
+		}
+
+		if ( $require_public && ! $this->is_public_ip( $value ) ) {
+			return null;
+		}
+
+		return $value;
 	}
 
 	/**

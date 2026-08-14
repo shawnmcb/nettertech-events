@@ -534,6 +534,37 @@ final class Hooks {
 	public const AFTER_SOLD_OUT = 'nettertech_events_after_sold_out';
 
 	/**
+	 * Filters whether listing controllers should compute per-card availability.
+	 *
+	 * Return true to have the list/carousel shortcodes and series page run the
+	 * batched on-sale prefetch plus OccurrenceAvailabilityPresenter verdicts and
+	 * pass a prefetched_availability array ('sold_out' => bool) into every
+	 * event-card context — the no-N+1 path for extensions that render
+	 * availability labels (NTE-203). Base renders no label itself, so the
+	 * default false keeps free installs free of the extra queries.
+	 *
+	 * @since 1.4.0
+	 *
+	 * @param bool $needed Whether card availability is needed. Default false.
+	 */
+	public const CARDS_NEED_AVAILABILITY = 'nettertech_events_cards_need_availability';
+
+	/**
+	 * Fires in the event card's status slot for active occurrences.
+	 *
+	 * Runs only when the card is neither cancelled nor past (those states
+	 * print base labels in the same slot). Extensions may print status markup
+	 * here — e.g. a sold-out badge from the context's prefetched_availability
+	 * — and the output must satisfy ShortcodeOutput::get_allowlist(), which
+	 * the listing shortcodes apply to the whole card.
+	 *
+	 * @since 1.4.0
+	 *
+	 * @param \NetterTechEvents\TemplateLoader\TemplateContext $context Card template context.
+	 */
+	public const EVENT_CARD_STATUS = 'nettertech_events_event_card_status';
+
+	/**
 	 * Fires after a visitor joins a waitlist via the REST API.
 	 *
 	 * Extensions can mint a cancellation token, send a confirmation email,

@@ -737,6 +737,51 @@ class OrderHandlerTest extends \NetterTechEventsTestCase {
 		$this->assertSame( 222, $called_with );
 	}
 
+	/**
+	 * Test handle_order_failed voids the order's attendees.
+	 *
+	 * Regression guard for NTE-202. Attendees are created once an order reaches
+	 * processing or completed, so a later failure — a declined capture, a COD
+	 * order failed at the door — used to leave a confirmed attendee holding a
+	 * checkable-in ticket and occupying capacity, because 'failed' was the one
+	 * unpaid terminal status with no listener. Asserts the void actually happens
+	 * rather than merely that the order was looked up.
+	 *
+	 * @return void
+	 */
+	public function test_handle_order_failed_voids_attendees(): void {
+		$attendee = AttendeeFactory::create(
+			array(
+				'id'             => 7,
+				'wc_order_id'    => 333,
+				'ticket_type_id' => 5,
+				'quantity'       => 1,
+			)
+		);
+
+		$order = $this->createMock( \WC_Order::class );
+		$order->method( 'get_id' )->willReturn( 333 );
+
+		\Brain\Monkey\Functions\when( 'wc_get_order' )->justReturn( $order );
+
+		$this->attendee_repo
+			->method( 'find_all_by_order' )
+			->with( 333 )
+			->willReturn( array( $attendee ) );
+
+		$this->attendee_repo
+			->expects( $this->once() )
+			->method( 'update_status' )
+			->with( 7, 'voided' );
+
+		$this->ticket_repo
+			->expects( $this->once() )
+			->method( 'cancel_all_tickets_for_attendee' )
+			->with( 7 );
+
+		$this->handler->handle_order_failed( 333 );
+	}
+
 	// =========================================================================
 	// handle_refund_created Tests
 	// =========================================================================

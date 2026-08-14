@@ -207,6 +207,14 @@
 
             // Announce to screen readers.
             this.announceUpdate(events.length);
+
+            // Extension lifecycle: lets add-ons decorate AJAX-rendered cards
+            // (each article carries data-event-id), mirroring the calendar's
+            // nte-calendar:rendered event.
+            this.container.dispatchEvent(new CustomEvent('nte-grid:rendered', {
+                detail: { grid: this.grid, events },
+                bubbles: true
+            }));
         }
 
         renderCard(occurrence) {
@@ -243,7 +251,7 @@
                 : '';
 
             return `
-                <article class="nte-event-card">
+                <article class="nte-event-card" data-event-id="${occurrence.id}">
                     ${imageHtml}
                     <div class="nte-event-card__content">
                         <div class="nte-event-card__date">

@@ -60,6 +60,34 @@ $nettertech_events_show_past    = filter_input( INPUT_GET, 'show_past', FILTER_V
 // Determine which occurrences to display.
 $nettertech_events_display_occurrences = $nettertech_events_show_past ? array_merge( $nettertech_events_past, $nettertech_events_upcoming ) : $nettertech_events_upcoming;
 
+// Batched availability prefetch (NTE-203): one on-sale query for all displayed
+// occurrences, so each card gets a verdict without per-card lookups. Runs only
+// when an extension opted in via the cards-need-availability filter — base
+// renders no availability UI of its own.
+$nettertech_events_series_availability = array();
+if (
+	apply_filters( \NetterTechEvents\Core\Hooks::CARDS_NEED_AVAILABILITY, false )
+	&& ! empty( $nettertech_events_display_occurrences )
+	&& function_exists( '\\NetterTechEvents\\nettertech_events_container' )
+) {
+	$nettertech_events_series_occ_ids = array();
+	foreach ( $nettertech_events_display_occurrences as $nettertech_events_series_occ ) {
+		if ( $nettertech_events_series_occ->id ) {
+			$nettertech_events_series_occ_ids[] = (int) $nettertech_events_series_occ->id;
+		}
+	}
+	if ( ! empty( $nettertech_events_series_occ_ids ) ) {
+		$nettertech_events_series_container      = \NetterTechEvents\nettertech_events_container();
+		$nettertech_events_series_presenter      = $nettertech_events_series_container->get( \NetterTechEvents\Frontend\OccurrenceAvailabilityPresenter::class );
+		$nettertech_events_series_on_sale_by_occ = $nettertech_events_series_container->get( \NetterTechEvents\Contracts\TicketTypeRepositoryInterface::class )->get_on_sale_for_occurrences( $nettertech_events_series_occ_ids );
+		foreach ( $nettertech_events_series_occ_ids as $nettertech_events_series_occ_id ) {
+			$nettertech_events_series_availability[ $nettertech_events_series_occ_id ] = array(
+				'sold_out' => $nettertech_events_series_presenter->is_sold_out( $nettertech_events_series_on_sale_by_occ[ $nettertech_events_series_occ_id ] ?? array() ),
+			);
+		}
+	}
+}
+
 TemplateCompat::header();
 ?>
 
@@ -186,6 +214,7 @@ TemplateCompat::header();
 									'show_price'   => true,
 									'heading_tag'  => 'h3',
 									'heading_date' => true,
+									'prefetched_availability' => $nettertech_events_series_availability[ (int) $nettertech_events_occ->id ] ?? array( 'sold_out' => false ),
 								)
 							),
 							ShortcodeOutput::get_allowlist()

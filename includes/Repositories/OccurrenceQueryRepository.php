@@ -63,14 +63,14 @@ class OccurrenceQueryRepository implements OccurrenceQueryRepositoryInterface {
 	 *
 	 * @var string
 	 */
-	private const LIST_COLUMNS = 'id, event_id, start_datetime, end_datetime, all_day, timezone, title_override, featured_image_id, status, capacity, sequence_number, is_rescheduled, is_override, venue_name_override, virtual_url_override, checkin_token, created_at, updated_at';
+	private const LIST_COLUMNS = 'id, event_id, start_datetime, end_datetime, all_day, timezone, title_override, featured_image_id, status, capacity, sequence_number, origin_start_datetime, is_rescheduled, is_override, venue_name_override, virtual_url_override, checkin_token, created_at, updated_at';
 
 	/**
 	 * Columns for JOIN list queries, prefixed with table alias 'o.'.
 	 *
 	 * @var string
 	 */
-	private const JOIN_LIST_COLUMNS = 'o.id, o.event_id, o.start_datetime, o.end_datetime, o.all_day, o.timezone, o.title_override, o.featured_image_id, o.status, o.capacity, o.sequence_number, o.is_rescheduled, o.is_override, o.venue_name_override, o.virtual_url_override, o.checkin_token, o.created_at, o.updated_at';
+	private const JOIN_LIST_COLUMNS = 'o.id, o.event_id, o.start_datetime, o.end_datetime, o.all_day, o.timezone, o.title_override, o.featured_image_id, o.status, o.capacity, o.sequence_number, o.origin_start_datetime, o.is_rescheduled, o.is_override, o.venue_name_override, o.virtual_url_override, o.checkin_token, o.created_at, o.updated_at';
 
 	/**
 	 * Constructor.
@@ -381,7 +381,8 @@ class OccurrenceQueryRepository implements OccurrenceQueryRepositoryInterface {
 		if ( $args['include_events'] ) {
 			$sql = $this->db->prepare(
 				'SELECT ' . self::JOIN_LIST_COLUMNS . ", e.title as event_title, e.slug as event_slug,
-                        e.featured_image_id as event_image_id, e.venue_name, e.venue_address
+                        e.featured_image_id as event_image_id, e.event_type,
+                        e.venue_name, e.venue_address
                  FROM {$this->table} o
                  JOIN {$this->events_table} e ON o.event_id = e.id
                  {$where_clause}
@@ -416,6 +417,10 @@ class OccurrenceQueryRepository implements OccurrenceQueryRepositoryInterface {
 				$event->featured_image_id = $row->event_image_id ? (int) $row->event_image_id : null;
 				$event->venue_name        = $row->venue_name ?? null;
 				$event->venue_address     = $row->venue_address ?? null;
+				// Without event_type the model defaults to 'single' and
+				// Occurrence::get_url() emits the series permalink for
+				// recurring events (NTE-179).
+				$event->event_type = $row->event_type ?? 'single';
 				$occurrence->set_event( $event );
 			}
 

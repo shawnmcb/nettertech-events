@@ -147,6 +147,10 @@ class EventsControllerTest extends \NetterTechEventsTestCase {
 		$occurrence->status         = 'scheduled';
 
 		$occurrence->method( 'get_event' )->willReturn( $event );
+		$occurrence->method( 'get_url' )->willReturn(
+			'https://example.com/events/test-event-' . ( $event ? $event->id : 1 ) . '/2026-02-15-1900/'
+		);
+		$occurrence->method( 'get_featured_image_id' )->willReturn( $event ? $event->featured_image_id : null );
 
 		return $occurrence;
 	}
@@ -1729,6 +1733,45 @@ class EventsControllerTest extends \NetterTechEventsTestCase {
 		$this->assertSame( 'Main Hall', $data['event']['venue_name'] );
 		$this->assertSame( '456 Oak Ave', $data['event']['venue_address'] );
 		$this->assertStringContainsString( 'test-event-5', $data['event']['permalink'] );
+	}
+
+	/**
+	 * Test the occurrence payload is occurrence-resolved, not event-level.
+	 *
+	 * Regression for NTE-179/NTE-181: REST consumers (event grid, calendar
+	 * tooltip) render one card per occurrence, so the payload's link must be
+	 * the occurrence URL (not the series permalink) and the image must honor
+	 * a per-occurrence featured-image override.
+	 *
+	 * @return void
+	 */
+	public function test_prepare_occurrence_resolves_link_and_image_per_occurrence(): void {
+		Functions\when( 'wp_get_attachment_image_src' )->justReturn( array( 'https://example.com/override.jpg', 300, 200 ) );
+		Functions\when( 'get_post_meta' )->justReturn( 'Override alt' );
+
+		$event                    = $this->create_mock_event( 7 );
+		$event->featured_image_id = 42;
+
+		$occurrence                 = $this->createMock( Occurrence::class );
+		$occurrence->id             = 300;
+		$occurrence->event_id       = 7;
+		$occurrence->start_datetime = '2026-11-28 18:00:00';
+		$occurrence->end_datetime   = '2026-11-28 20:00:00';
+		$occurrence->all_day        = false;
+		$occurrence->status         = 'scheduled';
+		$occurrence->method( 'get_event' )->willReturn( $event );
+		$occurrence->method( 'get_url' )->willReturn( 'https://example.com/events/test-event-7/2026-11-28-1800/' );
+		$occurrence->method( 'get_featured_image_id' )->willReturn( 99 );
+
+		$this->occurrence_repo->method( 'find_with_event' )->willReturn( $occurrence );
+		$this->ticket_type_repo->method( 'for_occurrence' )->willReturn( array() );
+
+		$request    = $this->create_mock_request( array( 'id' => 300 ) );
+		$controller = $this->create_controller();
+		$data       = $controller->get_item( $request )->get_data();
+
+		$this->assertSame( 'https://example.com/events/test-event-7/2026-11-28-1800/', $data['event']['permalink'] );
+		$this->assertSame( 99, $data['event']['image']['id'] );
 	}
 
 	/**

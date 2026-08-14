@@ -168,6 +168,8 @@ class EventEditorTest extends \NetterTechEventsTestCase {
 		Functions\when( 'wp_nonce_url' )->alias( fn( $url, $action = '' ) => $url . '&_wpnonce=abc123' );
 		Functions\when( 'wp_enqueue_style' )->justReturn( true );
 		Functions\when( 'wp_enqueue_script' )->justReturn( true );
+		Functions\when( 'wp_enqueue_style' )->justReturn( null );
+		Functions\when( 'wp_script_is' )->justReturn( false );
 		Functions\when( 'wp_enqueue_media' )->justReturn( null );
 		Functions\when( 'wp_localize_script' )->justReturn( true );
 		Functions\when( 'get_theme_mod' )->justReturn( '' );
@@ -1023,16 +1025,17 @@ class EventEditorTest extends \NetterTechEventsTestCase {
 	 *
 	 * @return void
 	 */
-	public function test_render_ticket_types_box_shows_save_prompt_for_new_event(): void {
+	public function test_render_ticket_types_box_shows_buffered_form_for_new_event(): void {
 		$handler = $this->createMetaboxHandler();
 
 		ob_start();
 		$handler->render_ticket_types_box( null );
 		$output = ob_get_clean();
 
-		// Should contain the basic structure.
+		// A new event now gets a working buffered form (NTE-177), not a dead-end notice.
 		$this->assertStringContainsString( 'nte-tickets-metabox', $output );
-		$this->assertStringContainsString( 'Save the event first', $output );
+		$this->assertStringNotContainsString( 'Save the event first', $output );
+		$this->assertStringContainsString( 'ticketing_enabled', $output );
 	}
 
 	/**

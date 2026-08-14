@@ -157,6 +157,76 @@ class AttendeesPageTest extends TestCase {
 	}
 
 	/**
+	 * Invoke a private method on the page.
+	 *
+	 * @param AttendeesPage $page   Page instance.
+	 * @param string        $method Method name.
+	 * @param array<mixed>  $args   Arguments.
+	 * @return mixed
+	 */
+	private function invoke_private( AttendeesPage $page, string $method, array $args ) {
+		$ref = new \ReflectionMethod( AttendeesPage::class, $method );
+		$ref->setAccessible( true );
+		return $ref->invokeArgs( $page, $args );
+	}
+
+	/**
+	 * The record total, ticket total, page count, and row set all come back
+	 * typed and computed from the two aggregate queries (dual-unit listing).
+	 *
+	 * @covers ::get_attendees
+	 *
+	 * @return void
+	 */
+	public function test_get_attendees_returns_records_tickets_and_pages(): void {
+		$this->db->prefix  = 'wp_';
+		$GLOBALS['wpdb']   = $this->db;
+
+		// First get_var answers the COUNT(*) query, second the SUM(quantity).
+		$this->db->shouldReceive( 'get_var' )->twice()->andReturn( '30', '47' );
+		$rows = array( array( 'id' => 1 ) );
+		$this->db->shouldReceive( 'get_results' )->andReturn( $rows );
+
+		$page   = new AttendeesPage( $this->db, $this->occurrence_repo, $this->bulk_actions, $this->summary_service );
+		$result = $this->invoke_private( $page, 'get_attendees', array( 0, 0, '', '', '', 2 ) );
+
+		$this->assertSame( 30, $result['total'] );
+		$this->assertSame( 47, $result['guests'] );
+		$this->assertSame( 2, $result['pages'] );
+		$this->assertSame( $rows, $result['items'] );
+	}
+
+	/**
+	 * With filters active, the ticket-total query is prepared like its two
+	 * sibling queries — count, guests, and main list all bind the params.
+	 *
+	 * @covers ::get_attendees
+	 *
+	 * @return void
+	 */
+	public function test_get_attendees_prepares_guest_query_when_filtered(): void {
+		$this->db->prefix = 'wp_';
+		$GLOBALS['wpdb']  = $this->db;
+
+		$prepare_calls = 0;
+		$this->db->shouldReceive( 'prepare' )->andReturnUsing(
+			function ( $sql, $params = null ) use ( &$prepare_calls ) {
+				++$prepare_calls;
+				return $sql;
+			}
+		);
+		$this->db->shouldReceive( 'get_var' )->twice()->andReturn( '5', '9' );
+		$this->db->shouldReceive( 'get_results' )->andReturn( array() );
+
+		$page   = new AttendeesPage( $this->db, $this->occurrence_repo, $this->bulk_actions, $this->summary_service );
+		$result = $this->invoke_private( $page, 'get_attendees', array( 0, 12, '', 'confirmed', '', 1 ) );
+
+		$this->assertSame( 3, $prepare_calls );
+		$this->assertSame( array(), $result['items'] );
+		$this->assertSame( 9, $result['guests'] );
+	}
+
+	/**
 	 * Test render wp_dies without capability.
 	 *
 	 * @return void

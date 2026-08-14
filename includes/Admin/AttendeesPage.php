@@ -64,10 +64,17 @@ class AttendeesPage {
 	/**
 	 * Sortable columns mapping: display key => database column.
 	 *
+	 * Public because AttendeesExporter builds its ORDER BY from the same
+	 * whitelist via build_order_clause(), so the CSV export honors the sort
+	 * mode selected on the list (NTE-195). Expressions use the query aliases
+	 * a (attendees), o (occurrences), e (events), tt (ticket_types) — every
+	 * consumer's query must provide those joins.
+	 *
 	 * @var array<string, string>
 	 */
-	private const SORTABLE_COLUMNS = array(
+	public const SORTABLE_COLUMNS = array(
 		'name'        => 'a.name',
+		'name_last'   => "SUBSTRING_INDEX( a.name, ' ', -1 )",
 		'email'       => 'a.email',
 		'event'       => 'e.title',
 		'datetime'    => 'o.start_datetime',
@@ -178,7 +185,7 @@ class AttendeesPage {
 	 * @param int    $page               Current page.
 	 * @param string $orderby            Column to sort by (must be in SORTABLE_COLUMNS).
 	 * @param string $order              Sort direction (ASC or DESC).
-	 * @return array{items: array<array<string, mixed>>, total: int, pages: int}
+	 * @return array{items: array<array<string, mixed>>, total: int, guests: int, pages: int}
 	 */
 	private function get_attendees( int $occurrence_id, int $event_id, string $search, string $status_filter, string $placeholder_filter, int $page, string $orderby = '', string $order = 'DESC' ): array {
 		$attendees_table   = Schema::table( 'attendees' );
@@ -237,13 +244,22 @@ class AttendeesPage {
 			$count_sql = $this->db->prepare( $count_sql, $params );
 		}
 		$total = (int) $this->db->get_var( $count_sql );
+
+		// Ticket total for the same filter set. The summary card counts tickets
+		// (SUM of quantity) while the list counts purchase records; showing both
+		// units side by side is what keeps the two figures from reading as a
+		// mismatch (one record can carry several tickets).
+		$guests_sql = "SELECT COALESCE(SUM(a.quantity), 0) FROM {$attendees_table} a
+			LEFT JOIN {$occurrences_table} o ON a.occurrence_id = o.id
+			LEFT JOIN {$events_table} e ON o.event_id = e.id
+			WHERE {$where_clause}";
+		if ( ! empty( $params ) ) {
+			$guests_sql = $this->db->prepare( $guests_sql, $params );
+		}
+		$guests = (int) $this->db->get_var( $guests_sql );
 		// phpcs:enable WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
 
-		// Build ORDER BY clause. Validate orderby against whitelist.
-		$order_clause = 'a.id DESC'; // Default.
-		if ( ! empty( $orderby ) && isset( self::SORTABLE_COLUMNS[ $orderby ] ) ) {
-			$order_clause = self::SORTABLE_COLUMNS[ $orderby ] . ' ' . $order;
-		}
+		$order_clause = self::build_order_clause( $orderby, $order );
 
 		// Get paginated results with event info.
 		// phpcs:disable WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- Dynamic params array.
@@ -269,10 +285,44 @@ class AttendeesPage {
 		// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
 
 		return array(
-			'items' => ! empty( $items ) ? $items : array(),
-			'total' => $total,
-			'pages' => (int) ceil( $total / $this->per_page ),
+			'items'  => ! empty( $items ) ? $items : array(),
+			'total'  => $total,
+			'guests' => $guests,
+			'pages'  => (int) ceil( $total / $this->per_page ),
 		);
+	}
+
+	/**
+	 * Build a validated ORDER BY clause for attendee queries.
+	 *
+	 * Single source for both the list table and the CSV exporter, so exports
+	 * inherit the operator's selected sort mode (NTE-195). Unknown sort keys
+	 * or directions fall back to `a.id DESC` — no request value ever reaches
+	 * the clause; only whitelisted SQL from SORTABLE_COLUMNS does.
+	 *
+	 * @param string $orderby Sort key (SORTABLE_COLUMNS key, or '' for default).
+	 * @param string $order   Sort direction (ASC|DESC, case-insensitive).
+	 * @return string SQL ORDER BY expression (without the ORDER BY keyword).
+	 */
+	public static function build_order_clause( string $orderby, string $order ): string {
+		$order = strtoupper( $order );
+		if ( ! in_array( $order, array( 'ASC', 'DESC' ), true ) ) {
+			$order = 'DESC';
+		}
+
+		if ( '' === $orderby || ! isset( self::SORTABLE_COLUMNS[ $orderby ] ) ) {
+			return 'a.id DESC';
+		}
+
+		$order_clause = self::SORTABLE_COLUMNS[ $orderby ] . ' ' . $order;
+		// Last-name mode sorts on the name's final token (NTE-195); tiebreak
+		// on the full name in the same direction so equal surnames group
+		// stably by first name.
+		if ( 'name_last' === $orderby ) {
+			$order_clause .= ', a.name ' . $order;
+		}
+
+		return $order_clause;
 	}
 
 	/**
@@ -432,6 +482,11 @@ class AttendeesPage {
 							</li>
 						<?php endforeach; ?>
 					</ul>
+					<?php if ( isset( $attendance['status_counts']['voided'] ) ) : ?>
+						<p class="nte-summary-footnote">
+							<?php esc_html_e( 'Voided: seats from orders that were cancelled, refunded, or failed. Not included in issued counts.', 'nettertech-events' ); ?>
+						</p>
+					<?php endif; ?>
 				</div>
 			<?php endif; ?>
 
@@ -602,10 +657,24 @@ class AttendeesPage {
 
 			<p class="description">
 				<?php
-				printf(
-					/* translators: %d: total number of attendees */
-					esc_html__( 'Showing %d total attendees.', 'nettertech-events' ),
+				// One purchase record can carry several tickets, and quoting a
+				// single figure made the list read as misaligned with the
+				// summary card's ticket counts, so both units are shown.
+				$nettertech_events_records_text = sprintf(
+					/* translators: %d: number of purchase records in the list. */
+					_n( '%d purchase record', '%d purchase records', (int) $result['total'], 'nettertech-events' ),
 					(int) $result['total']
+				);
+				$nettertech_events_tickets_text = sprintf(
+					/* translators: %d: number of tickets across those records. */
+					_n( '%d ticket', '%d tickets', (int) ( $result['guests'] ?? 0 ), 'nettertech-events' ),
+					(int) ( $result['guests'] ?? 0 )
+				);
+				printf(
+					/* translators: 1: purchase-record count phrase, 2: ticket count phrase. */
+					esc_html__( 'Showing %1$s (%2$s).', 'nettertech-events' ),
+					esc_html( $nettertech_events_records_text ),
+					esc_html( $nettertech_events_tickets_text )
 				);
 				?>
 			</p>
@@ -624,6 +693,8 @@ class AttendeesPage {
 					<input type="hidden" name="filter_search" value="<?php echo esc_attr( $search ); ?>">
 					<input type="hidden" name="filter_status" value="<?php echo esc_attr( $status_filter ); ?>">
 					<input type="hidden" name="filter_placeholder" value="<?php echo esc_attr( $placeholder_filter ); ?>">
+					<input type="hidden" name="filter_orderby" value="<?php echo esc_attr( $orderby ); ?>">
+					<input type="hidden" name="filter_order" value="<?php echo esc_attr( $order ); ?>">
 					<?php $this->render_bulk_actions( $result['total'] ); ?>
 					<?php
 					/**
@@ -693,11 +764,18 @@ class AttendeesPage {
 				<input type="submit" class="button action" value="<?php esc_attr_e( 'Apply', 'nettertech-events' ); ?>">
 			</div>
 			<div class="alignleft actions">
-				<button type="submit" name="bulk_action" value="export_all" class="button">
+				<?php
+				// Deliberately NOT name="bulk_action": WordPress 7.0's common.js
+				// intercepts any .bulkactions form whose submitter is named
+				// bulk_action, validates a core select this form doesn't have,
+				// and blocks the submit with "Please select a bulk action to
+				// perform." A dedicated key sails past that validator.
+				?>
+				<button type="submit" name="nettertech_events_export_all" value="1" class="button">
 					<?php
 					printf(
-						/* translators: %d: number of attendees */
-						esc_html__( 'Export All (%d)', 'nettertech-events' ),
+						/* translators: %d: number of purchase records matching the current filters. */
+						esc_html( _n( 'Export All (%d record)', 'Export All (%d records)', $total_count, 'nettertech-events' ) ),
 						(int) $total_count
 					);
 					?>
@@ -707,6 +785,15 @@ class AttendeesPage {
 				</button>
 			</div>
 		</div>
+		<?php
+		// Scope hint for the header select-all checkbox. Selection can only
+		// reach the rows rendered on this page, and operators read select-all
+		// as "everything matching my filters" — admin.js reveals this the
+		// moment that checkbox is ticked, before the wrong export is run.
+		?>
+		<p id="nte-select-scope-hint" class="description nte-select-scope-hint" hidden>
+			<?php esc_html_e( 'Selection covers only the rows on this page. To export every record matching the current filters, use the Export All button instead.', 'nettertech-events' ); ?>
+		</p>
 		<?php
 	}
 
@@ -756,7 +843,7 @@ class AttendeesPage {
 					// `column-primary` is what core's responsive list-table rules key on:
 					// below 782px every column after the primary one collapses behind the
 					// row's toggle. Without it the fixed column widths simply overflow.
-					$this->render_sortable_header( 'name', __( 'Name', 'nettertech-events' ), $orderby, $order, 'column-name column-primary' );
+					$this->render_name_header( $orderby, $order );
 					?>
 					<?php $this->render_sortable_header( 'email', __( 'Email', 'nettertech-events' ), $orderby, $order, 'column-email' ); ?>
 					<?php $this->render_sortable_header( 'event', __( 'Event', 'nettertech-events' ), $orderby, $order, 'column-event' ); ?>
@@ -776,6 +863,68 @@ class AttendeesPage {
 				<?php endforeach; ?>
 			</tbody>
 		</table>
+		<?php
+	}
+
+	/**
+	 * Render the Name column header with a first/last alphabetization mode
+	 * toggle (NTE-195).
+	 *
+	 * The main label sorts by whichever mode is active (default: first name /
+	 * raw string); the "First | Last" links switch mode, always starting at
+	 * ascending so switching modes never lands on a surprise direction.
+	 *
+	 * @param string $orderby Current sort column key.
+	 * @param string $order   Current sort direction (ASC|DESC).
+	 * @return void
+	 */
+	private function render_name_header( string $orderby, string $order ): void {
+		$is_last_mode = 'name_last' === $orderby;
+		$active_key   = $is_last_mode ? 'name_last' : 'name';
+		$is_sorted    = in_array( $orderby, array( 'name', 'name_last' ), true );
+		$new_order    = $is_sorted && 'ASC' === $order ? 'desc' : 'asc';
+		$sort_class   = $is_sorted ? 'sorted ' . strtolower( $order ) : 'sortable desc';
+		$class        = trim( 'manage-column column-name column-primary ' . $sort_class );
+
+		$toggle_url = add_query_arg(
+			array(
+				'orderby' => $active_key,
+				'order'   => $new_order,
+			)
+		);
+		$first_url  = add_query_arg(
+			array(
+				'orderby' => 'name',
+				'order'   => 'asc',
+			)
+		);
+		$last_url   = add_query_arg(
+			array(
+				'orderby' => 'name_last',
+				'order'   => 'asc',
+			)
+		);
+		?>
+		<th scope="col" class="<?php echo esc_attr( $class ); ?>">
+			<a href="<?php echo esc_url( $toggle_url ); ?>">
+				<span><?php esc_html_e( 'Name', 'nettertech-events' ); ?></span>
+				<span class="sorting-indicators">
+					<span class="sorting-indicator asc" aria-hidden="true"></span>
+					<span class="sorting-indicator desc" aria-hidden="true"></span>
+				</span>
+			</a>
+			<span class="nte-name-sort-mode">
+				<a href="<?php echo esc_url( $first_url ); ?>"
+					<?php echo $is_last_mode ? '' : 'aria-current="true"'; ?>
+					title="<?php esc_attr_e( 'Alphabetize by first name', 'nettertech-events' ); ?>">
+					<?php esc_html_e( 'First', 'nettertech-events' ); ?></a>
+				<span aria-hidden="true">|</span>
+				<a href="<?php echo esc_url( $last_url ); ?>"
+					<?php echo $is_last_mode ? 'aria-current="true"' : ''; ?>
+					title="<?php esc_attr_e( 'Alphabetize by last name', 'nettertech-events' ); ?>">
+					<?php esc_html_e( 'Last', 'nettertech-events' ); ?></a>
+			</span>
+		</th>
 		<?php
 	}
 

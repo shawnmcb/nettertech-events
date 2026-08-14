@@ -61,7 +61,7 @@ See [ADR-005](architecture/ADR-005-capacity-model.md) for the capacity model.
 
 ## Integration terms
 
-**RSVP** — A free registration (no payment). Submitted via the `[nte_rsvp]` shortcode. Produces an attendee record without touching WooCommerce.
+**RSVP** — A free registration (no payment). Submitted via the `[nettertech_events_rsvp]` shortcode. Produces an attendee record without touching WooCommerce.
 
 **WooCommerce ticketing** — Paid-ticket flow where ticket types correspond to WooCommerce products/variations. Cart, checkout, and orders are owned by WooCommerce; ticket generation happens on order completion. See [WC-INTEGRATION-BOUNDARY.md](WC-INTEGRATION-BOUNDARY.md).
 
@@ -71,7 +71,7 @@ See [ADR-005](architecture/ADR-005-capacity-model.md) for the capacity model.
 
 **Block** — A Gutenberg block. This plugin ships three: `nettertech-events/calendar`, `nettertech-events/carousel`, `nettertech-events/event-grid`.
 
-**Shortcode** — A WordPress text-macro. The plugin registers `[nte_calendar]`, `[nte_list]` (alias `[nte_grid]`, `[nettertech_events]`), `[nte_carousel]`, `[nte_rsvp]`, `[nte_regulars]`.
+**Shortcode** — A WordPress text-macro. The plugin registers `[nettertech_events_calendar]`, `[nettertech_events_list]` (alias `[nettertech_events_grid]`, `[nettertech_events]`), `[nettertech_events_carousel]`, `[nettertech_events_rsvp]`, `[nettertech_events_regulars]`.
 
 **Beaver Builder module** — A page-builder module. The plugin auto-registers modules when Beaver Builder is active.
 

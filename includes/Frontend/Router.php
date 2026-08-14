@@ -87,11 +87,22 @@ class Router {
 	private ?int $past_year = null;
 
 	/**
-	 * Whether we're viewing a series page (recurring event, no datetime).
+	 * Whether we're viewing a series page (multi-date event, no datetime).
 	 *
 	 * @var bool
 	 */
 	private bool $is_series_page = false;
+
+	/**
+	 * Occurrence status that counts toward "this event has several dates".
+	 *
+	 * Mirrors the default status filter in OccurrenceQueryRepository::for_event_grouped(),
+	 * which is what the series page lists — so an event never routes to a grid that
+	 * would then render fewer than two cards.
+	 *
+	 * @var string
+	 */
+	private const SERIES_OCCURRENCE_STATUS = 'scheduled';
 
 	/**
 	 * Ticket router for check-in and ticket scan pages (provided by Pro).
@@ -494,7 +505,6 @@ class Router {
 		$this->current_event = $event;
 
 		$occurrence_datetime = get_query_var( 'nettertech_events_occurrence_datetime' );
-		$is_ticketed         = $event->is_recurring() && $this->event_repo->has_ticket_types( $event->id );
 
 		// Handle occurrence-specific URLs for both ticketed and unticketed events.
 		// Unticketed recurring events previously 301-redirected to the series page,
@@ -504,8 +514,15 @@ class Router {
 			return $this->load_occurrence_template( $event, $occurrence_datetime, $template );
 		}
 
-		// For ticketed recurring events, show series page with grid layout.
-		if ( $is_ticketed ) {
+		// Any event with more than one date gets the series page with grid layout.
+		// The predicate is the date count, not event_type or ticketing, because the
+		// question the router is actually asking is "are there several dates worth
+		// listing" (NTE-197, NTE-199). event_type is set solely from the Event Type
+		// dropdown, so a 'single' event carrying manually added dates is recurring in
+		// every sense a visitor cares about while is_recurring() reports false.
+		// Counting 'scheduled' matches what the series page itself lists, so routing
+		// and rendering cannot disagree about whether a grid is worth showing.
+		if ( $this->occurrence_repo->count_for_event( $event->id, self::SERIES_OCCURRENCE_STATUS ) > 1 ) {
 			return $this->load_series_template( $event, $template );
 		}
 

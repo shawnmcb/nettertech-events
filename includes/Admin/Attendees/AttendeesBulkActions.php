@@ -81,20 +81,37 @@ class AttendeesBulkActions {
 		}
 
 		$action = isset( $_POST['bulk_action'] ) ? sanitize_text_field( wp_unslash( $_POST['bulk_action'] ) ) : '';
+
+		// The Export All button posts its own key instead of riding
+		// bulk_action: WordPress 7.0's common.js blocks any .bulkactions form
+		// submit whose submitter is named bulk_action when core's own select
+		// isn't present ("Please select a bulk action to perform."). The
+		// bulk_action=export_all branch below stays for back-compat.
+		if ( isset( $_POST['nettertech_events_export_all'] ) ) {
+			$action = 'export_all';
+		}
+
 		if ( empty( $action ) ) {
 			return;
 		}
+
+		// Sort mode selected on the list, threaded through so CSV exports come
+		// out in the order the operator sees (NTE-195). The exporter validates
+		// both values against AttendeesPage::SORTABLE_COLUMNS before use.
+		$orderby = isset( $_POST['filter_orderby'] ) ? sanitize_text_field( wp_unslash( $_POST['filter_orderby'] ) ) : '';
+		$order   = isset( $_POST['filter_order'] ) ? sanitize_text_field( wp_unslash( $_POST['filter_order'] ) ) : '';
 
 		// Handle export_all action (doesn't require selected IDs).
 		// Filter values are extracted here (post nonce-verify) and passed in so
 		// the helper does not need to read $_POST itself.
 		if ( 'export_all' === $action ) {
 			$occurrence_id      = isset( $_POST['filter_occurrence_id'] ) ? absint( $_POST['filter_occurrence_id'] ) : 0;
+			$event_id           = isset( $_POST['filter_event_id'] ) ? absint( $_POST['filter_event_id'] ) : 0;
 			$search             = isset( $_POST['filter_search'] ) ? sanitize_text_field( wp_unslash( $_POST['filter_search'] ) ) : '';
 			$status_filter      = isset( $_POST['filter_status'] ) ? sanitize_text_field( wp_unslash( $_POST['filter_status'] ) ) : '';
 			$placeholder_filter = isset( $_POST['filter_placeholder'] ) ? sanitize_text_field( wp_unslash( $_POST['filter_placeholder'] ) ) : '';
 
-			$this->handle_export_all( $occurrence_id, $search, $status_filter, $placeholder_filter );
+			$this->handle_export_all( $occurrence_id, $event_id, $search, $status_filter, $placeholder_filter, $orderby, $order );
 			return;
 		}
 
@@ -122,7 +139,7 @@ class AttendeesBulkActions {
 		if ( 'delete' === $action ) {
 			$this->handle_bulk_delete( $attendee_ids );
 		} elseif ( 'export' === $action ) {
-			$this->exporter->export_selected( $attendee_ids );
+			$this->exporter->export_selected( $attendee_ids, $orderby, $order );
 		} elseif ( 'email' === $action ) {
 			$this->handle_bulk_email( $attendee_ids );
 		}
@@ -314,12 +331,15 @@ class AttendeesBulkActions {
 	 * and passed in as parameters, so this method performs no superglobal reads.
 	 *
 	 * @param int    $occurrence_id      Filter: occurrence ID.
+	 * @param int    $event_id           Filter: event ID (event-scoped Purchases view).
 	 * @param string $search             Filter: search string.
 	 * @param string $status_filter      Filter: status.
 	 * @param string $placeholder_filter Filter: placeholder flag.
+	 * @param string $orderby            Sort key selected on the list.
+	 * @param string $order              Sort direction selected on the list.
 	 * @return void
 	 */
-	private function handle_export_all( int $occurrence_id, string $search, string $status_filter, string $placeholder_filter ): void {
-		$this->exporter->export_all_filtered( $occurrence_id, $search, $status_filter, $placeholder_filter );
+	private function handle_export_all( int $occurrence_id, int $event_id, string $search, string $status_filter, string $placeholder_filter, string $orderby = '', string $order = '' ): void {
+		$this->exporter->export_all_filtered( $occurrence_id, $event_id, $search, $status_filter, $placeholder_filter, $orderby, $order );
 	}
 }

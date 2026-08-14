@@ -20,6 +20,8 @@ use NetterTechEvents\Contracts\EventRepositoryInterface;
 use NetterTechEvents\Contracts\OccurrenceRepositoryInterface;
 use NetterTechEvents\Contracts\TicketTypeRepositoryInterface;
 
+use NetterTechEvents\Contracts\CapacityServiceInterface;
+use NetterTechEvents\Frontend\OccurrenceAvailabilityPresenter;
 use NetterTechEvents\Frontend\Shortcodes\CalendarShortcode;
 use NetterTechEvents\Frontend\Shortcodes\CarouselShortcode;
 use NetterTechEvents\Frontend\Shortcodes\EventListShortcode;
@@ -53,13 +55,22 @@ class FrontendServiceProvider implements ServiceProviderInterface {
 		);
 
 		$container->singleton(
+			OccurrenceAvailabilityPresenter::class,
+			fn( Container $c ) => new OccurrenceAvailabilityPresenter(
+				$c->get( CapacityServiceInterface::class ),
+				$c->get( TicketTypeRepositoryInterface::class )
+			)
+		);
+
+		$container->singleton(
 			EventListShortcode::class,
 			fn( Container $c ) => new EventListShortcode(
 				$c->get( OccurrenceRepositoryInterface::class ),
 				Templates::get_instance(),
 				$c->get( \NetterTechEvents\Contracts\CategoryRepositoryInterface::class ),
 				$c->get( \NetterTechEvents\Contracts\TagRepositoryInterface::class ),
-				$c->get( TicketTypeRepositoryInterface::class )
+				$c->get( TicketTypeRepositoryInterface::class ),
+				$c->get( OccurrenceAvailabilityPresenter::class )
 			)
 		);
 
@@ -79,7 +90,8 @@ class FrontendServiceProvider implements ServiceProviderInterface {
 				$c->get( OccurrenceRepositoryInterface::class ),
 				Templates::get_instance(),
 				$c->get( \NetterTechEvents\Contracts\TagRepositoryInterface::class ),
-				$c->get( TicketTypeRepositoryInterface::class )
+				$c->get( TicketTypeRepositoryInterface::class ),
+				$c->get( OccurrenceAvailabilityPresenter::class )
 			)
 		);
 

@@ -178,9 +178,9 @@ These two filter names are declared in the Core `Hooks` class as part of the cro
 | Filter | Location | Purpose | Consumers |
 |--------|----------|---------|-----------|
 | `nettertech_events_seating_ticket_capacity_type` | `SeatingCartHandler`, `SeatingProductIntegration` | Resolve capacity type for a ticket type | Seating itself (`CapacityTypeProvider::resolve_capacity_type`) |
-| `nettertech_events_seating_resolve_space` | `SeatingProductIntegration` | Resolve space ID from occurrence | Seating itself (`SpaceResolver::resolve_space`, priority 10); Base (`OccurrenceSpaceResolver::resolve_space`, priority 5) |
-| `nettertech_events_seating_resolve_occurrence` | `SeatingProductIntegration` | Resolve occurrence ID from ticket type | None currently (Base subscribes to `..._seating_resolve_space`, not to this filter) |
-| `nettertech_events_seating_occurrence_space_id` | `SeatAvailabilityService` | Resolve space ID for availability | Seating itself (`SpaceResolver::resolve_space`) |
+| `nettertech_events_seating_resolve_space` | `SeatingProductIntegration` | Resolve space ID from occurrence | Base (`OccurrenceSpaceResolver::resolve_space`, priority 5) — authoritative, via event's assigned space; Seating fallback (`SpaceResolver::resolve_space`, priority 10) — no longer guesses, only fires `..._ambiguous_space` when unresolvable |
+| `nettertech_events_seating_resolve_occurrence` | `SeatingProductIntegration` | Resolve occurrence ID from ticket type | Base (`TicketTypeOccurrenceResolver::resolve_occurrence`, priority 5) — reads the ticket type's `occurrence_id` |
+| `nettertech_events_seating_occurrence_space_id` | `SeatAvailabilityService` | Resolve space ID for availability | Base (`OccurrenceSpaceResolver::resolve_space`, priority 5); Seating fallback (`SpaceResolver::resolve_space`, priority 10) |
 | `nettertech_events_seating_order_ticket_ids` | `SeatAssignmentService` | Get ticket IDs for order cancellation | Seating itself (`SeatingOrderHandler::get_order_ticket_ids`) |
 | `nettertech_events_seating_cart_hold_duration` | `SeatHoldService`, `SeatingProductIntegration` | Configure cart hold TTL (default 900s) | Any |
 | `nettertech_events_seating_checkout_hold_duration` | `SeatHoldService` | Configure checkout hold TTL (default 1800s) | Any |

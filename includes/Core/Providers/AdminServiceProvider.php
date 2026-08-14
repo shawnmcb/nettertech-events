@@ -103,7 +103,8 @@ class AdminServiceProvider implements ServiceProviderInterface {
 				$c->get( \NetterTechEvents\Services\RecurrenceRuleBuilder::class ),
 				$c->get( \NetterTechEvents\Admin\Metaboxes\AttendeeFieldsSaveHandler::class ),
 				$c->get( \NetterTechEvents\Services\CheckInEmailSaver::class ),
-				$c->get( OrganizerRepositoryInterface::class )
+				$c->get( OrganizerRepositoryInterface::class ),
+				$c->get( TagRepositoryInterface::class )
 			)
 		);
 

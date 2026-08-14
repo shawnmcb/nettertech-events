@@ -303,3 +303,42 @@
 	vertical-align: middle;
 	margin-right: 4px;
 }
+
+/* Sale window (NTE-190): grouped date + time boundary entry. */
+.nte-sale-window {
+	margin: 0;
+	padding: 0;
+	border: 0;
+	min-width: 0;
+}
+
+.nte-sale-window legend {
+	font-weight: 600;
+	margin-bottom: 4px;
+}
+
+.nte-sale-window__part {
+	display: inline-block;
+	margin-right: 6px;
+	vertical-align: top;
+}
+
+.nte-sale-window__part input[type="date"] {
+	min-height: 30px;
+}
+
+.nte-sale-window__preset {
+	min-height: 24px;
+	padding: 0;
+	vertical-align: top;
+}
+
+.nte-sale-window__preset:focus-visible {
+	outline: 2px solid var(--wp-admin-theme-color, #2271b1);
+	outline-offset: 1px;
+}
+
+.nte-sale-window .nte-field-hint {
+	display: block;
+	margin-top: 2px;
+}

@@ -230,15 +230,20 @@ class RecurrenceService {
 		$result['deleted']   = $deletion_result['deleted'];
 		$result['protected'] = $deletion_result['protected'];
 
-		// Calculate the generation window.
-		$window = $this->calculate_generation_window( $start_date, $end_date );
-
-		// Generate new occurrences from the window start forward.
+		// Expand from the ORIGINAL anchor and collect only future dates.
+		// Relocating the anchor to "today" was NTE-200: a BYDAY-less rule
+		// derives its weekday from DTSTART (moving it moved the whole series
+		// to a different day), and COUNT restarted from the new anchor. The
+		// original anchor also carries the original time-of-day, so the
+		// "11:18 pm carousel" wall-clock bug the old window logic guarded
+		// against cannot recur.
 		$occurrences = $this->generator->generate(
 			$event,
-			$window['start'],
-			$window['end'],
-			$rule
+			$start_date,
+			$end_date,
+			$rule,
+			null,
+			new \DateTimeImmutable()
 		);
 
 		$result['generated'] = count( $occurrences );
@@ -260,7 +265,14 @@ class RecurrenceService {
 	 * exclusions), and in-place overrides (NTE-077). The generator produces a
 	 * fresh scheduled occurrence for every slot in the rule, so without this
 	 * filter a survivor's slot would be re-created as a duplicate row, defeating
-	 * the exclusion/override. Slot identity is the start datetime.
+	 * the exclusion/override. Slot identity is datetime only: a survivor holds
+	 * its current start_datetime and, for a moved override, the origin slot it
+	 * was generated at (origin_start_datetime), so the generator neither
+	 * duplicates the moved row nor resurrects its origin slot (NTE-177 /
+	 * FR-011). Sequence numbers are deliberately not consulted: fresh rows are
+	 * renumbered from the current anchor, so matching them against survivors'
+	 * historical numbers silently discarded legitimate new occurrences — the
+	 * NTE-182 first-occurrence loss.
 	 *
 	 * @param int               $event_id    Event ID.
 	 * @param array<Occurrence> $occurrences Freshly generated occurrences.
@@ -276,6 +288,9 @@ class RecurrenceService {
 		$taken_slots = array();
 		foreach ( $survivors as $survivor ) {
 			$taken_slots[ $survivor->start_datetime ] = true;
+			if ( null !== $survivor->origin_start_datetime && '' !== $survivor->origin_start_datetime ) {
+				$taken_slots[ $survivor->origin_start_datetime ] = true;
+			}
 		}
 
 		return array_values(
@@ -284,6 +299,22 @@ class RecurrenceService {
 				static fn( Occurrence $occurrence ) => ! isset( $taken_slots[ $occurrence->start_datetime ] )
 			)
 		);
+	}
+
+	/**
+	 * Whether an occurrence has operator-configured (non-template-derived) tiers bound to it.
+	 *
+	 * @param int $occurrence_id Occurrence ID.
+	 * @return bool
+	 */
+	private function has_direct_ticket_types( int $occurrence_id ): bool {
+		foreach ( $this->ticket_type_repo->for_occurrence( $occurrence_id, array( 'status' => null ) ) as $ticket_type ) {
+			if ( null === $ticket_type->template_id && null !== $ticket_type->occurrence_id ) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	/**
@@ -339,6 +370,16 @@ class RecurrenceService {
 				continue;
 			}
 
+			// Operator-configured tiers bind to the occurrence row by id (NTE-177):
+			// deleting the row would orphan the tier and its commerce product —
+			// they point at an id that no longer exists, so status sync and stock
+			// updates silently stop reaching them. Template-derived tiers are
+			// excluded: regeneration re-applies templates to the new rows.
+			if ( $this->has_direct_ticket_types( $occurrence->id ) ) {
+				++$protected;
+				continue;
+			}
+
 			$this->occurrence_repo->delete( $occurrence->id );
 			++$deleted;
 		}
@@ -346,49 +387,6 @@ class RecurrenceService {
 		return array(
 			'deleted'   => $deleted,
 			'protected' => $protected,
-		);
-	}
-
-	/**
-	 * Calculate the generation window for new occurrences.
-	 *
-	 * If the original start date is in the past, generation begins from
-	 * the current time instead. The end date is adjusted to maintain
-	 * the original event duration.
-	 *
-	 * @param \DateTimeInterface $start_date Original start date/time.
-	 * @param \DateTimeInterface $end_date   Original end date/time.
-	 * @return array{start: \DateTimeInterface, end: \DateTimeImmutable}
-	 */
-	private function calculate_generation_window(
-		\DateTimeInterface $start_date,
-		\DateTimeInterface $end_date
-	): array {
-		$now = new \DateTimeImmutable();
-
-		if ( $start_date > $now ) {
-			$gen_start = $start_date;
-		} else {
-			// Original start_date is in the past. Move the window's date forward
-			// to "today" so we generate only future occurrences, but preserve
-			// the original time-of-day — the generator uses this as the time
-			// anchor for every produced occurrence. Substituting $now directly
-			// stamped current wall-clock time onto every future occurrence
-			// (causing the "11:18 pm" carousel bug on migrated recurring events).
-			$gen_start = \DateTimeImmutable::createFromInterface( $now )
-				->setTime(
-					(int) $start_date->format( 'H' ),
-					(int) $start_date->format( 'i' ),
-					(int) $start_date->format( 's' )
-				);
-		}
-
-		$duration = $start_date->diff( $end_date );
-		$gen_end  = \DateTimeImmutable::createFromInterface( $gen_start )->add( $duration );
-
-		return array(
-			'start' => $gen_start,
-			'end'   => $gen_end,
 		);
 	}
 
@@ -585,6 +583,12 @@ class RecurrenceService {
 	/**
 	 * Create or update a single occurrence for a non-recurring event.
 	 *
+	 * Updates the event's *primary* occurrence — the earliest scheduled, non-override date, the same
+	 * rule EventSaveHandler::process_buffered_tickets uses. Selecting the earliest row of any kind
+	 * (the old behavior) clobbered a hand-picked override date whenever it sorted before the primary
+	 * one, moving the operator's added date onto the main Date & Time slot (NTE-185). When no
+	 * non-override occurrence exists, a new one is created rather than overwriting an override.
+	 *
 	 * @param Event              $event      The event.
 	 * @param \DateTimeInterface $start_date Start date/time.
 	 * @param \DateTimeInterface $end_date   End date/time.
@@ -602,12 +606,26 @@ class RecurrenceService {
 			return null;
 		}
 
-		// Check for existing occurrence to update (preserves ID for ticket types).
-		$existing = $this->occurrence_repo->for_event( $event_id, array( 'limit' => 1 ) );
+		// Find the primary occurrence to update (preserves ID for ticket types): the earliest
+		// scheduled, non-override date. Hand-picked override dates are never the update target.
+		$existing = $this->occurrence_repo->for_event(
+			$event_id,
+			array(
+				'status'  => 'scheduled',
+				'orderby' => 'start_datetime',
+				'order'   => 'ASC',
+			)
+		);
 
-		if ( ! empty( $existing ) ) {
-			$occurrence = $existing[0];
-		} else {
+		$occurrence = null;
+		foreach ( $existing as $candidate ) {
+			if ( ! $candidate->is_override ) {
+				$occurrence = $candidate;
+				break;
+			}
+		}
+
+		if ( null === $occurrence ) {
 			$occurrence           = new Occurrence();
 			$occurrence->event_id = $event_id;
 			$occurrence->status   = 'scheduled';
@@ -837,10 +855,34 @@ class RecurrenceService {
 				continue;
 			}
 
+			// Operator-configured tiers bind to the occurrence row by id (NTE-177):
+			// deleting the row would orphan the tier and its commerce product —
+			// they point at an id that no longer exists, so status sync and stock
+			// updates silently stop reaching them. Template-derived tiers are
+			// excluded: regeneration re-applies templates to the new rows.
+			if ( $this->has_direct_ticket_types( $occurrence->id ) ) {
+				++$protected;
+				continue;
+			}
+
 			$this->occurrence_repo->delete( $occurrence->id );
 		}
 
 		return $protected;
+	}
+
+	/**
+	 * Return the event's active ticket templates.
+	 *
+	 * Exposes the same set apply_templates_to_occurrences() copies from, so a caller can name the
+	 * tiers a template application just created (operator ruling 2026-07-20, spec-001 invention
+	 * audit — R1: report what was minted, no silent product creation).
+	 *
+	 * @param int $event_id Event ID.
+	 * @return array<\NetterTechEvents\Models\TicketType> Active templates (may be empty).
+	 */
+	public function get_active_templates( int $event_id ): array {
+		return $this->ticket_type_repo->get_templates( $event_id );
 	}
 
 	/**

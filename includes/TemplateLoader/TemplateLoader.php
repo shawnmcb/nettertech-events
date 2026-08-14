@@ -58,7 +58,7 @@ final class TemplateLoader implements TemplateLoaderInterface {
 	 */
 	private const EXPECTED_TEMPLATE_VARS = array(
 		// Template parts.
-		'parts/event-card.php'               => array( 'occurrence', 'event', 'show_image', 'show_date', 'show_time', 'show_venue', 'show_excerpt', 'show_price', 'image_ratio', 'heading_tag', 'heading_date', 'prefetched_tags', 'prefetched_ticket_types' ),
+		'parts/event-card.php'               => array( 'occurrence', 'event', 'show_image', 'show_date', 'show_time', 'show_venue', 'show_excerpt', 'show_price', 'image_ratio', 'heading_tag', 'heading_date', 'max_tags', 'prefetched_tags', 'prefetched_ticket_types', 'prefetched_availability' ),
 		'parts/occurrence-row.php'           => array( 'occurrence', 'event', 'show_actions' ),
 		'parts/pagination.php'               => array( 'current_page', 'total_pages', 'instance_id', 'show_info', 'base_url' ),
 		'parts/more-dates.php'               => array( 'occurrence', 'event', 'siblings', 'sibling_count', 'show_view_all' ),

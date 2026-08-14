@@ -257,9 +257,8 @@ class EventQuery {
 	 * is single XOR recurring, and independently may or may not have ticket types.
 	 * This applies a single set-level EXISTS subquery (no per-row lookup / N+1).
 	 *
-	 * The definition mirrors EventQueryRepository::has_ticket_types() so the
-	 * list-table filter and that per-event helper agree. A ticket type links to an
-	 * event in EITHER of two ways, both of which must count:
+	 * A ticket type links to an event in EITHER of two ways, both of which must
+	 * count:
 	 *   - event-scoped (scope='event'): tt.event_id = event, tt.occurrence_id NULL
 	 *   - occurrence-scoped: tt.occurrence_id -> o.id -> o.event_id = event
 	 * Only active ticket types count. (Historically this matched the occurrence

@@ -91,7 +91,7 @@ All interactive elements are fully keyboard accessible:
 
 ## Plugin Components
 
-### Events List (`[nte_list]`)
+### Events List (`[nettertech_events_list]`)
 
 | Feature | Implementation |
 |---------|----------------|

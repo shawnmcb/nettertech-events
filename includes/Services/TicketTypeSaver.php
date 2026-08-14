@@ -11,9 +11,13 @@ namespace NetterTechEvents\Services;
 
 defined( 'ABSPATH' ) || exit;
 
+use NetterTechEvents\Contracts\EventRepositoryInterface;
 use NetterTechEvents\Contracts\TicketTypeRepositoryInterface;
+use NetterTechEvents\Core\ServiceRegistry;
 use NetterTechEvents\Enums\CapacityType;
+use NetterTechEvents\Enums\EventStatus;
 use NetterTechEvents\Enums\TicketTypeScope;
+use NetterTechEvents\Exceptions\ValidationException;
 use NetterTechEvents\Models\TicketType;
 use NetterTechEvents\Utilities\DebugLogger;
 
@@ -41,17 +45,56 @@ class TicketTypeSaver {
 	private ?\NetterTechEvents\Integrations\WooCommerce\ProductManager $product_manager;
 
 	/**
+	 * Event repository for status derivation (null falls back to ServiceRegistry).
+	 *
+	 * @var EventRepositoryInterface|null
+	 */
+	private ?EventRepositoryInterface $event_repo;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param TicketTypeRepositoryInterface                                  $ticket_type_repo Ticket type repository.
 	 * @param \NetterTechEvents\Integrations\WooCommerce\ProductManager|null $product_manager  Product manager (null when WC inactive).
+	 * @param EventRepositoryInterface|null                                  $event_repo       Event repository for status derivation.
 	 */
 	public function __construct(
 		TicketTypeRepositoryInterface $ticket_type_repo,
-		?\NetterTechEvents\Integrations\WooCommerce\ProductManager $product_manager = null
+		?\NetterTechEvents\Integrations\WooCommerce\ProductManager $product_manager = null,
+		?EventRepositoryInterface $event_repo = null
 	) {
 		$this->ticket_type_repo = $ticket_type_repo;
 		$this->product_manager  = $product_manager;
+		$this->event_repo       = $event_repo;
+	}
+
+	/**
+	 * Derive a ticket's status from its parent event's status.
+	 *
+	 * A ticket must never be sellable before its event is (NTE-177): a published
+	 * event yields `active` tickets (publishable products), any other event state
+	 * yields `draft`. Without a resolvable event (missing event_id, or a lookup
+	 * that returns nothing) the status fails CLOSED to `draft` — a ticket whose
+	 * event cannot be confirmed published must not go on sale (NTE-188, FR-005
+	 * safe direction; SPEC.md:609). The prior fail-open `active` default could
+	 * publish a tier for an event that was never resolvable.
+	 *
+	 * @param int $event_id Parent event ID (0 when unknown).
+	 * @return string 'active' or 'draft'.
+	 */
+	private function derive_ticket_status( int $event_id ): string {
+		if ( $event_id <= 0 ) {
+			return 'draft';
+		}
+
+		$repo  = $this->event_repo ?? ServiceRegistry::event_repository();
+		$event = $repo->find( $event_id );
+
+		if ( null === $event ) {
+			return 'draft';
+		}
+
+		return EventStatus::PUBLISHED === $event->status ? 'active' : 'draft';
 	}
 
 	/**
@@ -66,15 +109,23 @@ class TicketTypeSaver {
 	 * @return void
 	 */
 	public function save_for_occurrence( int $occurrence_id, array $post_data, int $event_id = 0 ): void {
-		// Check if ticketing is enabled.
-		if ( empty( $post_data['ticketing_enabled'] ) ) {
-			$this->ticket_type_repo->delete_for_occurrence( $occurrence_id );
+		// The ticket section for this occurrence must actually have been on the page. Its absence
+		// means the rows were never rendered — not that the operator cleared them — so deleting
+		// here would wipe tiers on any save where the section did not render (NTE-186, mirroring the
+		// save_for_event guard from NTE-178). Only a rendered, posted-empty section deletes.
+		if ( empty( $post_data['nte_tickets_metabox_rendered'] ) ) {
 			return;
 		}
 
-		// Verify occurrence_id matches form data.
+		// Verify the form vouches for THIS occurrence before touching its tiers.
 		$form_occurrence_id = absint( $post_data['occurrence_id_for_tickets'] ?? 0 );
 		if ( $form_occurrence_id !== $occurrence_id ) {
+			return;
+		}
+
+		// Section rendered for this occurrence and posted disabled: the operator turned ticketing off.
+		if ( empty( $post_data['ticketing_enabled'] ) ) {
+			$this->ticket_type_repo->delete_for_occurrence( $occurrence_id );
 			return;
 		}
 
@@ -98,18 +149,48 @@ class TicketTypeSaver {
 			return;
 		}
 
+		// The buffered first-save path refuses to touch tickets while ticketing
+		// is off (EventSaveHandler::process_buffered_tickets); this path deleted
+		// them anyway (NTE-178). The tabbed form always posts a hidden
+		// ticketing_enabled=1, so its absence means the ticket rows were not on
+		// the page — not that the operator removed anything.
+		if ( empty( $post_data['ticketing_enabled'] ) ) {
+			return;
+		}
+
 		$ticket_types_data = $post_data['ticket_types'] ?? array();
 		if ( ! is_array( $ticket_types_data ) ) {
 			return;
 		}
 
-		$admin_skus = $this->process_event_ticket_scope( $event_id, $ticket_types_data, TicketTypeScope::EVENT );
-		$this->process_event_ticket_scope( $event_id, $ticket_types_data, TicketTypeScope::TEMPLATE );
+		// nte_tickets_metabox_rendered is form-level: it proves the metabox was
+		// on the page, not that a given scope's rows were. A scope whose section
+		// never rendered — Templates tab absent for the current event type, rows
+		// withheld via nettertech_events_admin_ticket_rows — posts nothing, and
+		// running its pass would read that silence as "delete every tier"
+		// (NTE-178). Only scopes the form vouches for are processed at all.
+		$rendered_scopes = $post_data['ticket_types_rendered'] ?? array();
+		if ( ! is_array( $rendered_scopes ) ) {
+			$rendered_scopes = array();
+		}
+
+		$admin_skus      = array();
+		$processed_scope = false;
+
+		if ( ! empty( $rendered_scopes[ TicketTypeScope::EVENT->value ] ) ) {
+			$admin_skus      = $this->process_event_ticket_scope( $event_id, $ticket_types_data, TicketTypeScope::EVENT );
+			$processed_scope = true;
+		}
+
+		if ( ! empty( $rendered_scopes[ TicketTypeScope::TEMPLATE->value ] ) ) {
+			$this->process_event_ticket_scope( $event_id, $ticket_types_data, TicketTypeScope::TEMPLATE );
+			$processed_scope = true;
+		}
 
 		// A pass that cannot be bought is a tab that lies (NTE-156): every saved
 		// event-scoped tier gets its WooCommerce product, exactly as occurrence
 		// tiers do in process_ticket_types().
-		if ( null !== $this->product_manager ) {
+		if ( $processed_scope && null !== $this->product_manager ) {
 			try {
 				$this->product_manager->create_products_for_event( $event_id, $admin_skus );
 			} catch ( \RuntimeException $e ) {
@@ -304,7 +385,9 @@ class TicketTypeSaver {
 		$ticket_type->capacity      = ! empty( $data['capacity'] ) ? absint( $data['capacity'] ) : null;
 		$ticket_type->min_per_order = absint( $data['min_per_order'] ?? $default_min );
 		$ticket_type->max_per_order = absint( $data['max_per_order'] ?? $default_max );
-		$ticket_type->status        = 'active';
+		// A ticket is only sellable once its event is public (NTE-177): status
+		// follows the event's, so a draft event's tickets stay draft/non-purchasable.
+		$ticket_type->status = $this->derive_ticket_status( $event_id );
 
 		// Validate capacity_type.
 		if ( ! in_array( $ticket_type->capacity_type, CapacityType::values(), true ) ) {
@@ -316,11 +399,13 @@ class TicketTypeSaver {
 			$ticket_type->id = absint( $data['id'] );
 		}
 
-		if ( ! empty( $data['sale_start'] ) ) {
-			$ticket_type->sale_start = sanitize_text_field( $data['sale_start'] );
+		$sale_start = SaleWindowInput::compose( $data, 'sale_start', SaleWindowInput::DEFAULT_START_TIME );
+		if ( '' !== $sale_start ) {
+			$ticket_type->sale_start = $sale_start;
 		}
-		if ( ! empty( $data['sale_end'] ) ) {
-			$ticket_type->sale_end = sanitize_text_field( $data['sale_end'] );
+		$sale_end = SaleWindowInput::compose( $data, 'sale_end', SaleWindowInput::DEFAULT_END_TIME );
+		if ( '' !== $sale_end ) {
+			$ticket_type->sale_end = $sale_end;
 		}
 
 		// An edit posts back the fields the operator can see; the row's stateful
@@ -346,6 +431,7 @@ class TicketTypeSaver {
 	 * @param array<string,mixed> $data     Form data for one ticket type.
 	 * @param TicketTypeScope     $scope    Event-level scope.
 	 * @return TicketType Built ticket type model.
+	 * @throws ValidationException When an occurrence-only capacity type (SHARED/SEATED) is chosen for an event-level tier (R7).
 	 */
 	private function build_event_ticket_type( int $event_id, array $data, TicketTypeScope $scope ): TicketType {
 		$ticket_dto  = \NetterTechEvents\Core\NetterTechEventsSettings::from_option();
@@ -363,23 +449,42 @@ class TicketTypeSaver {
 		$ticket_type->capacity      = ! empty( $data['capacity'] ) ? absint( $data['capacity'] ) : null;
 		$ticket_type->min_per_order = absint( $data['min_per_order'] ?? $default_min );
 		$ticket_type->max_per_order = absint( $data['max_per_order'] ?? $default_max );
-		$ticket_type->status        = 'active';
+		// Status follows the parent event's (NTE-177); a draft event's passes
+		// stay draft/non-purchasable until it publishes.
+		$ticket_type->status = $this->derive_ticket_status( $event_id );
 
 		if ( ! in_array( $ticket_type->capacity_type, CapacityType::values(), true ) ) {
 			$ticket_type->capacity_type = 'fixed';
 		}
-		if ( CapacityType::SHARED->value === $ticket_type->capacity_type ) {
-			$ticket_type->capacity_type = 'fixed';
+
+		// SHARED/SEATED are occurrence-level concepts: an event-level tier (series pass or
+		// template) carries its own allotment and cannot borrow a single date's house. Silently
+		// coercing the operator's choice to fixed hid a real conflict; surface it as a validation
+		// error instead (operator ruling 2026-07-20, spec-001 invention audit — R7).
+		$chosen_type = CapacityType::tryFrom( $ticket_type->capacity_type );
+		if ( null !== $chosen_type && $chosen_type->requires_occurrence_scope() ) {
+			throw ValidationException::fromErrors(
+				array(
+					sprintf(
+						/* translators: 1: capacity type label (e.g. Shared); 2: ticket tier name. */
+						esc_html__( '%1$s capacity cannot be used on the event-level tier "%2$s" — event tiers carry their own allotment. Choose Fixed or Unlimited.', 'nettertech-events' ),
+						esc_html( $chosen_type->label() ),
+						esc_html( $ticket_type->name )
+					),
+				)
+			);
 		}
 
 		if ( ! empty( $data['id'] ) ) {
 			$ticket_type->id = absint( $data['id'] );
 		}
-		if ( ! empty( $data['sale_start'] ) ) {
-			$ticket_type->sale_start = sanitize_text_field( $data['sale_start'] );
+		$sale_start = SaleWindowInput::compose( $data, 'sale_start', SaleWindowInput::DEFAULT_START_TIME );
+		if ( '' !== $sale_start ) {
+			$ticket_type->sale_start = $sale_start;
 		}
-		if ( ! empty( $data['sale_end'] ) ) {
-			$ticket_type->sale_end = sanitize_text_field( $data['sale_end'] );
+		$sale_end = SaleWindowInput::compose( $data, 'sale_end', SaleWindowInput::DEFAULT_END_TIME );
+		if ( '' !== $sale_end ) {
+			$ticket_type->sale_end = $sale_end;
 		}
 
 		// An edit posts back the fields the operator can see; the row's stateful

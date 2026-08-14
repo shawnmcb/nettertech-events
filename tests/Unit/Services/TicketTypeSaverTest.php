@@ -11,6 +11,10 @@ namespace NetterTechEvents\Tests\Unit\Services;
 
 use Brain\Monkey\Functions;
 use Mockery;
+use NetterTechEvents\Contracts\EventRepositoryInterface;
+use NetterTechEvents\Enums\EventStatus;
+use NetterTechEvents\Exceptions\ValidationException;
+use NetterTechEvents\Models\Event;
 use NetterTechEvents\Models\TicketType;
 use NetterTechEvents\Repositories\TicketTypeRepository;
 use NetterTechEvents\Services\TicketTypeSaver;
@@ -73,7 +77,12 @@ class TicketTypeSaverTest extends \NetterTechEventsTestCase {
 			->with( 123 )
 			->andReturn( 1 );
 
-		$post_data = array( 'ticketing_enabled' => '' );
+		// The ticket section rendered for THIS occurrence and posted disabled: a real "turn it off".
+		$post_data = array(
+			'nte_tickets_metabox_rendered' => '1',
+			'occurrence_id_for_tickets'    => 123,
+			'ticketing_enabled'            => '',
+		);
 
 		$this->saver->save_for_occurrence( 123, $post_data );
 
@@ -82,7 +91,7 @@ class TicketTypeSaverTest extends \NetterTechEventsTestCase {
 	}
 
 	/**
-	 * Test deletes ticket types when ticketing_enabled is missing.
+	 * Test deletes ticket types when ticketing_enabled is missing but the section rendered.
 	 *
 	 * @return void
 	 */
@@ -93,11 +102,58 @@ class TicketTypeSaverTest extends \NetterTechEventsTestCase {
 			->with( 456 )
 			->andReturn( 0 );
 
-		$post_data = array();
+		$post_data = array(
+			'nte_tickets_metabox_rendered' => '1',
+			'occurrence_id_for_tickets'    => 456,
+		);
 
 		$this->saver->save_for_occurrence( 456, $post_data );
 
 		// Mockery verifies the expectation was met.
+		$this->assertTrue( true );
+	}
+
+	/**
+	 * A save where the ticket section never rendered must NOT delete tiers (NTE-186).
+	 *
+	 * The prior code deleted for_occurrence whenever ticketing_enabled was empty, before checking
+	 * whether the ticket section was even on the page. Saving an occurrence from a form that omitted
+	 * the ticket metabox (no nte_tickets_metabox_rendered) silently wiped every tier. The guard now
+	 * mirrors save_for_event (NTE-178): absence of the rendered marker means "not on the page".
+	 *
+	 * @return void
+	 */
+	public function test_does_not_delete_when_ticket_section_not_rendered(): void {
+		$this->mock_repo->shouldNotReceive( 'delete_for_occurrence' );
+		$this->mock_repo->shouldNotReceive( 'for_occurrence' );
+		$this->mock_repo->shouldNotReceive( 'save' );
+
+		// No nte_tickets_metabox_rendered: the section was never on the page.
+		$post_data = array(
+			'occurrence_id_for_tickets' => 123,
+		);
+
+		$this->saver->save_for_occurrence( 123, $post_data );
+
+		$this->assertTrue( true );
+	}
+
+	/**
+	 * A rendered-but-disabled section for a DIFFERENT occurrence must not delete this one's tiers (NTE-186).
+	 *
+	 * @return void
+	 */
+	public function test_does_not_delete_when_disabled_form_is_for_other_occurrence(): void {
+		$this->mock_repo->shouldNotReceive( 'delete_for_occurrence' );
+
+		$post_data = array(
+			'nte_tickets_metabox_rendered' => '1',
+			'occurrence_id_for_tickets'    => 999,
+			'ticketing_enabled'            => '',
+		);
+
+		$this->saver->save_for_occurrence( 123, $post_data );
+
 		$this->assertTrue( true );
 	}
 
@@ -118,6 +174,7 @@ class TicketTypeSaverTest extends \NetterTechEventsTestCase {
 
 		$post_data = array(
 			'ticketing_enabled'        => '1',
+			'nte_tickets_metabox_rendered' => '1',
 			'occurrence_id_for_tickets' => 999,
 			'ticket_types'             => array(),
 		);
@@ -142,6 +199,7 @@ class TicketTypeSaverTest extends \NetterTechEventsTestCase {
 
 		$post_data = array(
 			'ticketing_enabled'        => '1',
+			'nte_tickets_metabox_rendered' => '1',
 			'occurrence_id_for_tickets' => 123,
 			'ticket_types'             => 'not-an-array',
 		);
@@ -168,6 +226,7 @@ class TicketTypeSaverTest extends \NetterTechEventsTestCase {
 
 		$post_data = array(
 			'ticketing_enabled'        => '1',
+			'nte_tickets_metabox_rendered' => '1',
 			'occurrence_id_for_tickets' => 123,
 			'ticket_types'             => array(
 				array( 'name' => '', 'price' => 10 ),
@@ -208,6 +267,7 @@ class TicketTypeSaverTest extends \NetterTechEventsTestCase {
 
 		$post_data = array(
 			'ticketing_enabled'        => '1',
+			'nte_tickets_metabox_rendered' => '1',
 			'occurrence_id_for_tickets' => 123,
 			'ticket_types'             => array(
 				array(
@@ -226,7 +286,8 @@ class TicketTypeSaverTest extends \NetterTechEventsTestCase {
 		$this->assertSame( 'General Admission', $saved_ticket->name );
 		$this->assertSame( 25.0, $saved_ticket->price );
 		$this->assertSame( 100, $saved_ticket->capacity );
-		$this->assertSame( 'active', $saved_ticket->status );
+		// No event context (event_id 0) fails closed to draft (NTE-188).
+		$this->assertSame( 'draft', $saved_ticket->status );
 	}
 
 	/**
@@ -260,6 +321,7 @@ class TicketTypeSaverTest extends \NetterTechEventsTestCase {
 
 		$post_data = array(
 			'ticketing_enabled'         => '1',
+			'nte_tickets_metabox_rendered' => '1',
 			'occurrence_id_for_tickets' => 123,
 			'ticket_types'              => array(
 				'occurrence' => array(
@@ -310,6 +372,7 @@ class TicketTypeSaverTest extends \NetterTechEventsTestCase {
 
 		$post_data = array(
 			'ticketing_enabled'         => '1',
+			'nte_tickets_metabox_rendered' => '1',
 			'occurrence_id_for_tickets' => 123,
 			'ticket_types'              => array(
 				'occurrence' => array(
@@ -372,6 +435,7 @@ class TicketTypeSaverTest extends \NetterTechEventsTestCase {
 
 		$post_data = array(
 			'ticketing_enabled'         => '1',
+			'nte_tickets_metabox_rendered' => '1',
 			'occurrence_id_for_tickets' => 123,
 			'ticket_types'              => array(
 				'occurrence' => array(
@@ -429,6 +493,7 @@ class TicketTypeSaverTest extends \NetterTechEventsTestCase {
 
 		$post_data = array(
 			'ticketing_enabled'        => '1',
+			'nte_tickets_metabox_rendered' => '1',
 			'occurrence_id_for_tickets' => 123,
 			'ticket_types'             => array(
 				array(
@@ -472,6 +537,7 @@ class TicketTypeSaverTest extends \NetterTechEventsTestCase {
 
 		$post_data = array(
 			'ticketing_enabled'        => '1',
+			'nte_tickets_metabox_rendered' => '1',
 			'occurrence_id_for_tickets' => 123,
 			'ticket_types'             => array(
 				array(
@@ -516,6 +582,7 @@ class TicketTypeSaverTest extends \NetterTechEventsTestCase {
 
 		$post_data = array(
 			'ticketing_enabled'        => '1',
+			'nte_tickets_metabox_rendered' => '1',
 			'occurrence_id_for_tickets' => 123,
 			'ticket_types'             => array(
 				array(
@@ -570,6 +637,7 @@ class TicketTypeSaverTest extends \NetterTechEventsTestCase {
 
 		$post_data = array(
 			'ticketing_enabled'        => '1',
+			'nte_tickets_metabox_rendered' => '1',
 			'occurrence_id_for_tickets' => 123,
 			'ticket_types'             => array(
 				array(
@@ -633,6 +701,7 @@ class TicketTypeSaverTest extends \NetterTechEventsTestCase {
 
 		$post_data = array(
 			'ticketing_enabled'         => '1',
+			'nte_tickets_metabox_rendered' => '1',
 			'occurrence_id_for_tickets' => 123,
 			'ticket_types'              => array(
 				array(
@@ -675,6 +744,7 @@ class TicketTypeSaverTest extends \NetterTechEventsTestCase {
 		// Should not throw, just log.
 		$post_data = array(
 			'ticketing_enabled'        => '1',
+			'nte_tickets_metabox_rendered' => '1',
 			'occurrence_id_for_tickets' => 123,
 			'ticket_types'             => array(
 				array(
@@ -732,6 +802,7 @@ class TicketTypeSaverTest extends \NetterTechEventsTestCase {
 			123,
 			array(
 				'ticketing_enabled'         => '1',
+				'nte_tickets_metabox_rendered' => '1',
 				'occurrence_id_for_tickets' => 123,
 				'ticket_types'              => array(
 					'occurrence' => array(
@@ -750,4 +821,601 @@ class TicketTypeSaverTest extends \NetterTechEventsTestCase {
 		$this->assertTrue( true ); // Mockery verifies the SKU-carrying expectation.
 	}
 
+	// =========================================================================
+	// Status Derivation Tests (NTE-177)
+	// =========================================================================
+
+	/**
+	 * Build a saver whose event lookups return an event of the given status.
+	 *
+	 * @param EventStatus $status Event status the mock event repo reports.
+	 * @return TicketTypeSaver
+	 */
+	private function saver_for_event_status( EventStatus $status ): TicketTypeSaver {
+		$event         = new Event();
+		$event->id     = 55;
+		$event->status = $status;
+
+		$event_repo = Mockery::mock( EventRepositoryInterface::class );
+		$event_repo->shouldReceive( 'find' )->with( 55 )->andReturn( $event );
+
+		return new TicketTypeSaver( $this->mock_repo, null, $event_repo );
+	}
+
+	/**
+	 * Capture the ticket type the saver persists for occurrence 123.
+	 *
+	 * @param TicketTypeSaver $saver Saver under test.
+	 * @return TicketType The persisted ticket type.
+	 */
+	private function save_one_occurrence_ticket( TicketTypeSaver $saver ): TicketType {
+		$this->mock_repo
+			->shouldReceive( 'for_occurrence' )
+			->once()
+			->with( 123 )
+			->andReturn( array() );
+
+		$saved = null;
+		$this->mock_repo
+			->shouldReceive( 'save' )
+			->once()
+			->with(
+				Mockery::on(
+					function ( $ticket_type ) use ( &$saved ) {
+						$saved = $ticket_type;
+						return $ticket_type instanceof TicketType;
+					}
+				)
+			);
+
+		$post_data = array(
+			'ticketing_enabled'         => '1',
+			'nte_tickets_metabox_rendered' => '1',
+			'occurrence_id_for_tickets' => 123,
+			'ticket_types'              => array(
+				'occurrence' => array(
+					array(
+						'name'          => 'General Admission',
+						'price'         => 25,
+						'capacity_type' => 'fixed',
+						'capacity'      => 100,
+					),
+				),
+			),
+		);
+
+		$saver->save_for_occurrence( 123, $post_data, 55 );
+
+		$this->assertNotNull( $saved );
+		return $saved;
+	}
+
+	/**
+	 * A published event yields active (publishable) tickets.
+	 *
+	 * @return void
+	 */
+	public function test_ticket_status_active_for_published_event(): void {
+		$saved = $this->save_one_occurrence_ticket( $this->saver_for_event_status( EventStatus::PUBLISHED ) );
+		$this->assertSame( 'active', $saved->status );
+	}
+
+	/**
+	 * A draft event yields draft (non-purchasable) tickets.
+	 *
+	 * @return void
+	 */
+	public function test_ticket_status_draft_for_draft_event(): void {
+		$saved = $this->save_one_occurrence_ticket( $this->saver_for_event_status( EventStatus::DRAFT ) );
+		$this->assertSame( 'draft', $saved->status );
+	}
+
+	/**
+	 * A cancelled event is not published, so its tickets are draft too.
+	 *
+	 * @return void
+	 */
+	public function test_ticket_status_draft_for_cancelled_event(): void {
+		$saved = $this->save_one_occurrence_ticket( $this->saver_for_event_status( EventStatus::CANCELLED ) );
+		$this->assertSame( 'draft', $saved->status );
+	}
+
+	/**
+	 * With no resolvable event (event_id 0), status fails CLOSED to draft (NTE-188).
+	 *
+	 * @return void
+	 */
+	public function test_ticket_status_defaults_draft_without_event_context(): void {
+		$saved = null;
+		$this->mock_repo
+			->shouldReceive( 'for_occurrence' )
+			->once()
+			->with( 123 )
+			->andReturn( array() );
+		$this->mock_repo
+			->shouldReceive( 'save' )
+			->once()
+			->with(
+				Mockery::on(
+					function ( $ticket_type ) use ( &$saved ) {
+						$saved = $ticket_type;
+						return $ticket_type instanceof TicketType;
+					}
+				)
+			);
+
+		$post_data = array(
+			'ticketing_enabled'         => '1',
+			'nte_tickets_metabox_rendered' => '1',
+			'occurrence_id_for_tickets' => 123,
+			'ticket_types'              => array(
+				'occurrence' => array(
+					array( 'name' => 'GA', 'price' => 10, 'capacity_type' => 'fixed' ),
+				),
+			),
+		);
+
+		// event_id defaults to 0 → no event lookup, fails closed to 'draft'.
+		$this->saver->save_for_occurrence( 123, $post_data );
+
+		$this->assertNotNull( $saved );
+		$this->assertSame( 'draft', $saved->status );
+	}
+
+	/**
+	 * The `event_id <= 0` guard short-circuits before any event lookup.
+	 *
+	 * Guards both the `<= 0` boundary and the early `return 'draft'`: either mutation
+	 * would fall through to `event_repo->find( 0 )`, so asserting `find` is never called
+	 * (and the status fails closed to 'draft') kills both.
+	 *
+	 * @return void
+	 */
+	public function test_derive_status_short_circuits_without_event_lookup(): void {
+		$event_repo = Mockery::mock( EventRepositoryInterface::class );
+		$event_repo->shouldReceive( 'find' )->never();
+		$saver = new TicketTypeSaver( $this->mock_repo, null, $event_repo );
+
+		$this->mock_repo
+			->shouldReceive( 'for_occurrence' )
+			->once()
+			->with( 123 )
+			->andReturn( array() );
+
+		$saved = null;
+		$this->mock_repo
+			->shouldReceive( 'save' )
+			->once()
+			->with(
+				Mockery::on(
+					function ( $ticket_type ) use ( &$saved ) {
+						$saved = $ticket_type;
+						return $ticket_type instanceof TicketType;
+					}
+				)
+			);
+
+		$post_data = array(
+			'ticketing_enabled'         => '1',
+			'nte_tickets_metabox_rendered' => '1',
+			'occurrence_id_for_tickets' => 123,
+			'ticket_types'              => array(
+				'occurrence' => array(
+					array( 'name' => 'GA', 'price' => 10, 'capacity_type' => 'fixed' ),
+				),
+			),
+		);
+
+		// event_id 0 → guard returns 'draft' without touching the event repo.
+		$saver->save_for_occurrence( 123, $post_data, 0 );
+
+		$this->assertNotNull( $saved );
+		$this->assertSame( 'draft', $saved->status );
+	}
+
+	// =========================================================================
+	// Per-scope rendered markers (NTE-178)
+	// =========================================================================
+
+	/**
+	 * Build a saver whose event lookup resolves to nothing (status default path).
+	 *
+	 * @return TicketTypeSaver
+	 */
+	private function saver_with_null_event_repo(): TicketTypeSaver {
+		$event_repo = Mockery::mock( EventRepositoryInterface::class );
+		$event_repo->shouldReceive( 'find' )->andReturn( null )->byDefault();
+		return new TicketTypeSaver( $this->mock_repo, null, $event_repo );
+	}
+
+	/**
+	 * An existing event-level tier for the scope-marker tests.
+	 *
+	 * @param int    $id    Tier id.
+	 * @param string $scope Tier scope ('event' or 'template').
+	 * @return TicketType
+	 */
+	private function event_level_tier( int $id, string $scope ): TicketType {
+		$tier        = new TicketType();
+		$tier->id    = $id;
+		$tier->scope = $scope;
+		return $tier;
+	}
+
+	/**
+	 * A save that never rendered the template rows must not delete template tiers.
+	 *
+	 * Regression (NTE-178): nte_tickets_metabox_rendered is form-level, so a POST
+	 * carrying it but no template section (tab hidden for the event type, rows
+	 * withheld by an extension) used to run the template pass against an empty
+	 * payload and delete every template tier. The per-scope marker's absence must
+	 * skip that scope's pass entirely.
+	 *
+	 * @return void
+	 */
+	public function test_event_save_without_template_marker_leaves_template_tiers(): void {
+		$saver = $this->saver_with_null_event_repo();
+
+		// Only the event pass runs, so for_event is consulted exactly once.
+		$this->mock_repo
+			->shouldReceive( 'for_event' )
+			->once()
+			->with( 789 )
+			->andReturn(
+				array(
+					$this->event_level_tier( 100, 'event' ),
+					$this->event_level_tier( 300, 'template' ),
+				)
+			);
+		$this->mock_repo->shouldReceive( 'save' )->once();
+		$this->mock_repo->shouldReceive( 'delete' )->never();
+
+		$post_data = array(
+			'nte_tickets_metabox_rendered' => '1',
+			'ticketing_enabled'            => '1',
+			'ticket_types_rendered'        => array( 'event' => '1' ),
+			'ticket_types'                 => array(
+				'event' => array(
+					array(
+						'id'            => 100,
+						'name'          => 'Season Pass',
+						'price'         => 50,
+						'capacity_type' => 'fixed',
+					),
+				),
+			),
+		);
+
+		$saver->save_for_event( 789, $post_data );
+	}
+
+	/**
+	 * SHARED capacity on an event-level tier is a validation error, not a silent coercion (R7).
+	 *
+	 * Operator ruling 2026-07-20 (spec-001 invention audit): the previous code quietly rewrote
+	 * SHARED (and, by the same rule, SEATED) to fixed on event-scope tiers. Both are occurrence-only
+	 * capacity models, so the choice is now surfaced as a ValidationException instead.
+	 *
+	 * @return void
+	 */
+	public function test_event_scope_shared_capacity_is_a_validation_error(): void {
+		$saver = $this->saver_with_null_event_repo();
+
+		$this->mock_repo
+			->shouldReceive( 'for_event' )
+			->with( 789 )
+			->andReturn( array() );
+		// A validation error aborts before anything is written.
+		$this->mock_repo->shouldNotReceive( 'save' );
+
+		$this->expectException( ValidationException::class );
+
+		$post_data = array(
+			'nte_tickets_metabox_rendered' => '1',
+			'ticketing_enabled'            => '1',
+			'ticket_types_rendered'        => array( 'event' => '1' ),
+			'ticket_types'                 => array(
+				'event' => array(
+					array(
+						'name'          => 'Two-Day Pass',
+						'price'         => 50,
+						'capacity_type' => 'shared',
+					),
+				),
+			),
+		);
+
+		$saver->save_for_event( 789, $post_data );
+	}
+
+	/**
+	 * With the template marker present, a removed template row is still deleted.
+	 *
+	 * The scope marker must not blunt deliberate removal: the form rendered the
+	 * template section, the operator removed its row, so the tier goes.
+	 *
+	 * @return void
+	 */
+	public function test_event_save_with_template_marker_still_deletes_removed_template(): void {
+		$saver = $this->saver_with_null_event_repo();
+
+		$this->mock_repo
+			->shouldReceive( 'for_event' )
+			->twice()
+			->with( 789 )
+			->andReturn(
+				array(
+					$this->event_level_tier( 100, 'event' ),
+					$this->event_level_tier( 300, 'template' ),
+				)
+			);
+		$this->mock_repo->shouldReceive( 'save' )->once();
+		$this->mock_repo
+			->shouldReceive( 'delete' )
+			->once()
+			->with( 300 );
+
+		$post_data = array(
+			'nte_tickets_metabox_rendered' => '1',
+			'ticketing_enabled'            => '1',
+			'ticket_types_rendered'        => array(
+				'event'    => '1',
+				'template' => '1',
+			),
+			'ticket_types'                 => array(
+				'event' => array(
+					array(
+						'id'            => 100,
+						'name'          => 'Season Pass',
+						'price'         => 50,
+						'capacity_type' => 'fixed',
+					),
+				),
+				// Template section rendered, its only row removed by the operator.
+			),
+		);
+
+		$saver->save_for_event( 789, $post_data );
+	}
+
+	/**
+	 * A save that never rendered the series-pass rows must not delete them.
+	 *
+	 * Same premise as the template case (NTE-178), for the EVENT scope.
+	 *
+	 * @return void
+	 */
+	public function test_event_save_without_event_marker_leaves_series_passes(): void {
+		$saver = $this->saver_with_null_event_repo();
+
+		$this->mock_repo
+			->shouldReceive( 'for_event' )
+			->once()
+			->with( 789 )
+			->andReturn(
+				array(
+					$this->event_level_tier( 100, 'event' ),
+					$this->event_level_tier( 300, 'template' ),
+				)
+			);
+		$this->mock_repo->shouldReceive( 'save' )->once();
+		$this->mock_repo->shouldReceive( 'delete' )->never();
+
+		$post_data = array(
+			'nte_tickets_metabox_rendered' => '1',
+			'ticketing_enabled'            => '1',
+			'ticket_types_rendered'        => array( 'template' => '1' ),
+			'ticket_types'                 => array(
+				'template' => array(
+					array(
+						'id'            => 300,
+						'name'          => 'GA Template',
+						'price'         => 10,
+						'capacity_type' => 'fixed',
+					),
+				),
+			),
+		);
+
+		$saver->save_for_event( 789, $post_data );
+	}
+
+	/**
+	 * With the event marker present, a removed series pass is still deleted.
+	 *
+	 * @return void
+	 */
+	public function test_event_save_with_event_marker_deletes_removed_pass(): void {
+		$saver = $this->saver_with_null_event_repo();
+
+		$this->mock_repo
+			->shouldReceive( 'for_event' )
+			->once()
+			->with( 789 )
+			->andReturn(
+				array(
+					$this->event_level_tier( 100, 'event' ),
+					$this->event_level_tier( 101, 'event' ),
+				)
+			);
+		$this->mock_repo->shouldReceive( 'save' )->once();
+		$this->mock_repo
+			->shouldReceive( 'delete' )
+			->once()
+			->with( 101 );
+
+		$post_data = array(
+			'nte_tickets_metabox_rendered' => '1',
+			'ticketing_enabled'            => '1',
+			'ticket_types_rendered'        => array( 'event' => '1' ),
+			'ticket_types'                 => array(
+				'event' => array(
+					array(
+						'id'            => 100,
+						'name'          => 'Season Pass',
+						'price'         => 50,
+						'capacity_type' => 'fixed',
+					),
+				),
+			),
+		);
+
+		$saver->save_for_event( 789, $post_data );
+	}
+
+	/**
+	 * A POST with no per-scope markers at all touches nothing.
+	 *
+	 * The pre-NTE-178 form posts nte_tickets_metabox_rendered without any
+	 * ticket_types_rendered map; deleting on such a payload is exactly the bug,
+	 * so the whole event-level pass must no-op.
+	 *
+	 * @return void
+	 */
+	public function test_event_save_without_any_scope_markers_touches_nothing(): void {
+		$saver = $this->saver_with_null_event_repo();
+
+		$this->mock_repo->shouldReceive( 'for_event' )->never();
+		$this->mock_repo->shouldReceive( 'save' )->never();
+		$this->mock_repo->shouldReceive( 'delete' )->never();
+
+		$post_data = array(
+			'nte_tickets_metabox_rendered' => '1',
+			'ticketing_enabled'            => '1',
+			'ticket_types'                 => array(),
+		);
+
+		$saver->save_for_event( 789, $post_data );
+	}
+
+	/**
+	 * save_for_event refuses to run while ticketing_enabled is absent.
+	 *
+	 * Mirrors the buffered path's guard (EventSaveHandler::process_buffered_tickets):
+	 * rows that were never on the page cannot signal removal (NTE-178).
+	 *
+	 * @return void
+	 */
+	public function test_event_save_requires_ticketing_enabled(): void {
+		$saver = $this->saver_with_null_event_repo();
+
+		$this->mock_repo->shouldReceive( 'for_event' )->never();
+		$this->mock_repo->shouldReceive( 'save' )->never();
+		$this->mock_repo->shouldReceive( 'delete' )->never();
+
+		$post_data = array(
+			'nte_tickets_metabox_rendered' => '1',
+			'ticket_types_rendered'        => array(
+				'event'    => '1',
+				'template' => '1',
+			),
+			'ticket_types'                 => array(),
+		);
+
+		$saver->save_for_event( 789, $post_data );
+	}
+
+	/**
+	 * Build a saver with a null-finding event repo and the given product manager.
+	 *
+	 * @param \NetterTechEvents\Integrations\WooCommerce\ProductManager $product_manager Product manager mock.
+	 * @return TicketTypeSaver
+	 */
+	private function saver_with_product_manager( $product_manager ): TicketTypeSaver {
+		$event_repo = Mockery::mock( EventRepositoryInterface::class );
+		$event_repo->shouldReceive( 'find' )->andReturn( null )->byDefault();
+		return new TicketTypeSaver( $this->mock_repo, $product_manager, $event_repo );
+	}
+
+	/**
+	 * No rendered scopes means no product creation either.
+	 *
+	 * Product creation must be gated on a scope actually having been processed;
+	 * a marker-less legacy POST no-ops the whole event-level pass, products
+	 * included (NTE-178).
+	 *
+	 * @return void
+	 */
+	public function test_event_save_without_scope_markers_creates_no_products(): void {
+		$product_manager = Mockery::mock( \NetterTechEvents\Integrations\WooCommerce\ProductManager::class );
+		$product_manager->shouldReceive( 'create_products_for_event' )->never();
+
+		$saver = $this->saver_with_product_manager( $product_manager );
+
+		$this->mock_repo->shouldReceive( 'for_event' )->never();
+
+		$saver->save_for_event(
+			789,
+			array(
+				'nte_tickets_metabox_rendered' => '1',
+				'ticketing_enabled'            => '1',
+				'ticket_types'                 => array(),
+			)
+		);
+
+		$this->assertTrue( true ); // Mockery verifies the never() expectations.
+	}
+
+	/**
+	 * A processed EVENT scope triggers product creation with its admin SKUs.
+	 *
+	 * @return void
+	 */
+	public function test_event_scope_processing_triggers_product_creation(): void {
+		$product_manager = Mockery::mock( \NetterTechEvents\Integrations\WooCommerce\ProductManager::class );
+		$product_manager
+			->shouldReceive( 'create_products_for_event' )
+			->once()
+			->with( 789, array() );
+
+		$saver = $this->saver_with_product_manager( $product_manager );
+
+		$this->mock_repo->shouldReceive( 'for_event' )->once()->with( 789 )->andReturn( array() );
+
+		$saver->save_for_event(
+			789,
+			array(
+				'nte_tickets_metabox_rendered' => '1',
+				'ticketing_enabled'            => '1',
+				'ticket_types_rendered'        => array( 'event' => '1' ),
+				'ticket_types'                 => array(),
+			)
+		);
+
+		$this->assertTrue( true ); // Mockery verifies the once() expectation.
+	}
+
+	/**
+	 * A processed TEMPLATE scope alone also triggers product creation.
+	 *
+	 * Template tiers feed future occurrences; their WC products are created by
+	 * the same post-processing pass, so processing only the template scope must
+	 * still reach the product manager (with no admin SKUs, since those ride the
+	 * event scope).
+	 *
+	 * @return void
+	 */
+	public function test_template_scope_processing_triggers_product_creation(): void {
+		$product_manager = Mockery::mock( \NetterTechEvents\Integrations\WooCommerce\ProductManager::class );
+		$product_manager
+			->shouldReceive( 'create_products_for_event' )
+			->once()
+			->with( 789, array() );
+
+		$saver = $this->saver_with_product_manager( $product_manager );
+
+		$this->mock_repo->shouldReceive( 'for_event' )->once()->with( 789 )->andReturn( array() );
+
+		$saver->save_for_event(
+			789,
+			array(
+				'nte_tickets_metabox_rendered' => '1',
+				'ticketing_enabled'            => '1',
+				'ticket_types_rendered'        => array( 'template' => '1' ),
+				'ticket_types'                 => array(),
+			)
+		);
+
+		$this->assertTrue( true ); // Mockery verifies the once() expectation.
+	}
 }

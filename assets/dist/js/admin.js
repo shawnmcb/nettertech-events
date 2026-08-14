@@ -107,6 +107,7 @@
         initAttendeeBulkSelection() {
             const selectAll = document.getElementById('cb-select-all');
             const checkboxes = Array.from(document.querySelectorAll('input[name="attendee_ids[]"]'));
+            const scopeHint = document.getElementById('nte-select-scope-hint');
             let lastChecked = null;
 
             if (!checkboxes.length) {
@@ -118,6 +119,17 @@
                     checkboxes.forEach(checkbox => {
                         checkbox.checked = this.checked;
                     });
+
+                    // Select-all reads as "everything matching my filters" but
+                    // only reaches this page's rows — surface the scope at the
+                    // moment of selection, before the wrong export is run.
+                    if (scopeHint) {
+                        scopeHint.hidden = !this.checked;
+
+                        if (this.checked && window.wp && window.wp.a11y && window.wp.a11y.speak) {
+                            window.wp.a11y.speak(scopeHint.textContent.trim());
+                        }
+                    }
                 });
             }
 

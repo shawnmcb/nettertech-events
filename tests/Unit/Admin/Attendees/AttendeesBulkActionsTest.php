@@ -187,9 +187,12 @@ class AttendeesBulkActionsTest extends \NetterTechEventsTestCase {
 		$_POST['nettertech_events_attendees_nonce']   = 'valid_nonce';
 		$_POST['bulk_action']          = 'export_all';
 		$_POST['filter_occurrence_id'] = '5';
+		$_POST['filter_event_id']      = '7';
 		$_POST['filter_search']        = 'test';
 		$_POST['filter_status']        = 'confirmed';
 		$_POST['filter_placeholder']   = 'no';
+		$_POST['filter_orderby']       = 'name_last';
+		$_POST['filter_order']         = 'asc';
 
 		Functions\when( 'sanitize_text_field' )->returnArg();
 		Functions\when( 'wp_unslash' )->returnArg();
@@ -199,10 +202,49 @@ class AttendeesBulkActionsTest extends \NetterTechEventsTestCase {
 		$this->mock_exporter
 			->shouldReceive( 'export_all_filtered' )
 			->once()
-			->with( 5, 'test', 'confirmed', 'no' );
+			->with( 5, 7, 'test', 'confirmed', 'no', 'name_last', 'asc' );
 
 		$handler = new AttendeesBulkActions( $this->mock_db, $this->mock_exporter );
 		$handler->handle();
+
+		// Mockery verifies the expectation in tearDown; this marks test as non-risky.
+		$this->addToAssertionCount( 1 );
+	}
+
+	/**
+	 * The Export All button's dedicated key routes to export_all even with no
+	 * bulk_action value — the WP 7.0-safe submission path (the button is not
+	 * named bulk_action, so core's common.js validator ignores it).
+	 *
+	 * @return void
+	 */
+	public function test_handle_export_all_via_dedicated_button_key(): void {
+		$_SERVER['REQUEST_METHOD'] = 'POST';
+		$_POST['nettertech_events_attendees_nonce'] = 'valid_nonce';
+		unset( $_POST['bulk_action'] );
+		$_POST['nettertech_events_export_all'] = '1';
+		$_POST['filter_occurrence_id']         = '0';
+		$_POST['filter_event_id']              = '2482';
+		unset( $_POST['filter_search'] );
+		unset( $_POST['filter_status'] );
+		unset( $_POST['filter_placeholder'] );
+		unset( $_POST['filter_orderby'] );
+		unset( $_POST['filter_order'] );
+
+		Functions\when( 'sanitize_text_field' )->returnArg();
+		Functions\when( 'wp_unslash' )->returnArg();
+		Functions\when( 'wp_verify_nonce' )->justReturn( 1 );
+		Functions\when( 'absint' )->alias( fn( $val ) => abs( (int) $val ) );
+
+		$this->mock_exporter
+			->shouldReceive( 'export_all_filtered' )
+			->once()
+			->with( 0, 2482, '', '', '', '', '' );
+
+		$handler = new AttendeesBulkActions( $this->mock_db, $this->mock_exporter );
+		$handler->handle();
+
+		unset( $_POST['nettertech_events_export_all'] );
 
 		// Mockery verifies the expectation in tearDown; this marks test as non-risky.
 		$this->addToAssertionCount( 1 );
@@ -218,9 +260,12 @@ class AttendeesBulkActionsTest extends \NetterTechEventsTestCase {
 		$_POST['nettertech_events_attendees_nonce'] = 'valid_nonce';
 		$_POST['bulk_action']        = 'export_all';
 		unset( $_POST['filter_occurrence_id'] );
+		unset( $_POST['filter_event_id'] );
 		unset( $_POST['filter_search'] );
 		unset( $_POST['filter_status'] );
 		unset( $_POST['filter_placeholder'] );
+		unset( $_POST['filter_orderby'] );
+		unset( $_POST['filter_order'] );
 
 		Functions\when( 'sanitize_text_field' )->returnArg();
 		Functions\when( 'wp_unslash' )->returnArg();
@@ -230,7 +275,7 @@ class AttendeesBulkActionsTest extends \NetterTechEventsTestCase {
 		$this->mock_exporter
 			->shouldReceive( 'export_all_filtered' )
 			->once()
-			->with( 0, '', '', '' );
+			->with( 0, 0, '', '', '', '', '' );
 
 		$handler = new AttendeesBulkActions( $this->mock_db, $this->mock_exporter );
 		$handler->handle();
@@ -417,6 +462,8 @@ class AttendeesBulkActionsTest extends \NetterTechEventsTestCase {
 		$_POST['nettertech_events_attendees_nonce'] = 'valid_nonce';
 		$_POST['bulk_action']        = 'export';
 		$_POST['attendee_ids']       = array( '5', '10', '15' );
+		$_POST['filter_orderby']     = 'name';
+		$_POST['filter_order']       = 'asc';
 
 		Functions\when( 'sanitize_text_field' )->returnArg();
 		Functions\when( 'wp_unslash' )->returnArg();
@@ -426,7 +473,7 @@ class AttendeesBulkActionsTest extends \NetterTechEventsTestCase {
 		$this->mock_exporter
 			->shouldReceive( 'export_selected' )
 			->once()
-			->with( array( 5, 10, 15 ) );
+			->with( array( 5, 10, 15 ), 'name', 'asc' );
 
 		$handler = new AttendeesBulkActions( $this->mock_db, $this->mock_exporter );
 		$handler->handle();

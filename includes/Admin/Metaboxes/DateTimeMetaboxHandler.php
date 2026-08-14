@@ -65,13 +65,26 @@ class DateTimeMetaboxHandler {
 	 *
 	 * @param Occurrence|null   $occurrence  First/current occurrence (seed for the date fields).
 	 * @param array<Occurrence> $occurrences Upcoming occurrences for the dates list.
-	 * @param int               $event_id    The event, so a date can be added to it (0 = unsaved).
+	 * @param int               $event_id    The event id (0 = unsaved; kept for signature parity with the
+	 *                                       standalone Dates metabox entry point — the add-a-date fields
+	 *                                       now render unconditionally per FR-001, so this is unused here).
 	 * @return void
 	 */
-	public function render_schedule( ?Occurrence $occurrence, array $occurrences, int $event_id ): void {
+	public function render_schedule( ?Occurrence $occurrence, array $occurrences, int $event_id ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.FoundAfterLastUsed -- kept for call-site signature parity with EventMetaboxHandler::render_schedule_box(); FR-001 removed the last use inside this method
 		$is_recurring = 'recurring' === $this->event->event_type;
 		$multi_date   = count( $occurrences ) > 1;
 		$presenter    = $this->build_presenter( $occurrence );
+
+		$current_rule        = (string) ( $this->event->recurrence_rule ?? '' );
+		$has_pattern         = '' !== $current_rule;
+		$recurrence_expanded = ! $has_pattern;
+
+		// Computed once here and threaded through to render_recurrence_fields() below —
+		// both the collapsed summary and the expanded "Current pattern:" block describe
+		// the same rule, so a single describe_rule()/count_occurrences() pair covers both.
+		$rule_description   = $has_pattern ? $this->recurrence_service->describe_rule( $current_rule ) : '';
+		$occurrence_count   = $this->event->id ? $this->recurrence_service->count_occurrences( $this->event->id ) : 0;
+		$recurrence_summary = $has_pattern ? $this->build_recurrence_summary( $rule_description, $occurrence_count ) : '';
 
 		$this->render_upcoming_dates_styles();
 		?>
@@ -97,21 +110,144 @@ class DateTimeMetaboxHandler {
 				<?php require dirname( __DIR__, 3 ) . '/templates/admin/metaboxes/datetime-fields.php'; ?>
 
 				<div id="recurrence-box" class="nte-schedule-section" style="<?php echo $is_recurring ? '' : 'display: none;'; ?>">
-					<h3 class="nte-schedule-section__title"><?php esc_html_e( 'Recurrence Pattern', 'nettertech-events' ); ?></h3>
-					<?php $this->render_recurrence_fields(); ?>
+					<div class="nte-recurrence-header">
+						<h3 class="nte-schedule-section__title"><?php esc_html_e( 'Recurrence Pattern', 'nettertech-events' ); ?></h3>
+						<?php if ( $has_pattern ) : ?>
+							<button
+								type="button"
+								id="nte-recurrence-toggle"
+								class="button-link nte-recurrence-toggle"
+								aria-expanded="<?php echo $recurrence_expanded ? 'true' : 'false'; ?>"
+								aria-controls="nte-recurrence-body"
+							>
+								<span class="nte-toggle-show"><?php esc_html_e( 'Edit pattern', 'nettertech-events' ); ?></span>
+								<span class="nte-toggle-hide"><?php esc_html_e( 'Collapse', 'nettertech-events' ); ?></span>
+							</button>
+						<?php endif; ?>
+					</div>
+					<?php if ( $has_pattern && '' !== $recurrence_summary ) : ?>
+						<p class="nte-recurrence-summary" id="nte-recurrence-summary"><?php echo esc_html( $recurrence_summary ); ?></p>
+					<?php endif; ?>
+					<div id="nte-recurrence-body" style="<?php echo ( $has_pattern && ! $recurrence_expanded ) ? 'display: none;' : ''; ?>">
+						<?php $this->render_recurrence_fields( $current_rule, $rule_description, $occurrence_count ); ?>
+					</div>
 				</div>
 
-				<?php if ( $event_id > 0 ) : ?>
-					<div class="nte-schedule-section">
-						<h3 class="nte-schedule-section__title"><?php esc_html_e( 'Dates', 'nettertech-events' ); ?></h3>
-						<?php $this->render_upcoming_dates_inner( $occurrences, $event_id ); ?>
-					</div>
-				<?php endif; ?>
+				<div class="nte-schedule-section">
+					<h3 class="nte-schedule-section__title"><?php esc_html_e( 'Dates', 'nettertech-events' ); ?></h3>
+					<?php $this->render_upcoming_dates_inner( $occurrences ); ?>
+				</div>
 			</div>
 		</div>
 		<?php
 		$this->render_styles();
 		$this->render_scripts();
+		self::enqueue_time_combobox_assets();
+	}
+
+	/**
+	 * Register and enqueue the shared time-combobox + inline-validation assets.
+	 *
+	 * Shared by every admin surface with time entry (Schedule box, Add-a-date
+	 * rows, occurrence editor, ticket sale windows) — callers just invoke this
+	 * static after rendering inputs marked with data-nte-time-combobox.
+	 *
+	 * @return void
+	 */
+	public static function enqueue_time_combobox_assets(): void {
+		if ( wp_script_is( 'nettertech-events-time-combobox', 'enqueued' ) ) {
+			return;
+		}
+
+		wp_enqueue_style(
+			'nettertech-events-time-combobox',
+			NETTERTECH_EVENTS_PLUGIN_URL . 'assets/css/admin/time-combobox.css',
+			array(),
+			NETTERTECH_EVENTS_VERSION
+		);
+
+		wp_enqueue_script(
+			'nettertech-events-time-combobox',
+			NETTERTECH_EVENTS_PLUGIN_URL . 'assets/js/admin/time-combobox.js',
+			array(),
+			NETTERTECH_EVENTS_VERSION,
+			array(
+				'strategy'  => 'defer',
+				'in_footer' => true,
+			)
+		);
+
+		wp_enqueue_script(
+			'nettertech-events-datetime-validation',
+			NETTERTECH_EVENTS_PLUGIN_URL . 'assets/js/admin/datetime-validation.js',
+			array( 'wp-a11y' ),
+			NETTERTECH_EVENTS_VERSION,
+			array(
+				'strategy'  => 'defer',
+				'in_footer' => true,
+			)
+		);
+
+		// 12-hour display when the site's time format uses am/pm tokens.
+		$time_format = get_option( 'time_format', 'g:i a' );
+		$time_format = is_string( $time_format ) && '' !== $time_format ? $time_format : 'g:i a';
+		$is_12_hour  = (bool) preg_match( '/[gh]/', $time_format );
+
+		wp_localize_script(
+			'nettertech-events-time-combobox',
+			'nettertechEventsTimeCombobox',
+			array(
+				'stepMinutes' => 15,
+				'is12Hour'    => $is_12_hour,
+				'i18n'        => array(
+					'listLabel'     => __( 'Time suggestions', 'nettertech-events' ),
+					'noSuggestions' => __( 'No matching times — any valid time can still be typed', 'nettertech-events' ),
+					'am'            => __( 'am', 'nettertech-events' ),
+					'pm'            => __( 'pm', 'nettertech-events' ),
+					'hour'          => __( 'hr', 'nettertech-events' ),
+					'hours'         => __( 'hrs', 'nettertech-events' ),
+					'minute'        => __( 'min', 'nettertech-events' ),
+					'minutes'       => __( 'mins', 'nettertech-events' ),
+				),
+			)
+		);
+
+		wp_localize_script(
+			'nettertech-events-datetime-validation',
+			'nettertechEventsDatetimeValidation',
+			array(
+				'i18n' => array(
+					'invalidTime'    => __( 'Enter a valid time, for example 7:30 pm.', 'nettertech-events' ),
+					'endBeforeStart' => __( 'End time must be after the start time.', 'nettertech-events' ),
+				),
+			)
+		);
+	}
+
+	/**
+	 * Build the one-line, human-readable summary shown when the pattern section is collapsed (FR-009).
+	 *
+	 * Takes the already-computed description/count rather than recomputing them, so
+	 * the collapsed summary and the expanded "Current pattern:" block (which needs
+	 * the same two values) never make two separate round trips through the service.
+	 *
+	 * @param string $description Rule description from RecurrenceService::describe_rule() (may be empty).
+	 * @param int    $count       Occurrence count from RecurrenceService::count_occurrences().
+	 * @return string Summary, or empty string if there's no description to summarize.
+	 */
+	private function build_recurrence_summary( string $description, int $count ): string {
+		if ( '' === $description ) {
+			return '';
+		}
+
+		if ( $count <= 0 ) {
+			return $description;
+		}
+
+		/* translators: 1: pattern description, 2: number of occurrences */
+		$format = _n( '%1$s (%2$d occurrence)', '%1$s (%2$d occurrences)', $count, 'nettertech-events' );
+
+		return sprintf( $format, $description, $count );
 	}
 
 	/**
@@ -151,7 +287,10 @@ class DateTimeMetaboxHandler {
 			(bool) $all_day,
 			(string) $capacity,
 			(bool) $end_time_expanded,
-			(bool) $require_end_time
+			(bool) $require_end_time,
+			$occurrence && '' !== (string) $occurrence->timezone
+				? (string) $occurrence->timezone
+				: wp_timezone_string()
 		);
 	}
 
@@ -165,10 +304,9 @@ class DateTimeMetaboxHandler {
 	 * Shared by the standalone Dates metabox and the Schedule box (NTE-159).
 	 *
 	 * @param array<Occurrence> $occurrences Upcoming occurrences (any status).
-	 * @param int               $event_id    The event, so a date can be added to it.
 	 * @return void
 	 */
-	private function render_upcoming_dates_inner( array $occurrences, int $event_id ): void {
+	private function render_upcoming_dates_inner( array $occurrences ): void {
 		?>
 				<?php if ( empty( $occurrences ) ) : ?>
 					<p class="description"><?php esc_html_e( 'No upcoming dates yet.', 'nettertech-events' ); ?></p>
@@ -221,9 +359,7 @@ class DateTimeMetaboxHandler {
 					</ul>
 				<?php endif; ?>
 
-				<?php if ( $event_id > 0 ) : ?>
-					<?php $this->render_add_date_fields(); ?>
-				<?php endif; ?>
+				<?php $this->render_add_date_fields(); ?>
 		<?php
 	}
 
@@ -237,6 +373,17 @@ class DateTimeMetaboxHandler {
 	 * Plain fields on the event form, not a form of their own. A nested `<form>` is not valid HTML —
 	 * the parser drops the inner tag and hands its controls to the outer form, so a second
 	 * `action` field would ride along on every event save and steal the submission.
+	 *
+	 * Repeatable since NTE-177 (FR-002): an operator can append any number of rows in one
+	 * sitting, remove a row before saving, and all remaining rows post together as
+	 * `nettertech_events_manual_dates[N][date|start_time|end_time]` — an explicit per-row
+	 * index. An unkeyed `[]` array was tried first, but the browser assigns a fresh `[]`
+	 * index to *every* bracket occurrence rather than grouping by row, so a row's three
+	 * inputs arrived as three separate one-key arrays and `EventSaveHandler` silently
+	 * dropped every row as incomplete. The clone JS stamps the next index on each
+	 * appended row's three inputs; a removed row leaves a gap, which the backend's
+	 * `foreach` tolerates. Available on a brand-new (unsaved) event too (FR-001) — the
+	 * "saved event only" gate is gone.
 	 *
 	 * @since 1.1.2
 	 *
@@ -253,47 +400,83 @@ class DateTimeMetaboxHandler {
 				<?php esc_html_e( 'A date added here sits outside the recurrence pattern, and saving the pattern again will not remove it.', 'nettertech-events' ); ?>
 			</p>
 
-			<div class="nte-add-date__fields">
-				<p>
-					<label for="nettertech_events_new_date">
-						<?php esc_html_e( 'Date', 'nettertech-events' ); ?>
-					</label><br>
+			<div class="nte-add-date__rows" id="nte-add-date-rows" data-nte-next-index="1">
+				<?php $this->render_manual_date_row( 0 ); ?>
+			</div>
+
+			<p>
+				<button type="button" class="button nte-add-date__add-row" id="nte-add-date-add-row">
+					<?php esc_html_e( '+ Add another date', 'nettertech-events' ); ?>
+				</button>
+			</p>
+
+			<template id="nte-add-date-row-template">
+				<?php $this->render_manual_date_row( '__INDEX__' ); ?>
+			</template>
+
+			<p class="description">
+				<?php esc_html_e( 'Dates are added when you update the event.', 'nettertech-events' ); ?>
+			</p>
+		</details>
+		<?php
+	}
+
+	/**
+	 * One repeatable date/time row for the "Add a date" list.
+	 *
+	 * Fields are label-wrapped (implicit association) rather than `id`/`for` pairs, because this
+	 * markup is cloned by JS — duplicate `id` attributes across cloned rows would be invalid HTML
+	 * and would break the association anyway. `$index` is either a real row number (initial row)
+	 * or the literal token `__INDEX__` (template row) that the clone JS text-replaces with the
+	 * next real index before appending — see the `nte-add-date-row-template` usage above.
+	 *
+	 * @param int|string $index Row index for the `nettertech_events_manual_dates[<index>][...]`
+	 *                          field names, or the `__INDEX__` placeholder for the template row.
+	 * @return void
+	 */
+	private function render_manual_date_row( $index ): void {
+		?>
+		<div class="nte-add-date__row" data-nte-manual-date-row>
+			<p>
+				<label>
+					<?php esc_html_e( 'Date', 'nettertech-events' ); ?><br>
 					<input
 						type="date"
-						id="nettertech_events_new_date"
-						name="nettertech_events_new_date"
+						name="nettertech_events_manual_dates[<?php echo esc_attr( (string) $index ); ?>][date]"
 						class="widefat"
 					>
-				</p>
+				</label>
+			</p>
 
-				<p class="nte-add-date__times">
-					<span>
-						<label for="nettertech_events_new_start_time">
-							<?php esc_html_e( 'Start', 'nettertech-events' ); ?>
-						</label><br>
+			<p class="nte-add-date__times">
+				<span>
+					<label>
+						<?php esc_html_e( 'Start', 'nettertech-events' ); ?><br>
 						<input
 							type="time"
-							id="nettertech_events_new_start_time"
-							name="nettertech_events_new_start_time"
+							name="nettertech_events_manual_dates[<?php echo esc_attr( (string) $index ); ?>][start_time]"
+							data-nte-time-combobox
 						>
-					</span>
-					<span>
-						<label for="nettertech_events_new_end_time">
-							<?php esc_html_e( 'End', 'nettertech-events' ); ?>
-						</label><br>
+					</label>
+				</span>
+				<span>
+					<label>
+						<?php esc_html_e( 'End', 'nettertech-events' ); ?><br>
 						<input
 							type="time"
-							id="nettertech_events_new_end_time"
-							name="nettertech_events_new_end_time"
+							name="nettertech_events_manual_dates[<?php echo esc_attr( (string) $index ); ?>][end_time]"
+							data-nte-time-combobox
 						>
-					</span>
-				</p>
+					</label>
+				</span>
+			</p>
 
-				<p class="description">
-					<?php esc_html_e( 'The date is added when you update the event.', 'nettertech-events' ); ?>
-				</p>
-			</div>
-		</details>
+			<p>
+				<button type="button" class="button-link nte-add-date__remove" data-nte-remove-row>
+					<?php esc_html_e( 'Remove this date', 'nettertech-events' ); ?>
+				</button>
+			</p>
+		</div>
 		<?php
 	}
 
@@ -328,8 +511,22 @@ class DateTimeMetaboxHandler {
 .nte-add-date__times { display: flex; gap: 10px; }
 .nte-add-date__times span { flex: 1 1 0; }
 .nte-add-date__times input { width: 100%; }
+.nte-add-date__row + .nte-add-date__row { margin-top: 12px; padding-top: 10px; border-top: 1px dashed #dcdcde; }
+.nte-add-date__remove { color: #b32d2e; cursor: pointer; min-height: 24px; padding: 0; }
+.nte-add-date__remove:hover { color: #8a2424; text-decoration: underline; }
+.nte-add-date__remove:focus-visible { outline: 2px solid var(--wp-admin-theme-color, #2271b1); outline-offset: 1px; }
+.nte-add-date__add-row:focus-visible { outline: 2px solid var(--wp-admin-theme-color, #2271b1); outline-offset: 1px; }
 .nte-schedule-section { margin-top: 16px; padding-top: 12px; border-top: 1px solid #dcdcde; }
-#nte-schedule-box .nte-schedule-section__title { margin: 0 0 8px; font-size: 13px; }'
+#nte-schedule-box .nte-schedule-section__title { margin: 0 0 8px; font-size: 13px; }
+.nte-recurrence-header { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.nte-recurrence-header .nte-schedule-section__title { margin: 0; }
+.nte-recurrence-summary { margin: 6px 0 10px; color: #50575e; }
+.nte-recurrence-toggle { background: none; border: none; padding: 0; margin: 0; color: var(--wp-admin-theme-color, #2271b1); cursor: pointer; text-decoration: underline; font-size: 13px; min-height: 24px; }
+.nte-recurrence-toggle:focus-visible { outline: 2px solid var(--wp-admin-theme-color, #2271b1); outline-offset: 1px; }
+.nte-recurrence-toggle .nte-toggle-show { display: inline; }
+.nte-recurrence-toggle .nte-toggle-hide { display: none; }
+.nte-recurrence-toggle[aria-expanded="true"] .nte-toggle-show { display: none; }
+.nte-recurrence-toggle[aria-expanded="true"] .nte-toggle-hide { display: inline; }'
 		);
 	}
 
@@ -404,6 +601,9 @@ class DateTimeMetaboxHandler {
 		var defaultDuration = parseInt(defaults.defaultDurationMinutes, 10) || 120;
 		if (startTime && !startTime.value) {
 			startTime.value = defaultStartTime;
+			// Announce the programmatic fill so enhancements (time combobox)
+			// mirror the new value into their display field.
+			startTime.dispatchEvent(new Event('change', { bubbles: true }));
 		}
 		if (endTime && !endTime.value && startTime && startTime.value) {
 			var parts = startTime.value.split(':');
@@ -416,6 +616,7 @@ class DateTimeMetaboxHandler {
 			var hh = String(Math.floor(endMinutes / 60)).padStart(2, '0');
 			var mm = String(endMinutes % 60).padStart(2, '0');
 			endTime.value = hh + ':' + mm;
+			endTime.dispatchEvent(new Event('change', { bubbles: true }));
 		}
 	}
 
@@ -441,6 +642,24 @@ class DateTimeMetaboxHandler {
 
 	var form = document.getElementById('nettertech-events-editor');
 	var minDurationMs = 10 * 60 * 1000;
+	// Inline, announced validation (NTE-190) — falls back to alert() only if the
+	// validation module failed to load, so submit is never silently blocked.
+	function reportError(field, message) {
+		var v = window.nettertechEventsDatetimeValidation;
+		if (v && v.showError) {
+			v.showError(field, message);
+			v.focusField(field);
+		} else {
+			alert(message); // eslint-disable-line no-alert
+			field.focus();
+		}
+	}
+	function clearReportedError(field) {
+		var v = window.nettertechEventsDatetimeValidation;
+		if (v && v.clearError) {
+			v.clearError(field);
+		}
+	}
 	if (form && startDate && endDate) {
 		form.addEventListener('submit', function(e) {
 			var startStr = startDate.value + 'T' + (startTime ? startTime.value : '00:00');
@@ -453,20 +672,20 @@ class DateTimeMetaboxHandler {
 
 				if (durationMs < minDurationMs) {
 					e.preventDefault();
-					alert(window.nettertechEventsDateTimeMetabox.minDurationMessage);
-					endTime ? endTime.focus() : endDate.focus();
+					reportError(endTime || endDate, window.nettertechEventsDateTimeMetabox.minDurationMessage);
 					return false;
 				}
+				clearReportedError(endTime || endDate);
 			}
 
 			if (capacity && capacity.value !== '') {
 				var capVal = parseInt(capacity.value, 10);
 				if (isNaN(capVal) || capVal < 0) {
 					e.preventDefault();
-					alert(window.nettertechEventsDateTimeMetabox.capacityMessage);
-					capacity.focus();
+					reportError(capacity, window.nettertechEventsDateTimeMetabox.capacityMessage);
 					return false;
 				}
+				clearReportedError(capacity);
 			}
 		});
 	}
@@ -474,6 +693,54 @@ class DateTimeMetaboxHandler {
 	if (capacity) {
 		capacity.addEventListener('input', function() {
 			this.value = this.value.replace(/[^0-9]/g, '');
+		});
+	}
+
+	// Recurrence Pattern disclosure (FR-009): collapsed by default when a pattern
+	// is already saved; the toggle only exists when there is something to collapse.
+	var recurrenceToggle = document.getElementById('nte-recurrence-toggle');
+	var recurrenceBody = document.getElementById('nte-recurrence-body');
+	if (recurrenceToggle && recurrenceBody) {
+		recurrenceToggle.addEventListener('click', function() {
+			var isHidden = recurrenceBody.style.display === 'none';
+			recurrenceBody.style.display = isHidden ? '' : 'none';
+			recurrenceToggle.setAttribute('aria-expanded', isHidden ? 'true' : 'false');
+		});
+	}
+
+	// Repeatable ad-hoc date rows (FR-002): clone the inert <template> row, stamp the next
+	// explicit index onto its three field names, and append it. An index is required —
+	// PHP's `foo[]` assigns a fresh array key to *every* bracket occurrence rather than
+	// grouping by row, so a row's date/start/end inputs would arrive as three separate
+	// one-key arrays instead of one row; `nte-add-date-rows`'s data-nte-next-index counter
+	// is what makes each appended row's three names agree on the same index.
+	var addDateRows = document.getElementById('nte-add-date-rows');
+	var addDateTemplate = document.getElementById('nte-add-date-row-template');
+	var addDateAddRow = document.getElementById('nte-add-date-add-row');
+
+	if (addDateAddRow && addDateTemplate && addDateRows && addDateTemplate.content) {
+		addDateAddRow.addEventListener('click', function() {
+			var nextIndex = parseInt(addDateRows.getAttribute('data-nte-next-index'), 10) || 0;
+			var clone = addDateTemplate.content.cloneNode(true);
+			var fields = clone.querySelectorAll('[name*="__INDEX__"]');
+			for (var i = 0; i < fields.length; i++) {
+				fields[i].name = fields[i].name.replace('__INDEX__', String(nextIndex));
+			}
+			addDateRows.appendChild(clone);
+			addDateRows.setAttribute('data-nte-next-index', String(nextIndex + 1));
+		});
+	}
+
+	if (addDateRows) {
+		addDateRows.addEventListener('click', function(e) {
+			var removeButton = e.target.closest('[data-nte-remove-row]');
+			if (!removeButton) {
+				return;
+			}
+			var row = removeButton.closest('[data-nte-manual-date-row]');
+			if (row) {
+				row.remove();
+			}
 		});
 	}
 })();
@@ -488,11 +755,17 @@ JS;
 	/**
 	 * The recurrence pattern controls, without a box wrapper.
 	 *
-	 * Rendered inside the Schedule box's `#recurrence-box` section (NTE-159).
+	 * Rendered inside the Schedule box's `#recurrence-box` section (NTE-159). The
+	 * description/count are passed in from render_schedule(), which already computed
+	 * them for the collapsed-state summary (FR-009) — avoids a second round trip
+	 * through RecurrenceService for the same rule.
 	 *
+	 * @param string $current_rule      Current RRULE string (may be empty).
+	 * @param string $rule_description  Human-readable description of $current_rule (may be empty).
+	 * @param int    $occurrence_count  Occurrences already generated for this event.
 	 * @return void
 	 */
-	private function render_recurrence_fields(): void {
+	private function render_recurrence_fields( string $current_rule, string $rule_description, int $occurrence_count ): void {
 		// Enqueue recurrence pattern builder script.
 		wp_enqueue_script(
 			'nettertech-events-event-recurrence',
@@ -518,20 +791,7 @@ JS;
 			)
 		);
 
-		$presets      = RecurrenceService::get_presets();
-		$current_rule = $this->event->recurrence_rule ?? '';
-
-		// Parse current rule to get description.
-		$rule_description = '';
-		if ( $current_rule ) {
-			$rule_description = $this->recurrence_service->describe_rule( $current_rule );
-		}
-
-		// Count existing occurrences.
-		$occurrence_count = 0;
-		if ( $this->event->id ) {
-			$occurrence_count = $this->recurrence_service->count_occurrences( $this->event->id );
-		}
+		$presets = RecurrenceService::get_presets();
 
 		?>
 				<p>

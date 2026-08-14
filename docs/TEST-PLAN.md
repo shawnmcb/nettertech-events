@@ -254,7 +254,7 @@ wp db query "SHOW TABLES LIKE '%nte_%'"
 
 | Test | Steps | Expected | Tool |
 |------|-------|----------|------|
-| Basic render | `[nte_carousel]` | Carousel with events | Chrome DevTools |
+| Basic render | `[nettertech_events_carousel]` | Carousel with events | Chrome DevTools |
 | Limit attribute | `limit="3"` | Shows 3 events | Chrome DevTools |
 | Columns attribute | `columns="4"` | 4-column layout | Chrome DevTools |
 | Empty state | No upcoming events | Empty message displayed | Chrome DevTools |
@@ -266,7 +266,7 @@ wp db query "SHOW TABLES LIKE '%nte_%'"
 
 | Test | Steps | Expected | Tool |
 |------|-------|----------|------|
-| Basic render | `[nte_list]` | Grid of events | Chrome DevTools |
+| Basic render | `[nettertech_events_list]` | Grid of events | Chrome DevTools |
 | Grid layout | `layout="grid"` | Grid display | Chrome DevTools |
 | List layout | `layout="list"` | List display | Chrome DevTools |
 | Cards layout | `layout="cards"` | Cards grid | Chrome DevTools |
@@ -279,7 +279,7 @@ wp db query "SHOW TABLES LIKE '%nte_%'"
 
 | Test | Steps | Expected | Tool |
 |------|-------|----------|------|
-| Month view | `[nte_calendar view="month"]` | Month calendar | Chrome DevTools |
+| Month view | `[nettertech_events_calendar view="month"]` | Month calendar | Chrome DevTools |
 | Week view | `view="week"` | Week view | Chrome DevTools |
 | Day view | `view="day"` | Day view | Chrome DevTools |
 | View toggle | Click view buttons | View switches | Chrome DevTools |
@@ -290,7 +290,7 @@ wp db query "SHOW TABLES LIKE '%nte_%'"
 
 | Test | Steps | Expected | Tool |
 |------|-------|----------|------|
-| Form render | `[nte_rsvp event_id="1"]` | RSVP form displayed | Chrome DevTools |
+| Form render | `[nettertech_events_rsvp event_id="1"]` | RSVP form displayed | Chrome DevTools |
 | Submit RSVP | Fill form, submit | Success message, attendee created | Chrome DevTools |
 | Party size | Select party size | Party size saved | Chrome DevTools |
 | Validation | Submit invalid email | Error message | Chrome DevTools |

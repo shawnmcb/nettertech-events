@@ -246,10 +246,119 @@ class AttendeesExporterTest extends \NetterTechEventsTestCase {
 			);
 
 		$exporter = new TestableAttendeesExporter( $this->mock_db );
-		$exporter->export_all_filtered( 0, '', '', '' );
+		$exporter->export_all_filtered( 0, 0, '', '', '' );
 
 		$this->assertTrue( $get_results_called );
 		$this->assertTrue( $exporter->output_csv_called );
+	}
+
+	/**
+	 * Test export_all_filtered inherits the list's sort mode (NTE-195).
+	 *
+	 * @covers ::export_all_filtered
+	 *
+	 * @return void
+	 */
+	public function test_export_all_filtered_honors_sort_mode(): void {
+		$captured_sql = '';
+
+		$this->mock_db->shouldReceive( 'get_results' )
+			->once()
+			->andReturnUsing(
+				function ( $query ) use ( &$captured_sql ) {
+					$captured_sql = $query;
+					return array();
+				}
+			);
+
+		$exporter = new TestableAttendeesExporter( $this->mock_db );
+		$exporter->export_all_filtered( 0, 0, '', '', '', 'name_last', 'asc' );
+
+		$this->assertStringContainsString( "ORDER BY SUBSTRING_INDEX( a.name, ' ', -1 ) ASC, a.name ASC", $captured_sql );
+		$this->assertStringNotContainsString( 'ORDER BY a.id DESC', $captured_sql );
+	}
+
+	/**
+	 * Test export_all_filtered keeps id DESC when no sort mode is passed.
+	 *
+	 * @covers ::export_all_filtered
+	 *
+	 * @return void
+	 */
+	public function test_export_all_filtered_defaults_to_id_desc(): void {
+		$captured_sql = '';
+
+		$this->mock_db->shouldReceive( 'get_results' )
+			->once()
+			->andReturnUsing(
+				function ( $query ) use ( &$captured_sql ) {
+					$captured_sql = $query;
+					return array();
+				}
+			);
+
+		$exporter = new TestableAttendeesExporter( $this->mock_db );
+		$exporter->export_all_filtered( 0, 0, '', '', '' );
+
+		$this->assertStringContainsString( 'ORDER BY a.id DESC', $captured_sql );
+	}
+
+	/**
+	 * Test export_all_filtered falls back to id DESC for a non-whitelisted key.
+	 *
+	 * The orderby value travels through a hidden form field, so a tampered
+	 * value must never reach the ORDER BY clause.
+	 *
+	 * @covers ::export_all_filtered
+	 *
+	 * @return void
+	 */
+	public function test_export_all_filtered_rejects_unknown_sort_key(): void {
+		$captured_sql = '';
+
+		$this->mock_db->shouldReceive( 'get_results' )
+			->once()
+			->andReturnUsing(
+				function ( $query ) use ( &$captured_sql ) {
+					$captured_sql = $query;
+					return array();
+				}
+			);
+
+		$exporter = new TestableAttendeesExporter( $this->mock_db );
+		$exporter->export_all_filtered( 0, 0, '', '', '', 'name; DROP TABLE wp_users;--', 'asc' );
+
+		$this->assertStringContainsString( 'ORDER BY a.id DESC', $captured_sql );
+		$this->assertStringNotContainsString( 'DROP TABLE', $captured_sql );
+	}
+
+	/**
+	 * Test export_selected inherits the list's sort mode (NTE-195).
+	 *
+	 * @covers ::export_selected
+	 *
+	 * @return void
+	 */
+	public function test_export_selected_honors_sort_mode(): void {
+		$captured_sql = '';
+
+		$this->mock_db->shouldReceive( 'prepare' )
+			->once()
+			->andReturnUsing(
+				function ( $query, ...$args ) use ( &$captured_sql ) {
+					$captured_sql = $query;
+					return $query;
+				}
+			);
+
+		$this->mock_db->shouldReceive( 'get_results' )
+			->once()
+			->andReturn( array() );
+
+		$exporter = new TestableAttendeesExporter( $this->mock_db );
+		$exporter->export_selected( array( 1, 2 ), 'name', 'asc' );
+
+		$this->assertStringContainsString( 'ORDER BY a.name ASC', $captured_sql );
 	}
 
 	/**
@@ -276,9 +385,74 @@ class AttendeesExporterTest extends \NetterTechEventsTestCase {
 			->andReturn( array() );
 
 		$exporter = new TestableAttendeesExporter( $this->mock_db );
-		$exporter->export_all_filtered( 42, '', '', '' );
+		$exporter->export_all_filtered( 42, 0, '', '', '' );
 
 		$this->assertStringContainsString( 'a.occurrence_id = %d', $captured_query );
+	}
+
+	/**
+	 * With every argument defaulted, no scope predicate reaches the SQL —
+	 * pins the occurrence/event defaults at 0 (a default of 1 would silently
+	 * scope the whole-database export).
+	 *
+	 * @covers ::export_all_filtered
+	 *
+	 * @return void
+	 */
+	public function test_export_all_filtered_defaults_apply_no_scope(): void {
+		$captured_sql = '';
+
+		$this->mock_db->shouldReceive( 'get_results' )
+			->once()
+			->andReturnUsing(
+				function ( $query ) use ( &$captured_sql ) {
+					$captured_sql = $query;
+					return array();
+				}
+			);
+
+		$exporter = new TestableAttendeesExporter( $this->mock_db );
+		$exporter->export_all_filtered();
+
+		$this->assertStringNotContainsString( 'a.occurrence_id = %d', $captured_sql );
+		$this->assertStringNotContainsString( 'o.event_id = %d', $captured_sql );
+	}
+
+	/**
+	 * Test export_all_filtered scopes to the event on the Purchases view.
+	 *
+	 * The event-scoped Attendees page (NTE-118) posts filter_event_id; the
+	 * export must honor it or "Export All (N)" ships every attendee in the
+	 * database instead of the N the button promises.
+	 *
+	 * @covers ::export_all_filtered
+	 *
+	 * @return void
+	 */
+	public function test_export_all_filtered_with_event_filter(): void {
+		$captured_query = null;
+		$captured_args  = array();
+
+		$this->mock_db->shouldReceive( 'prepare' )
+			->once()
+			->andReturnUsing(
+				function ( $query, ...$args ) use ( &$captured_query, &$captured_args ) {
+					$captured_query = $query;
+					$captured_args  = $args;
+					return $query;
+				}
+			);
+
+		$this->mock_db->shouldReceive( 'get_results' )
+			->once()
+			->andReturn( array() );
+
+		$exporter = new TestableAttendeesExporter( $this->mock_db );
+		$exporter->export_all_filtered( 0, 12, '', '', '' );
+
+		$this->assertStringContainsString( 'o.event_id = %d', $captured_query );
+		// prepare() receives the params as one array argument.
+		$this->assertContains( 12, (array) ( $captured_args[0] ?? array() ) );
 	}
 
 	/**
@@ -310,7 +484,7 @@ class AttendeesExporterTest extends \NetterTechEventsTestCase {
 			->andReturn( array() );
 
 		$exporter = new TestableAttendeesExporter( $this->mock_db );
-		$exporter->export_all_filtered( 0, 'john', '', '' );
+		$exporter->export_all_filtered( 0, 0, 'john', '', '' );
 
 		$this->assertStringContainsString( 'a.name LIKE %s OR a.email LIKE %s', $captured_query );
 	}
@@ -339,7 +513,7 @@ class AttendeesExporterTest extends \NetterTechEventsTestCase {
 			->andReturn( array() );
 
 		$exporter = new TestableAttendeesExporter( $this->mock_db );
-		$exporter->export_all_filtered( 0, '', 'confirmed', '' );
+		$exporter->export_all_filtered( 0, 0, '', 'confirmed', '' );
 
 		$this->assertStringContainsString( 'a.status = %s', $captured_query );
 	}
@@ -364,7 +538,7 @@ class AttendeesExporterTest extends \NetterTechEventsTestCase {
 			);
 
 		$exporter = new TestableAttendeesExporter( $this->mock_db );
-		$exporter->export_all_filtered( 0, '', '', 'yes' );
+		$exporter->export_all_filtered( 0, 0, '', '', 'yes' );
 
 		$this->assertStringContainsString( "a.name REGEXP '^Attendee [0-9]+\$'", $captured_query );
 		$this->assertStringContainsString( "e.title = 'Imported Attendees - Unknown Event'", $captured_query );
@@ -391,7 +565,7 @@ class AttendeesExporterTest extends \NetterTechEventsTestCase {
 			);
 
 		$exporter = new TestableAttendeesExporter( $this->mock_db );
-		$exporter->export_all_filtered( 0, '', '', 'no' );
+		$exporter->export_all_filtered( 0, 0, '', '', 'no' );
 
 		$this->assertStringContainsString( "a.name NOT REGEXP '^Attendee [0-9]+\$'", $captured_query );
 		$this->assertStringContainsString( "e.title != 'Imported Attendees - Unknown Event'", $captured_query );
@@ -426,7 +600,7 @@ class AttendeesExporterTest extends \NetterTechEventsTestCase {
 			->andReturn( array() );
 
 		$exporter = new TestableAttendeesExporter( $this->mock_db );
-		$exporter->export_all_filtered( 10, 'test', 'confirmed', '' );
+		$exporter->export_all_filtered( 10, 0, 'test', 'confirmed', '' );
 
 		$this->assertStringContainsString( 'a.occurrence_id = %d', $captured_query );
 		$this->assertStringContainsString( 'a.name LIKE %s OR a.email LIKE %s', $captured_query );

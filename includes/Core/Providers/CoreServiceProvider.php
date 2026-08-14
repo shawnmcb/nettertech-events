@@ -467,7 +467,8 @@ class CoreServiceProvider implements ServiceProviderInterface {
 			TicketTypeSaver::class,
 			fn( Container $c ) => new TicketTypeSaver(
 				$c->get( TicketTypeRepositoryInterface::class ),
-				class_exists( 'WooCommerce' ) ? $c->get( \NetterTechEvents\Integrations\WooCommerce\ProductManager::class ) : null
+				class_exists( 'WooCommerce' ) ? $c->get( \NetterTechEvents\Integrations\WooCommerce\ProductManager::class ) : null,
+				$c->get( EventRepositoryInterface::class )
 			)
 		);
 

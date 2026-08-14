@@ -370,6 +370,7 @@ class WooCommerceIntegration {
 		add_action( 'woocommerce_order_status_processing', array( $this->order_handler, 'handle_order_processing' ) );
 		add_action( 'woocommerce_order_status_cancelled', array( $this->order_handler, 'handle_order_cancelled' ) );
 		add_action( 'woocommerce_order_status_refunded', array( $this->order_handler, 'handle_order_refunded' ) );
+		add_action( 'woocommerce_order_status_failed', array( $this->order_handler, 'handle_order_failed' ) );
 
 		// Handle partial refunds (when refund is created but order status doesn't change).
 		add_action( 'woocommerce_refund_created', array( $this->order_handler, 'handle_refund_created' ), 10, 2 );

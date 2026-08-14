@@ -208,7 +208,7 @@ class TicketType {
 	 *
 	 * @var array<string>
 	 */
-	public const STATUSES = array( 'active', 'inactive', 'sold_out' );
+	public const STATUSES = array( 'active', 'draft', 'inactive', 'sold_out' );
 
 	/**
 	 * Create a TicketType from a database row.

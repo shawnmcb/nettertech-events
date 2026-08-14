@@ -704,6 +704,104 @@ class TicketSaveHandlerTest extends \NetterTechEventsTestCase {
 	}
 
 	/**
+	 * Split date + time fields (NTE-190) recombine to the exact wire format
+	 * the old datetime-local input submitted — byte-identical round trip.
+	 *
+	 * @runInSeparateProcess
+	 * @preserveGlobalState disabled
+	 *
+	 * @covers ::handle
+	 * @covers ::create_ticket_type_from_data
+	 *
+	 * @return void
+	 */
+	public function test_handle_composes_split_sale_fields_to_legacy_format(): void {
+		$this->capture_do_action();
+		$_POST = array(
+			self::NONCE_ACTION => 'valid_nonce',
+			'ticket_types'     => array(
+				'occurrence' => array(
+					array(
+						'name'            => 'Split Fields',
+						'price'           => '10.00',
+						'capacity_type'   => 'fixed',
+						// Decomposed form of stored '2026-03-01 09:00:00'.
+						'sale_start_date' => '2026-03-01',
+						'sale_start_time' => '09:00',
+						'sale_end_date'   => '2026-03-15',
+						'sale_end_time'   => '23:59',
+					),
+				),
+			),
+		);
+
+		$mock_repo = Mockery::mock( \NetterTechEvents\Contracts\TicketTypeRepositoryInterface::class );
+		$mock_repo->shouldReceive( 'save' )
+			->once()
+			->with( Mockery::on( function ( TicketType $tt ) {
+				return '2026-03-01T09:00' === $tt->sale_start
+					&& '2026-03-15T23:59' === $tt->sale_end;
+			} ) )
+			->andReturnUsing( function ( TicketType $tt ) {
+				return $tt;
+			} );
+
+		$handler = new TicketSaveHandler( self::NONCE_ACTION, $mock_repo );
+		$handler->handle( 1 );
+
+		$this->assert_hook_fired( 1, 0, array() );
+	}
+
+	/**
+	 * A boundary date without a time falls back to an explicit default:
+	 * 00:00 for sale start, 23:59 for sale end. A time without a date is
+	 * ignored (no boundary).
+	 *
+	 * @runInSeparateProcess
+	 * @preserveGlobalState disabled
+	 *
+	 * @covers ::handle
+	 * @covers ::create_ticket_type_from_data
+	 *
+	 * @return void
+	 */
+	public function test_handle_defaults_missing_sale_times_per_boundary(): void {
+		$this->capture_do_action();
+		$_POST = array(
+			self::NONCE_ACTION => 'valid_nonce',
+			'ticket_types'     => array(
+				'occurrence' => array(
+					array(
+						'name'            => 'Date Only',
+						'price'           => '10.00',
+						'capacity_type'   => 'fixed',
+						'sale_start_date' => '2026-03-01',
+						'sale_end_date'   => '2026-03-15',
+						// Time without a date: ignored, no boundary.
+						'sale_end_time'   => '',
+					),
+				),
+			),
+		);
+
+		$mock_repo = Mockery::mock( \NetterTechEvents\Contracts\TicketTypeRepositoryInterface::class );
+		$mock_repo->shouldReceive( 'save' )
+			->once()
+			->with( Mockery::on( function ( TicketType $tt ) {
+				return '2026-03-01T00:00' === $tt->sale_start
+					&& '2026-03-15T23:59' === $tt->sale_end;
+			} ) )
+			->andReturnUsing( function ( TicketType $tt ) {
+				return $tt;
+			} );
+
+		$handler = new TicketSaveHandler( self::NONCE_ACTION, $mock_repo );
+		$handler->handle( 1 );
+
+		$this->assert_hook_fired( 1, 0, array() );
+	}
+
+	/**
 	 * Test sale dates remain null when not provided.
 	 *
 	 * @runInSeparateProcess

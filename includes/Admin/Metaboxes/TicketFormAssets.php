@@ -52,6 +52,30 @@ class TicketFormAssets {
 				),
 			)
 		);
+
+		// Sale-window entry enhancements (NTE-190): shared time combobox +
+		// inline validation, plus the preset buttons' fill values.
+		DateTimeMetaboxHandler::enqueue_time_combobox_assets();
+
+		wp_enqueue_script(
+			'nettertech-events-sale-window-presets',
+			NETTERTECH_EVENTS_PLUGIN_URL . 'assets/js/admin/sale-window-presets.js',
+			array(),
+			NETTERTECH_EVENTS_VERSION,
+			array(
+				'strategy'  => 'defer',
+				'in_footer' => true,
+			)
+		);
+
+		wp_localize_script(
+			'nettertech-events-sale-window-presets',
+			'nettertechEventsSaleWindowPresets',
+			array(
+				'nowDate' => current_time( 'Y-m-d' ),
+				'nowTime' => current_time( 'H:i' ),
+			)
+		);
 	}
 
 	/**

@@ -32,7 +32,16 @@ defined( 'ABSPATH' ) || exit;
 					required>
 			<label for="start_time" class="screen-reader-text"><?php echo esc_html( $presenter->start_time_label() ); ?></label>
 			<input type="time" name="start_time" id="start_time"
-					value="<?php echo esc_attr( $presenter->start_time() ); ?>" style="width: 40%;">
+					value="<?php echo esc_attr( $presenter->start_time() ); ?>" style="width: 40%;"
+					data-nte-time-combobox>
+			<?php if ( '' !== $presenter->timezone_label() ) : ?>
+				<span class="nte-timezone-hint">
+					<?php
+					/* translators: %s: timezone name, e.g. America/Chicago. */
+					echo esc_html( sprintf( __( 'Times are in %s', 'nettertech-events' ), $presenter->timezone_label() ) );
+					?>
+				</span>
+			<?php endif; ?>
 		</fieldset>
 
 		<div class="nte-end-time-section" style="margin-top: 10px;">
@@ -55,6 +64,7 @@ defined( 'ABSPATH' ) || exit;
 				<label for="end_time" class="screen-reader-text"><?php echo esc_html( $presenter->end_time_label() ); ?></label>
 				<input type="time" name="end_time" id="end_time"
 						value="<?php echo esc_attr( $presenter->end_time() ); ?>" style="width: 40%;"
+						data-nte-time-combobox data-nte-duration-from="#start_time"
 						<?php echo $presenter->require_end_time() ? 'required="required"' : ''; ?>>
 			</fieldset>
 		</div>

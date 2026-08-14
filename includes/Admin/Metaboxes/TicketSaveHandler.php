@@ -242,16 +242,22 @@ class TicketSaveHandler {
 			$ticket_type->occurrence_id = $occurrence_id;
 		}
 
-		// Sale dates.
-		if ( ! empty( $data['sale_start'] ) ) {
-			$ticket_type->sale_start = sanitize_text_field( $data['sale_start'] );
+		// Sale dates. The form submits split date + time parts (NTE-190); they
+		// recombine here to the exact wire format the old datetime-local input
+		// produced, so downstream storage semantics are unchanged. The combined
+		// keys are still honored for backwards compatibility (REST, extensions).
+		$sale_start = \NetterTechEvents\Services\SaleWindowInput::compose( $data, 'sale_start', \NetterTechEvents\Services\SaleWindowInput::DEFAULT_START_TIME );
+		if ( '' !== $sale_start ) {
+			$ticket_type->sale_start = $sale_start;
 		}
-		if ( ! empty( $data['sale_end'] ) ) {
-			$ticket_type->sale_end = sanitize_text_field( $data['sale_end'] );
+		$sale_end = \NetterTechEvents\Services\SaleWindowInput::compose( $data, 'sale_end', \NetterTechEvents\Services\SaleWindowInput::DEFAULT_END_TIME );
+		if ( '' !== $sale_end ) {
+			$ticket_type->sale_end = $sale_end;
 		}
 
 		return $ticket_type;
 	}
+
 
 	/**
 	 * Save buffer stock for a ticket type.

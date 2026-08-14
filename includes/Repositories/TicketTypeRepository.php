@@ -430,6 +430,19 @@ class TicketTypeRepository implements TicketTypeRepositoryInterface {
 	}
 
 	/**
+	 * Get event-scope (series pass) ticket types currently on sale for an event.
+	 *
+	 * @since 1.1.3
+	 *
+	 * @param int                $event_id Event ID.
+	 * @param \DateTimeZone|null $zone     Zone the sale window is read in (default: site zone).
+	 * @return array<TicketType>
+	 */
+	public function get_on_sale_for_event( int $event_id, ?\DateTimeZone $zone = null ): array {
+		return $this->query_repo->get_on_sale_for_event( $event_id, $zone );
+	}
+
+	/**
 	 * Get ticket types for an event.
 	 *
 	 * @param int                  $event_id Event ID.

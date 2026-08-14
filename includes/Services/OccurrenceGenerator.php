@@ -34,6 +34,19 @@ class OccurrenceGenerator {
 	public const MAX_OCCURRENCES = 365;
 
 	/**
+	 * Hard cap on rule expansion for uncounted rules (runaway guard).
+	 *
+	 * Expansion always starts at the rule's original DTSTART (NTE-200: moving
+	 * the anchor forward changes a BYDAY-less rule's weekday and restarts
+	 * COUNT), so an old series legitimately walks through years of past dates
+	 * before reaching the horizon. The horizon terminates every sane rule;
+	 * this cap only stops pathological input from spinning.
+	 *
+	 * @var int
+	 */
+	public const EXPANSION_HARD_CAP = 5000;
+
+	/**
 	 * Default horizon in days for generating occurrences.
 	 *
 	 * @var int
@@ -43,11 +56,14 @@ class OccurrenceGenerator {
 	/**
 	 * Generate occurrences for an event.
 	 *
-	 * @param Event                   $event      The event.
-	 * @param \DateTimeInterface      $start_date First occurrence start date/time.
-	 * @param \DateTimeInterface      $end_date   First occurrence end date/time.
-	 * @param RecurrenceRule          $rule       The recurrence rule.
-	 * @param \DateTimeInterface|null $horizon    Optional end horizon (defaults to 1 year).
+	 * @param Event                   $event        The event.
+	 * @param \DateTimeInterface      $start_date   First occurrence start date/time (rule DTSTART — never relocated; see NTE-200).
+	 * @param \DateTimeInterface      $end_date     First occurrence end date/time.
+	 * @param RecurrenceRule          $rule         The recurrence rule.
+	 * @param \DateTimeInterface|null $horizon      Optional end horizon (defaults to 1 year).
+	 * @param \DateTimeInterface|null $collect_from Optional collection boundary: dates before it are still
+	 *                                              expanded (consuming COUNT and sequence numbers per RFC 5545)
+	 *                                              but not returned as rows. Used by future-only regeneration.
 	 * @return array<Occurrence>
 	 */
 	public function generate(
@@ -55,7 +71,8 @@ class OccurrenceGenerator {
 		\DateTimeInterface $start_date,
 		\DateTimeInterface $end_date,
 		RecurrenceRule $rule,
-		?\DateTimeInterface $horizon = null
+		?\DateTimeInterface $horizon = null,
+		?\DateTimeInterface $collect_from = null
 	): array {
 		$event_id = $event->id;
 		if ( null === $event_id ) {
@@ -81,9 +98,21 @@ class OccurrenceGenerator {
 			default => array(),
 		};
 
-		// Convert to Occurrence objects.
+		// Convert to Occurrence objects. Dates before $collect_from are skipped
+		// AFTER expansion, so they still consume their COUNT slot and their
+		// sequence number ($i is the full-rule position) — filtering the output
+		// instead of relocating DTSTART is what keeps a BYDAY-less rule on its
+		// original weekday and COUNT meaning "N total ever" (NTE-200).
 		$occurrences = array();
+		$collected   = 0;
 		foreach ( $dates as $i => $date ) {
+			if ( null !== $collect_from && $date < $collect_from ) {
+				continue;
+			}
+			if ( $collected >= self::MAX_OCCURRENCES ) {
+				break;
+			}
+			++$collected;
 			$occurrence                 = new Occurrence();
 			$occurrence->event_id       = $event_id;
 			$occurrence->start_datetime = $date->format( 'Y-m-d H:i:s' );
@@ -95,6 +124,9 @@ class OccurrenceGenerator {
 			// 1-based sequence in generation (date) order. Required for original-slot
 			// recovery in iCal export (RECURRENCE-ID / EXDATE).
 			$occurrence->sequence_number = $i + 1;
+
+			// The rule slot this row was generated at; survives later moves (NTE-182).
+			$occurrence->origin_start_datetime = $occurrence->start_datetime;
 
 			$occurrence->status = 'scheduled';
 			$occurrences[]      = $occurrence;
@@ -119,7 +151,7 @@ class OccurrenceGenerator {
 		$dates   = array();
 		$current = \DateTimeImmutable::createFromInterface( $start );
 		$count   = 0;
-		$max     = $rule->count ?? self::MAX_OCCURRENCES;
+		$max     = $rule->count ?? self::EXPANSION_HARD_CAP;
 		$until   = $rule->until ?? $horizon;
 
 		while ( $count < $max && $current <= $until && $current <= $horizon ) {
@@ -147,7 +179,7 @@ class OccurrenceGenerator {
 		$dates   = array();
 		$current = \DateTimeImmutable::createFromInterface( $start );
 		$count   = 0;
-		$max     = $rule->count ?? self::MAX_OCCURRENCES;
+		$max     = $rule->count ?? self::EXPANSION_HARD_CAP;
 		$until   = $rule->until ?? $horizon;
 
 		$by_day = $this->get_weekly_days( $current, $rule->by_day );
@@ -271,7 +303,7 @@ class OccurrenceGenerator {
 		$dates   = array();
 		$current = \DateTimeImmutable::createFromInterface( $start );
 		$count   = 0;
-		$max     = $rule->count ?? self::MAX_OCCURRENCES;
+		$max     = $rule->count ?? self::EXPANSION_HARD_CAP;
 		$until   = $rule->until ?? $horizon;
 
 		// Determine the type of monthly recurrence.
@@ -439,7 +471,7 @@ class OccurrenceGenerator {
 		\DateTimeInterface $horizon
 	): array {
 		$count = 0;
-		$max   = $rule->count ?? self::MAX_OCCURRENCES;
+		$max   = $rule->count ?? self::EXPANSION_HARD_CAP;
 		$until = $rule->until ?? $horizon;
 
 		// Without BYMONTH, recur once per year on the start date.

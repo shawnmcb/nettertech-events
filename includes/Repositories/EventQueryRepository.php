@@ -239,34 +239,6 @@ class EventQueryRepository implements EventQueryRepositoryInterface {
 	}
 
 	/**
-	 * Check if an event has any active ticket types.
-	 *
-	 * @param int $event_id Event ID.
-	 * @return bool True if the event has at least one active ticket type.
-	 */
-	public function has_ticket_types( int $event_id ): bool {
-		$occurrences_table  = Schema::table( 'occurrences' );
-		$ticket_types_table = Schema::table( 'ticket_types' );
-
-		// A ticket type links to an event via event-scoped (tt.event_id, occurrence_id
-		// NULL) OR occurrence-scoped (tt.occurrence_id -> o.id -> o.event_id) linkage;
-		// both must count. Matches EventQuery::where_has_ticket_types().
-		$count = (int) $this->db->get_var(
-			$this->db->prepare(
-				"SELECT COUNT(*)
-                 FROM {$ticket_types_table} tt
-                 LEFT JOIN {$occurrences_table} o ON tt.occurrence_id = o.id
-                 WHERE tt.status = 'active' AND ( tt.event_id = %d OR o.event_id = %d )
-                 LIMIT 1", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name from trusted constant or plugin property; user values bound via prepare().
-				$event_id,
-				$event_id
-			)
-		);
-
-		return $count > 0;
-	}
-
-	/**
 	 * Search events by title.
 	 *
 	 * @param string               $search Search term.

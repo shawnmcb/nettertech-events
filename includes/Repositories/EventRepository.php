@@ -515,16 +515,6 @@ class EventRepository implements EventRepositoryInterface {
 	}
 
 	/**
-	 * Check if an event has any active ticket types.
-	 *
-	 * @param int $event_id Event ID.
-	 * @return bool True if the event has at least one active ticket type.
-	 */
-	public function has_ticket_types( int $event_id ): bool {
-		return $this->query_repo->has_ticket_types( $event_id );
-	}
-
-	/**
 	 * Search events by title.
 	 *
 	 * @param string               $search Search term.

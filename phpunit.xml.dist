@@ -38,7 +38,9 @@
     </logging>
 
     <php>
-        <ini name="memory_limit" value="512M"/>
+        <!-- 1024M: the HTML coverage report outgrew 512M in 2026-08; this ini
+             overrides any CLI -d flag, so it must carry the real ceiling. -->
+        <ini name="memory_limit" value="1024M"/>
         <ini name="error_reporting" value="24575"/>
         <const name="NTE_TESTING" value="true"/>
         <const name="WP_DEBUG" value="true"/>

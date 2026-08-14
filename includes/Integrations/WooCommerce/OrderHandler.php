@@ -232,6 +232,25 @@ class OrderHandler {
 	}
 
 	/**
+	 * Handle order status changed to failed.
+	 *
+	 * Attendees are created when an order reaches processing or completed, so an
+	 * order that later fails — a declined capture, a COD order marked failed at
+	 * the door — leaves confirmed attendees behind. Those tickets stayed
+	 * checkable-in at the door and kept holding capacity, because failure was the
+	 * one unpaid terminal status with no listener (NTE-202). Voiding here is the
+	 * same treatment cancellation and full refund already get.
+	 *
+	 * @since 1.4.0
+	 *
+	 * @param int $order_id WooCommerce order ID.
+	 * @return void
+	 */
+	public function handle_order_failed( int $order_id ): void {
+		$this->void_attendees( $order_id );
+	}
+
+	/**
 	 * Handle refund created (partial or full refund).
 	 *
 	 * This fires when a refund is created, even for partial refunds

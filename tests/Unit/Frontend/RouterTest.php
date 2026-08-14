@@ -764,6 +764,10 @@ class RouterTest extends \NetterTechEventsTestCase {
 			->with( 'single-event' )
 			->andReturn( $event );
 
+		$this->occurrence_repo_mock->shouldReceive( 'count_for_event' )
+			->with( 1, 'scheduled' )
+			->andReturn( 1 );
+
 		\Brain\Monkey\Functions\when( 'locate_template' )->justReturn( '' );
 		\Brain\Monkey\Functions\when( 'add_filter' )->justReturn( true );
 
@@ -800,9 +804,9 @@ class RouterTest extends \NetterTechEventsTestCase {
 			->with( 'recurring-event' )
 			->andReturn( $event );
 
-		$this->event_repo_mock->shouldReceive( 'has_ticket_types' )
-			->with( 1 )
-			->andReturn( true );
+		$this->occurrence_repo_mock->shouldReceive( 'count_for_event' )
+			->with( 1, 'scheduled' )
+			->andReturn( 3 );
 
 		\Brain\Monkey\Functions\when( 'locate_template' )->justReturn( '' );
 		\Brain\Monkey\Functions\when( 'add_filter' )->justReturn( true );
@@ -811,6 +815,137 @@ class RouterTest extends \NetterTechEventsTestCase {
 
 		// Plugin template exists, so it should return the series template.
 		$this->assertStringContainsString( 'templates/series-page.php', $template );
+	}
+
+	/**
+	 * Test maybe_load_event_template loads series for unticketed recurring.
+	 *
+	 * Regression guard for NTE-197: the series page used to be gated on the
+	 * event having ticket types, so unticketed recurring events fell through
+	 * to the single-event template and the "View all" link in the More Dates
+	 * panel dead-ended on a page showing one date.
+	 *
+	 * @return void
+	 */
+	public function test_maybe_load_event_template_loads_series_for_unticketed_recurring(): void {
+		\Brain\Monkey\Functions\when( 'get_query_var' )
+			->alias(
+				function ( $var ) {
+					if ( 'nettertech_events_event_slug' === $var ) {
+						return 'unticketed-recurring-event';
+					}
+					return '';
+				}
+			);
+
+		// Create a mock published recurring event with no ticket types.
+		$event        = \Mockery::mock( \NetterTechEvents\Models\Event::class );
+		$event->id    = 1;
+		$event->title = 'Unticketed Recurring Event';
+		$event->shouldReceive( 'is_published' )->andReturn( true );
+		$event->shouldReceive( 'is_recurring' )->andReturn( true );
+
+		$this->event_repo_mock->shouldReceive( 'find_by_slug' )
+			->with( 'unticketed-recurring-event' )
+			->andReturn( $event );
+
+		$this->occurrence_repo_mock->shouldReceive( 'count_for_event' )
+			->with( 1, 'scheduled' )
+			->andReturn( 8 );
+
+		// No ticket-type stub: the date count alone decides the template, and the
+		// repository no longer exposes a ticket-type lookup for the router to call.
+		\Brain\Monkey\Functions\when( 'locate_template' )->justReturn( '' );
+		\Brain\Monkey\Functions\when( 'add_filter' )->justReturn( true );
+
+		$template = $this->router->maybe_load_event_template( '/path/to/default.php' );
+
+		$this->assertStringContainsString( 'templates/series-page.php', $template );
+	}
+
+	/**
+	 * Test maybe_load_event_template loads series for a single-type multi-date event.
+	 *
+	 * Regression guard for NTE-199: event_type is written solely from the Event Type
+	 * dropdown, so an event marked 'single' that carries manually added dates reports
+	 * is_recurring() === false. Routing on the date count instead of event_type is what
+	 * keeps its "View all" link from dead-ending on a one-date page.
+	 *
+	 * @return void
+	 */
+	public function test_maybe_load_event_template_loads_series_for_single_type_with_added_dates(): void {
+		\Brain\Monkey\Functions\when( 'get_query_var' )
+			->alias(
+				function ( $var ) {
+					if ( 'nettertech_events_event_slug' === $var ) {
+						return 'single-with-added-dates';
+					}
+					return '';
+				}
+			);
+
+		// Event type is 'single' — is_recurring() is false, yet it has three dates.
+		$event        = \Mockery::mock( \NetterTechEvents\Models\Event::class );
+		$event->id    = 1;
+		$event->title = 'Single Event With Added Dates';
+		$event->shouldReceive( 'is_published' )->andReturn( true );
+		$event->shouldReceive( 'is_recurring' )->andReturn( false );
+
+		$this->event_repo_mock->shouldReceive( 'find_by_slug' )
+			->with( 'single-with-added-dates' )
+			->andReturn( $event );
+
+		$this->occurrence_repo_mock->shouldReceive( 'count_for_event' )
+			->with( 1, 'scheduled' )
+			->andReturn( 3 );
+
+		\Brain\Monkey\Functions\when( 'locate_template' )->justReturn( '' );
+		\Brain\Monkey\Functions\when( 'add_filter' )->justReturn( true );
+
+		$template = $this->router->maybe_load_event_template( '/path/to/default.php' );
+
+		$this->assertStringContainsString( 'templates/series-page.php', $template );
+	}
+
+	/**
+	 * Test a recurring event with a single remaining date keeps the single template.
+	 *
+	 * The grid is not worth rendering for one card, and routing counts the same
+	 * 'scheduled' status the series page lists so the two cannot disagree.
+	 *
+	 * @return void
+	 */
+	public function test_maybe_load_event_template_loads_single_for_recurring_with_one_date(): void {
+		\Brain\Monkey\Functions\when( 'get_query_var' )
+			->alias(
+				function ( $var ) {
+					if ( 'nettertech_events_event_slug' === $var ) {
+						return 'recurring-one-date';
+					}
+					return '';
+				}
+			);
+
+		$event        = \Mockery::mock( \NetterTechEvents\Models\Event::class );
+		$event->id    = 1;
+		$event->title = 'Recurring With One Date';
+		$event->shouldReceive( 'is_published' )->andReturn( true );
+		$event->shouldReceive( 'is_recurring' )->andReturn( true );
+
+		$this->event_repo_mock->shouldReceive( 'find_by_slug' )
+			->with( 'recurring-one-date' )
+			->andReturn( $event );
+
+		$this->occurrence_repo_mock->shouldReceive( 'count_for_event' )
+			->with( 1, 'scheduled' )
+			->andReturn( 1 );
+
+		\Brain\Monkey\Functions\when( 'locate_template' )->justReturn( '' );
+		\Brain\Monkey\Functions\when( 'add_filter' )->justReturn( true );
+
+		$template = $this->router->maybe_load_event_template( '/path/to/default.php' );
+
+		$this->assertStringContainsString( 'templates/single-event.php', $template );
 	}
 
 	// =========================================================================
@@ -845,10 +980,6 @@ class RouterTest extends \NetterTechEventsTestCase {
 		$this->event_repo_mock->shouldReceive( 'find_by_slug' )
 			->with( 'ticketed-event' )
 			->andReturn( $event );
-
-		$this->event_repo_mock->shouldReceive( 'has_ticket_types' )
-			->with( 1 )
-			->andReturn( true );
 
 		// Mock global $wp_query for 404.
 		global $wp_query;
@@ -896,10 +1027,6 @@ class RouterTest extends \NetterTechEventsTestCase {
 		$this->event_repo_mock->shouldReceive( 'find_by_slug' )
 			->with( 'ticketed-event' )
 			->andReturn( $event );
-
-		$this->event_repo_mock->shouldReceive( 'has_ticket_types' )
-			->with( 1 )
-			->andReturn( true );
 
 		// Occurrence not found.
 		$this->occurrence_repo_mock->shouldReceive( 'find_by_event_and_datetime' )
@@ -951,10 +1078,6 @@ class RouterTest extends \NetterTechEventsTestCase {
 		$this->event_repo_mock->shouldReceive( 'find_by_slug' )
 			->with( 'ticketed-event' )
 			->andReturn( $event );
-
-		$this->event_repo_mock->shouldReceive( 'has_ticket_types' )
-			->with( 1 )
-			->andReturn( true );
 
 		// Create mock occurrence.
 		$occurrence = \Mockery::mock( \NetterTechEvents\Models\Occurrence::class );

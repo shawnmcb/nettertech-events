@@ -67,6 +67,7 @@ class OccurrencesTable implements TableDefinitionInterface {
             status varchar(20) DEFAULT 'scheduled',
             capacity int(10) unsigned DEFAULT NULL,
             sequence_number int(10) unsigned DEFAULT 1,
+            origin_start_datetime datetime DEFAULT NULL,
             is_rescheduled tinyint(1) DEFAULT 0,
             is_override tinyint(1) NOT NULL DEFAULT 0,
             venue_name_override varchar(255) DEFAULT NULL,

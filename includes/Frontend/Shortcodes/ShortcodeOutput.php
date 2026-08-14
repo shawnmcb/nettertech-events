@@ -39,6 +39,18 @@ final class ShortcodeOutput {
 	public static function get_allowlist(): array {
 		$allowed = wp_kses_allowed_html( 'post' );
 
+		// Core treats `style` as a kses global attribute, and since WP 7.0
+		// safecss_filter_attr() accepts `display`, so inline styles survive a
+		// post-seeded allowlist on 7.0+. The embed contract (NTE-131) pins the
+		// opposite — behavior belongs to classes, never style attributes, in
+		// markup that renders inside third-party pages — so the attribute is
+		// stripped here rather than riding core's changing defaults.
+		foreach ( $allowed as $nettertech_events_tag => $nettertech_events_attrs ) {
+			if ( is_array( $nettertech_events_attrs ) ) {
+				unset( $allowed[ $nettertech_events_tag ]['style'] );
+			}
+		}
+
 		// SVG icon support.
 		$svg_attrs         = array(
 			'class'           => true,

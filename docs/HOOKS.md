@@ -524,7 +524,7 @@ Fired before loading a template part. Dynamic hook name based on template slug.
 **Example:**
 ```php
 // Hook into event-card template loading
-add_action( 'nettertech_events_get_template_part_parts/event-card', function( $slug, $name ) {
+add_action( 'get_template_part_parts/event-card', function( $slug, $name ) {
     // Track template usage
     error_log( "Loading template: {$slug}" );
 }, 10, 2 );
@@ -640,6 +640,27 @@ add_action( 'nettertech_events_after_sold_out', function( $ticket_type, $occurre
 ```
 
 **Location:** `templates/parts/ticket-form.php:88`
+
+---
+
+#### `nettertech_events_event_card_status`
+
+Fired in the event card's status slot for active occurrences — only when the card is neither cancelled nor past (those states print base labels in the same slot). Extensions print status markup here, e.g. a sold-out badge built from the context's `prefetched_availability` verdict (see the `nettertech_events_cards_need_availability` filter). Output must satisfy `ShortcodeOutput::get_allowlist()`, which the listing shortcodes apply to the whole card.
+
+**Parameters:**
+- `$context` (TemplateContext) — Card template context (`occurrence`, `event`, `prefetched_availability`, ...)
+
+**Example:**
+```php
+add_action( 'nettertech_events_event_card_status', function( $context ) {
+    $availability = (array) $context->get( 'prefetched_availability', array() );
+    if ( ! empty( $availability['sold_out'] ) ) {
+        echo '<p class="nte-event-card__status my-addon-sold-out">' . esc_html__( 'Sold Out', 'my-addon' ) . '</p>';
+    }
+} );
+```
+
+**Location:** `templates/parts/event-card.php` (status slot)
 
 ---
 
@@ -978,6 +999,20 @@ add_filter( 'nettertech_events_rate_limit_bypass', function( $bypass ) {
 
 ### Configuration Filters
 
+#### `nettertech_events_cards_need_availability`
+
+Filter whether listing controllers should compute per-card availability. Return `true` to have the list/carousel shortcodes and the series page run the batched on-sale ticket-type prefetch, compute per-occurrence sold-out verdicts via `OccurrenceAvailabilityPresenter`, and pass a `prefetched_availability` array (`'sold_out' => bool`) into every event-card context. This is the no-N+1 path for extensions that render availability labels via `nettertech_events_event_card_status`; the default `false` keeps installs without such an extension free of the extra queries.
+
+**Parameters:**
+- `$needed` (bool) — Whether card availability is needed (default: false)
+
+**Example:**
+```php
+add_filter( 'nettertech_events_cards_need_availability', '__return_true' );
+```
+
+**Related JS lifecycle events** (for decorating client-rendered surfaces): `nte-calendar:rendered` (detail: `view`, `grid`, `events`), `nte-calendar:popup-rendered` (detail: `popup`, `events`, `date`), `nte-grid:rendered` (detail: `grid`, `events`). Calendar/grid entries carry `data-event-id`; each REST occurrence's `tickets.sold_out` carries the verdict.
+
 #### `nettertech_events_activity_logging_enabled`
 
 Filter whether activity logging is enabled.
@@ -1093,7 +1128,7 @@ Filter CSS custom property variables for image aspect ratios.
 ```php
 add_filter( 'nettertech_events_image_ratio_css_vars', function( $css_vars ) {
     // Override image aspect ratio to 16:9
-    $css_vars['--nte-image-ratio'] = '56.25%';
+    $css_vars['--nte-image-ratio-default'] = '56.25%';
     return $css_vars;
 } );
 ```
@@ -1383,6 +1418,7 @@ Every hook the plugin fires, grouped by kind, with the version it first shipped 
 | `nettertech_events_ticket_types_saved` | action | 1.0.2 | `includes/Admin/Metaboxes/TicketSaveHandler.php:195`; `includes/Services/TicketTypeSaver.php:212` | Fires after ticket types are saved for an event/occurrence. |
 | `nettertech_events_ticket_types_to_delete` | filter | 1.1.2 | `includes/Services/TicketTypeSaver.php:423` | Filters the tiers about to be deleted for not coming back with the ticket form. |
 | `nettertech_events_tickets_refunded` | action | 1.0.2 | `includes/Integrations/WooCommerce/OrderRefundProcessor.php:232` | Fires when tickets are refunded (covers partial refunds). |
+| `nettertech_events_forwarded_header` | filter | 1.4.0 | `includes/Services/ClientIpResolver.php:261` | Selects the single forwarded header trusted for generic (non-Cloudflare) proxies. Defaults to `HTTP_X_FORWARDED_FOR`; set to `HTTP_X_REAL_IP` for proxies that write X-Real-IP without appending to XFF. Exactly one header is trusted per trust reason (NTE-SEC-2026-07-A). |
 | `nettertech_events_trusted_proxy_ranges` | filter | 1.1.2 | `includes/Services/ClientIpResolver.php:226` | Filters the CIDR ranges of trusted reverse proxies for client IP resolution. |
 | `nettertech_events_waitlist_email_body` | filter | 1.0.2 | `includes/Services/WaitlistEmailHandler.php:183` | Filters the waitlist promotion email body. |
 | `nettertech_events_waitlist_email_subject` | filter | 1.0.2 | `includes/Services/WaitlistEmailHandler.php:156` | Filters the waitlist promotion email subject. |

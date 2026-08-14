@@ -12,8 +12,10 @@ namespace NetterTechEvents\Frontend;
 defined( 'ABSPATH' ) || exit;
 
 use NetterTechEvents\Contracts\CapacityServiceInterface;
+use NetterTechEvents\Contracts\OccurrenceRepositoryInterface;
 use NetterTechEvents\Contracts\TicketTypeRepositoryInterface;
 use NetterTechEvents\Core\Hooks;
+use NetterTechEvents\Enums\TicketTypeScope;
 use NetterTechEvents\Frontend\Shortcodes\ShortcodeOutput;
 use NetterTechEvents\Models\Event;
 use NetterTechEvents\Models\Occurrence;
@@ -61,28 +63,54 @@ class TicketDisplay {
 	private static ?Shortcodes\RSVPFormShortcode $rsvp_shortcode = null;
 
 	/**
+	 * Occurrence repository, used to anchor a series pass's sale window and
+	 * availability to the event's next occurrence (NTE-156).
+	 *
+	 * @var OccurrenceRepositoryInterface|null
+	 */
+	private static ?OccurrenceRepositoryInterface $occurrence_repo = null;
+
+	/**
+	 * Event IDs whose series-pass section has already rendered this request,
+	 * so a theme firing both after-content hooks cannot double-render it.
+	 *
+	 * @var array<int, bool>
+	 */
+	private static array $pass_rendered = array();
+
+	/**
 	 * Initialize the display hooks with injected dependencies.
 	 *
 	 * @since 2.0.0
 	 * @see ADR-013
 	 *
-	 * @param CapacityServiceInterface          $capacity_service Capacity service instance.
-	 * @param TicketTypeRepositoryInterface     $ticket_type_repo Ticket type repository.
-	 * @param Templates|null                    $templates        Templates service.
-	 * @param Shortcodes\RSVPFormShortcode|null $rsvp_shortcode   RSVP form shortcode.
+	 * @param CapacityServiceInterface           $capacity_service Capacity service instance.
+	 * @param TicketTypeRepositoryInterface      $ticket_type_repo Ticket type repository.
+	 * @param Templates|null                     $templates        Templates service.
+	 * @param Shortcodes\RSVPFormShortcode|null  $rsvp_shortcode   RSVP form shortcode.
+	 * @param OccurrenceRepositoryInterface|null $occurrence_repo  Occurrence repository (series-pass anchor).
 	 * @return void
 	 */
 	public static function init(
 		CapacityServiceInterface $capacity_service,
 		TicketTypeRepositoryInterface $ticket_type_repo,
 		?Templates $templates = null,
-		?Shortcodes\RSVPFormShortcode $rsvp_shortcode = null
+		?Shortcodes\RSVPFormShortcode $rsvp_shortcode = null,
+		?OccurrenceRepositoryInterface $occurrence_repo = null
 	): void {
 		self::$capacity_service = $capacity_service;
 		self::$ticket_type_repo = $ticket_type_repo;
 		self::$templates        = $templates ?? Templates::get_instance();
 		self::$rsvp_shortcode   = $rsvp_shortcode;
+		self::$occurrence_repo  = $occurrence_repo;
+		self::$pass_rendered    = array();
 		add_action( 'nettertech_events_single_occurrence_actions', array( self::class, 'render_occurrence_actions' ), 10, 2 );
+
+		// A series pass is event-level, not occurrence-level, so it surfaces once
+		// per event page rather than per date. Both templates a ticketed event can
+		// resolve to (single and series) fire an after-content action (NTE-156).
+		add_action( 'nettertech_events_after_single_content', array( self::class, 'render_event_series_pass' ), 15, 1 );
+		add_action( 'nettertech_events_after_series_content', array( self::class, 'render_event_series_pass' ), 15, 1 );
 	}
 
 
@@ -146,6 +174,17 @@ jQuery(function($) {
 			return;
 		}
 		$ticket_types = $ticket_type_repo->get_on_sale_for_occurrence( $occurrence->id );
+
+		// A series pass is event-level and now has its own section (NTE-156); it
+		// used to leak into every date's form via the occurrence lookup's
+		// event-scope branch, so a pass could appear on some dates and not others.
+		// Keep the per-date form to this date's own tiers.
+		$ticket_types = array_values(
+			array_filter(
+				$ticket_types,
+				static fn( TicketType $type ) => TicketTypeScope::EVENT->value !== $type->scope
+			)
+		);
 
 		if ( empty( $ticket_types ) ) {
 			return;
@@ -266,45 +305,12 @@ jQuery(function($) {
 	 * @return void
 	 */
 	private static function render_ticket_display( array $ticket_types, Occurrence $occurrence ): void {
-		$capacity_service = self::$capacity_service;
-		$templates        = self::$templates;
-		if ( null === $capacity_service || null === $templates ) {
+		$templates = self::$templates;
+		if ( null === self::$capacity_service || null === $templates ) {
 			return;
 		}
-		$has_available = false;
-		$tickets       = array();
-
-		foreach ( $ticket_types as $ticket_type ) {
-			if ( null === $ticket_type->id ) {
-				continue;
-			}
-
-			$available       = $capacity_service->get_available_count( $ticket_type->id );
-			$max_purchasable = self::get_max_purchasable( $ticket_type, $available );
-			$is_sold_out     = $ticket_type->is_sold_out() || 0 === $max_purchasable;
-
-			if ( ! $is_sold_out && $ticket_type->wc_product_id ) {
-				$has_available = true;
-			}
-
-			$tickets[] = array(
-				'ticket_type'     => $ticket_type,
-				'id'              => $ticket_type->id,
-				'name'            => $ticket_type->name,
-				'description'     => $ticket_type->description,
-				'formatted_price' => $ticket_type->get_formatted_price(),
-				'price'           => $ticket_type->price,
-				'min_per_order'   => $ticket_type->min_per_order,
-				'max_per_order'   => $ticket_type->max_per_order,
-				'has_product'     => (bool) $ticket_type->wc_product_id,
-				'available'       => $available,
-				'available_attr'  => null === $available ? 'unlimited' : (string) $available,
-				'max_purchasable' => $max_purchasable,
-				'is_sold_out'     => $is_sold_out,
-				'is_low_stock'    => $ticket_type->is_low_stock(),
-				'input_id'        => 'nte-qty-' . $ticket_type->id,
-			);
-		}
+		$tickets       = self::build_ticket_rows( $ticket_types );
+		$has_available = self::rows_have_available( $tickets );
 
 		$currency_symbol = function_exists( 'get_woocommerce_currency_symbol' ) ? get_woocommerce_currency_symbol() : '$';
 
@@ -329,6 +335,157 @@ jQuery(function($) {
 
 		// Extensibility: add-ons can inject content after the ticket form.
 		do_action( 'nettertech_events_after_ticket_form', $ticket_types, $occurrence );
+	}
+
+	/**
+	 * Render the public buy affordance for an event's series pass(es) (NTE-156).
+	 *
+	 * A series pass is an event-scope tier that belongs to no single date, so
+	 * the per-occurrence ticket actions never surface it — leaving a configured
+	 * pass unbuyable from the front end. This renders it once per event page, as
+	 * its own labelled section, reusing the same ticket-form template and batch
+	 * AJAX path (the cart handler resolves a passless line to the next date).
+	 *
+	 * Fires on the bare `after_{single,series}_content` actions, so it escapes
+	 * its own output at the boundary rather than relying on a caller to.
+	 *
+	 * @since 1.1.3
+	 *
+	 * @param Event $event The event being displayed.
+	 * @return void
+	 */
+	public static function render_event_series_pass( Event $event ): void {
+		$ticket_type_repo = self::$ticket_type_repo;
+		$templates        = self::$templates;
+		$occurrence_repo  = self::$occurrence_repo;
+
+		if ( null === $ticket_type_repo || null === $templates || null === $event->id ) {
+			return;
+		}
+
+		// Render at most once per event per request, even if a theme fires both
+		// after-content hooks.
+		if ( isset( self::$pass_rendered[ $event->id ] ) ) {
+			return;
+		}
+
+		// A pass is a paid ticket; without WooCommerce there is no purchase path.
+		if ( ! class_exists( 'WooCommerce' ) ) {
+			return;
+		}
+
+		// Anchor the sale window to the event's next occurrence, exactly as the
+		// cart gate does (CartValidator reads it in that occurrence's zone), so a
+		// pass shown here is one the cart will actually accept. No upcoming date
+		// means nothing a pass could admit to.
+		$next = null !== $occurrence_repo ? $occurrence_repo->next_for_event( (int) $event->id ) : null;
+		if ( null === $next ) {
+			return;
+		}
+
+		$tiers = $ticket_type_repo->get_on_sale_for_event( (int) $event->id, $next->get_timezone() );
+		if ( empty( $tiers ) ) {
+			return;
+		}
+
+		self::$pass_rendered[ $event->id ] = true;
+
+		$tickets         = self::build_ticket_rows( $tiers );
+		$has_available   = self::rows_have_available( $tickets );
+		$currency_symbol = function_exists( 'get_woocommerce_currency_symbol' ) ? get_woocommerce_currency_symbol() : '$';
+
+		$form = $templates->get_template_part(
+			'ticket-form',
+			array(
+				'form_id'         => 'nte-series-pass-form-' . (int) $event->id,
+				'occurrence_id'   => 0,
+				'occurrence'      => null,
+				'has_available'   => $has_available,
+				'currency_symbol' => $currency_symbol,
+				'tickets'         => $tickets,
+			)
+		);
+
+		$section  = '<section class="nte-series-pass" aria-label="' . esc_attr__( 'Series pass', 'nettertech-events' ) . '">';
+		$section .= '<h2 class="nte-series-pass__title">' . esc_html__( 'Series Pass', 'nettertech-events' ) . '</h2>';
+		$section .= '<p class="nte-series-pass__blurb">' . esc_html__( 'One ticket, valid for every date of this event.', 'nettertech-events' ) . '</p>';
+		$section .= $form;
+		$section .= '</section>';
+
+		echo wp_kses( $section, ShortcodeOutput::get_allowlist() );
+
+		self::enqueue_ticket_scripts();
+
+		/** This action is documented in nettertech-events/includes/Frontend/TicketDisplay.php */
+		do_action( 'nettertech_events_after_ticket_form', $tiers, $next );
+	}
+
+	/**
+	 * Build the per-ticket-type display rows (availability, pricing, stock).
+	 *
+	 * Shared by the occurrence ticket form and the event-level series-pass form
+	 * so both compute availability identically through the (pass-aware) capacity
+	 * service.
+	 *
+	 * @since 1.1.3
+	 *
+	 * @param array<TicketType> $ticket_types Ticket types to display.
+	 * @return array<int, array<string, mixed>> Row data consumed by the ticket-form template.
+	 */
+	private static function build_ticket_rows( array $ticket_types ): array {
+		$capacity_service = self::$capacity_service;
+		if ( null === $capacity_service ) {
+			return array();
+		}
+
+		$tickets = array();
+		foreach ( $ticket_types as $ticket_type ) {
+			if ( null === $ticket_type->id ) {
+				continue;
+			}
+
+			$available       = $capacity_service->get_available_count( $ticket_type->id );
+			$max_purchasable = self::get_max_purchasable( $ticket_type, $available );
+			$is_sold_out     = $ticket_type->is_sold_out() || 0 === $max_purchasable;
+
+			$tickets[] = array(
+				'ticket_type'     => $ticket_type,
+				'id'              => $ticket_type->id,
+				'name'            => $ticket_type->name,
+				'description'     => $ticket_type->description,
+				'formatted_price' => $ticket_type->get_formatted_price(),
+				'price'           => $ticket_type->price,
+				'min_per_order'   => $ticket_type->min_per_order,
+				'max_per_order'   => $ticket_type->max_per_order,
+				'has_product'     => (bool) $ticket_type->wc_product_id,
+				'available'       => $available,
+				'available_attr'  => null === $available ? 'unlimited' : (string) $available,
+				'max_purchasable' => $max_purchasable,
+				'is_sold_out'     => $is_sold_out,
+				'is_low_stock'    => $ticket_type->is_low_stock(),
+				'input_id'        => 'nte-qty-' . $ticket_type->id,
+			);
+		}
+
+		return $tickets;
+	}
+
+	/**
+	 * Whether any built row is a purchasable (not sold out, WC-linked) ticket.
+	 *
+	 * @since 1.1.3
+	 *
+	 * @param array<int, array<string, mixed>> $tickets Rows from build_ticket_rows().
+	 * @return bool
+	 */
+	private static function rows_have_available( array $tickets ): bool {
+		foreach ( $tickets as $row ) {
+			if ( empty( $row['is_sold_out'] ) && ! empty( $row['has_product'] ) ) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	/**

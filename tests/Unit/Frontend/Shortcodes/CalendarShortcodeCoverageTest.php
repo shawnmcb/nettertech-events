@@ -102,6 +102,7 @@ class CalendarShortcodeCoverageTest extends \NetterTechEventsTestCase {
 		$occ                 = Mockery::mock( Occurrence::class );
 		$occ->start_datetime = $start;
 		$occ->shouldReceive( 'get_event' )->andReturn( $event )->byDefault();
+		$occ->shouldReceive( 'get_url' )->andReturn( $url )->byDefault();
 		return $occ;
 	}
 

@@ -429,6 +429,9 @@ namespace NetterTechEvents\Tests\Unit\Integrations\WooCommerce {
 			$this->assertContains( 'woocommerce_order_status_processing', $this->registered_hooks );
 			$this->assertContains( 'woocommerce_order_status_cancelled', $this->registered_hooks );
 			$this->assertContains( 'woocommerce_order_status_refunded', $this->registered_hooks );
+			// NTE-202: 'failed' was the one unpaid terminal status with no listener,
+			// so a failed order kept confirmed, checkable-in attendees holding capacity.
+			$this->assertContains( 'woocommerce_order_status_failed', $this->registered_hooks );
 			$this->assertContains( 'woocommerce_refund_created', $this->registered_hooks );
 		}
 

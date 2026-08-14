@@ -278,6 +278,85 @@ class OccurrenceSaveHandlerTest extends \NetterTechEventsTestCase {
 	}
 
 	/**
+	 * A blank end time in the occurrence editor derives start + default duration (NTE-189).
+	 *
+	 * Previously a blank end became the start time verbatim, saving a zero-length occurrence.
+	 * The shared resolver now fills it from default_event_duration_minutes (default 120 min).
+	 *
+	 * @return void
+	 */
+	public function test_scope_this_derives_blank_end_time(): void {
+		$this->seed_nonce();
+		$occurrence = $this->make_occurrence( 11, 5, '2026-06-15 19:00:00' );
+
+		$_POST = array_merge(
+			$_POST,
+			array(
+				'occurrence_id' => '11',
+				'event_id'      => '5',
+				'scope'         => 'this',
+				'start_date'    => '2026-06-15',
+				'start_time'    => '20:00',
+				'end_date'      => '2026-06-15',
+				'end_time'      => '',
+				'status'        => 'scheduled',
+			)
+		);
+
+		$this->occurrence_repo->shouldReceive( 'find' )->with( 11 )->andReturn( $occurrence );
+		$this->event_repo->shouldReceive( 'find' )->with( 5 )->andReturn( $this->make_event( 5 ) );
+
+		$saved = null;
+		$this->occurrence_repo->shouldReceive( 'save' )->once()->andReturnUsing(
+			function ( Occurrence $o ) use ( &$saved ) {
+				$saved = $o;
+				return $o;
+			}
+		);
+
+		$url = $this->handler->process_save();
+
+		$this->assertStringContainsString( 'message=updated', $url );
+		$this->assertSame( '2026-06-15 20:00:00', $saved->start_datetime );
+		// 20:00 + 120 min default duration = 22:00.
+		$this->assertSame( '2026-06-15 22:00:00', $saved->end_datetime );
+	}
+
+	/**
+	 * A zero-length (or inverted) span in the occurrence editor is rejected (NTE-189).
+	 *
+	 * @return void
+	 */
+	public function test_scope_this_rejects_zero_length_span(): void {
+		$this->seed_nonce();
+		$occurrence = $this->make_occurrence( 11, 5, '2026-06-15 19:00:00' );
+
+		$_POST = array_merge(
+			$_POST,
+			array(
+				'occurrence_id' => '11',
+				'event_id'      => '5',
+				'scope'         => 'this',
+				'start_date'    => '2026-06-15',
+				'start_time'    => '20:00',
+				'end_date'      => '2026-06-15',
+				'end_time'      => '20:00',
+				'status'        => 'scheduled',
+			)
+		);
+
+		$this->occurrence_repo->shouldReceive( 'find' )->with( 11 )->andReturn( $occurrence );
+		$this->event_repo->shouldReceive( 'find' )->with( 5 )->andReturn( $this->make_event( 5 ) );
+
+		// The span fails validation before any save.
+		$this->occurrence_repo->shouldNotReceive( 'save' );
+
+		$url = $this->handler->process_save();
+
+		$this->assertStringContainsString( 'message=error', $url );
+	}
+
+	/**
 	 * Test scope=this persists the per-occurrence featured image override (NTE-159 C).
 	 *
 	 * The image rides the same is_override row as every other per-date override,
@@ -364,6 +443,93 @@ class OccurrenceSaveHandlerTest extends \NetterTechEventsTestCase {
 	}
 
 	/**
+	 * An unrelated edit preserves a 'rescheduled' status instead of squashing it (R3).
+	 *
+	 * The status control offers only Active/Cancelled and pre-selects Active for any non-cancelled
+	 * date, so a plain save posts 'scheduled'. Operator ruling 2026-07-20 (spec-001 invention
+	 * audit): a plain save must not rewrite 'rescheduled' to 'scheduled'.
+	 *
+	 * @return void
+	 */
+	public function test_scope_this_preserves_rescheduled_status_on_unrelated_edit(): void {
+		$this->seed_nonce();
+		$occurrence         = $this->make_occurrence( 11, 5, '2026-06-15 19:00:00' );
+		$occurrence->status = 'rescheduled';
+
+		$_POST = array_merge(
+			$_POST,
+			array(
+				'occurrence_id' => '11',
+				'event_id'      => '5',
+				'scope'         => 'this',
+				'start_date'    => '2026-06-15',
+				'start_time'    => '19:00',
+				'end_date'      => '2026-06-15',
+				'end_time'      => '21:00',
+				// Form posts 'scheduled' (the pre-selected "Active" option) though nothing changed.
+				'status'        => 'scheduled',
+				'venue_name_override' => 'New Hall',
+			)
+		);
+
+		$this->occurrence_repo->shouldReceive( 'find' )->with( 11 )->andReturn( $occurrence );
+		$this->event_repo->shouldReceive( 'find' )->with( 5 )->andReturn( $this->make_event( 5 ) );
+
+		$saved = null;
+		$this->occurrence_repo->shouldReceive( 'save' )->once()->andReturnUsing(
+			function ( Occurrence $o ) use ( &$saved ) {
+				$saved = $o;
+				return $o;
+			}
+		);
+
+		$this->handler->process_save();
+
+		$this->assertSame( 'rescheduled', $saved->status, 'A plain save must not squash rescheduled to scheduled.' );
+		$this->assertSame( 'New Hall', $saved->venue_name_override );
+	}
+
+	/**
+	 * Un-cancelling a cancelled date IS an explicit change back to scheduled (R3).
+	 *
+	 * @return void
+	 */
+	public function test_scope_this_uncancel_restores_scheduled(): void {
+		$this->seed_nonce();
+		$occurrence         = $this->make_occurrence( 11, 5, '2026-06-15 19:00:00' );
+		$occurrence->status = 'cancelled';
+
+		$_POST = array_merge(
+			$_POST,
+			array(
+				'occurrence_id' => '11',
+				'event_id'      => '5',
+				'scope'         => 'this',
+				'start_date'    => '2026-06-15',
+				'start_time'    => '19:00',
+				'end_date'      => '2026-06-15',
+				'end_time'      => '21:00',
+				'status'        => 'scheduled',
+			)
+		);
+
+		$this->occurrence_repo->shouldReceive( 'find' )->with( 11 )->andReturn( $occurrence );
+		$this->event_repo->shouldReceive( 'find' )->with( 5 )->andReturn( $this->make_event( 5 ) );
+
+		$saved = null;
+		$this->occurrence_repo->shouldReceive( 'save' )->once()->andReturnUsing(
+			function ( Occurrence $o ) use ( &$saved ) {
+				$saved = $o;
+				return $o;
+			}
+		);
+
+		$this->handler->process_save();
+
+		$this->assertSame( 'scheduled', $saved->status );
+	}
+
+	/**
 	 * Test scope=all propagates to event and future occurrences.
 	 *
 	 * @return void
@@ -424,6 +590,79 @@ class OccurrenceSaveHandlerTest extends \NetterTechEventsTestCase {
 		$this->assertSame( '2026-06-15 18:30:00', $saved_occ[0]->start_datetime );
 		$this->assertSame( '2026-06-22 18:30:00', $saved_occ[1]->start_datetime );
 		$this->assertSame( 80, $saved_occ[1]->capacity );
+	}
+
+	/**
+	 * scope=all skips hand-picked (is_override) siblings and names them in the save notice (R2).
+	 *
+	 * Operator ruling 2026-07-20 (spec-001 invention audit): an "apply to all" must not overwrite
+	 * the times/capacity of dates the operator set by hand.
+	 *
+	 * @return void
+	 */
+	public function test_scope_all_skips_override_siblings_and_notes_them(): void {
+		$this->seed_nonce();
+		Functions\when( 'get_option' )->justReturn( 'Y-m-d H:i' );
+		Functions\when( 'wp_date' )->alias( static fn( $format, $timestamp ) => 'OVERRIDE-DATE' );
+
+		$captured_notice = null;
+		Functions\when( 'set_transient' )->alias(
+			function ( $key, $value ) use ( &$captured_notice ) {
+				if ( str_contains( (string) $key, 'save_notice' ) ) {
+					$captured_notice = $value;
+				}
+				return true;
+			}
+		);
+
+		$occurrence = $this->make_occurrence( 11, 5, '2026-06-15 19:00:00' );
+		$event      = $this->make_event( 5 );
+
+		$_POST = array_merge(
+			$_POST,
+			array(
+				'occurrence_id' => '11',
+				'event_id'      => '5',
+				'scope'         => 'all',
+				'start_date'    => '2026-06-15',
+				'start_time'    => '18:30',
+				'end_date'      => '2026-06-15',
+				'end_time'      => '20:30',
+				'status'        => 'scheduled',
+				'capacity'      => '80',
+			)
+		);
+
+		$this->occurrence_repo->shouldReceive( 'find' )->with( 11 )->andReturn( $occurrence );
+		$this->event_repo->shouldReceive( 'find' )->with( 5 )->andReturn( $event );
+		$this->event_repo->shouldReceive( 'save' )->once()->andReturnUsing( static fn( Event $e ) => $e );
+
+		$plain                 = $this->make_occurrence( 12, 5, '2026-06-22 19:00:00' );
+		$override              = $this->make_occurrence( 13, 5, '2026-06-29 19:00:00' );
+		$override->is_override = true;
+		$override->timezone    = 'UTC';
+
+		$this->occurrence_repo->shouldReceive( 'for_event' )
+			->with( 5, array( 'upcoming' => true ) )
+			->andReturn( array( $plain, $override ) );
+
+		$saved_occ = array();
+		$this->occurrence_repo->shouldReceive( 'save' )->andReturnUsing(
+			function ( Occurrence $o ) use ( &$saved_occ ) {
+				$saved_occ[] = $o;
+				return $o;
+			}
+		);
+
+		$this->handler->process_save();
+
+		// Only the plain sibling was rewritten; the override was left untouched.
+		$this->assertCount( 1, $saved_occ );
+		$this->assertSame( 12, $saved_occ[0]->id );
+		$this->assertSame( '2026-06-22 18:30:00', $saved_occ[0]->start_datetime );
+		// The skipped override is named in the save notice.
+		$this->assertNotNull( $captured_notice );
+		$this->assertStringContainsString( 'OVERRIDE-DATE', $captured_notice );
 	}
 
 	/**

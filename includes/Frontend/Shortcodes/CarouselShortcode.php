@@ -13,6 +13,7 @@ defined( 'ABSPATH' ) || exit;
 
 use NetterTechEvents\Core\Hooks;
 use NetterTechEvents\Frontend\FrontendBranding;
+use NetterTechEvents\Frontend\OccurrenceAvailabilityPresenter;
 use NetterTechEvents\Contracts\OccurrenceRepositoryInterface;
 use NetterTechEvents\Contracts\TagRepositoryInterface;
 use NetterTechEvents\Contracts\TicketTypeRepositoryInterface;
@@ -101,16 +102,18 @@ class CarouselShortcode {
 	/**
 	 * Constructor.
 	 *
-	 * @param OccurrenceRepositoryInterface $occurrence_repo  Occurrence repository.
-	 * @param Templates                     $templates        Templates service.
-	 * @param TagRepositoryInterface        $tag_repo         Tag repository.
-	 * @param TicketTypeRepositoryInterface $ticket_type_repo Ticket type repository.
+	 * @param OccurrenceRepositoryInterface        $occurrence_repo  Occurrence repository.
+	 * @param Templates                            $templates        Templates service.
+	 * @param TagRepositoryInterface               $tag_repo         Tag repository.
+	 * @param TicketTypeRepositoryInterface        $ticket_type_repo Ticket type repository.
+	 * @param OccurrenceAvailabilityPresenter|null $availability   Availability presenter (sold-out badge). Optional for BC.
 	 */
 	public function __construct(
 		OccurrenceRepositoryInterface $occurrence_repo,
 		Templates $templates,
 		TagRepositoryInterface $tag_repo,
-		TicketTypeRepositoryInterface $ticket_type_repo
+		TicketTypeRepositoryInterface $ticket_type_repo,
+		private readonly ?OccurrenceAvailabilityPresenter $availability = null
 	) {
 		$this->occurrence_repo  = $occurrence_repo;
 		$this->templates        = $templates;
@@ -189,8 +192,14 @@ class CarouselShortcode {
 		}
 
 		// Prefetch tags + on-sale ticket types for all cards (SA-01 N+1 prevention).
+		// Ticket types are fetched when price is shown OR an extension opted into card
+		// availability (NTE-203) — free/base installs with prices hidden pay no extra query.
+		$needs_availability      = (bool) apply_filters( Hooks::CARDS_NEED_AVAILABILITY, false );
 		$prefetched_tags         = $this->prefetch_tags_for_occurrences( $occurrences );
-		$prefetched_ticket_types = $this->prefetch_ticket_types_for_occurrences( $occurrences, (bool) $atts['show_price'] );
+		$prefetched_ticket_types = ( $atts['show_price'] || $needs_availability )
+			? $this->prefetch_ticket_types_for_occurrences( $occurrences )
+			: array();
+		$prefetched_availability = $this->availability_verdicts( $prefetched_ticket_types, $needs_availability );
 
 		ob_start();
 		?>
@@ -205,7 +214,7 @@ class CarouselShortcode {
 		>
 			<div class="nte-carousel__track">
 				<?php foreach ( $occurrences as $occurrence ) : ?>
-					<?php echo wp_kses( $this->render_card( $occurrence, $atts, $prefetched_tags, $prefetched_ticket_types ), ShortcodeOutput::get_allowlist() ); ?>
+					<?php echo wp_kses( $this->render_card( $occurrence, $atts, $prefetched_tags, $prefetched_ticket_types, $prefetched_availability ), ShortcodeOutput::get_allowlist() ); ?>
 				<?php endforeach; ?>
 			</div>
 
@@ -236,9 +245,10 @@ class CarouselShortcode {
 	 * @param array<string, mixed>                                   $atts                    Attributes.
 	 * @param array<int, array<\NetterTechEvents\Models\Tag>>        $prefetched_tags         Map of event_id => list of tags.
 	 * @param array<int, array<\NetterTechEvents\Models\TicketType>> $prefetched_ticket_types Map of occurrence_id => list of on-sale ticket types.
+	 * @param array<int, array{sold_out: bool}>                      $prefetched_availability Map of occurrence_id => availability verdict.
 	 * @return string
 	 */
-	private function render_card( $occurrence, array $atts, array $prefetched_tags, array $prefetched_ticket_types ): string {
+	private function render_card( $occurrence, array $atts, array $prefetched_tags, array $prefetched_ticket_types, array $prefetched_availability = array() ): string {
 		$event       = $occurrence->get_event();
 		$event_id    = $event ? (int) $event->id : 0;
 		$occ_id      = (int) $occurrence->id;
@@ -261,8 +271,33 @@ class CarouselShortcode {
 				'max_tags'                => (int) $atts['max_tags'],
 				'prefetched_tags'         => $card_tags,
 				'prefetched_ticket_types' => $card_prices,
+				'prefetched_availability' => $prefetched_availability[ $occ_id ] ?? array( 'sold_out' => false ),
 			)
 		);
+	}
+
+	/**
+	 * Compute per-occurrence availability verdicts from prefetched on-sale types.
+	 *
+	 * Runs only when an extension opted in via Hooks::CARDS_NEED_AVAILABILITY —
+	 * the per-type capacity summaries are the expensive part, and base renders
+	 * no availability UI of its own (NTE-203).
+	 *
+	 * @param array<int, array<\NetterTechEvents\Models\TicketType>> $prefetched_ticket_types Map of occurrence_id => on-sale ticket types.
+	 * @param bool                                                   $needs_availability      Whether an extension requested verdicts.
+	 * @return array<int, array{sold_out: bool}> Map of occurrence_id => verdict.
+	 */
+	private function availability_verdicts( array $prefetched_ticket_types, bool $needs_availability ): array {
+		if ( ! $needs_availability || null === $this->availability ) {
+			return array();
+		}
+
+		$verdicts = array();
+		foreach ( $prefetched_ticket_types as $occ_id => $ticket_types ) {
+			$verdicts[ $occ_id ] = array( 'sold_out' => $this->availability->is_sold_out( $ticket_types ) );
+		}
+
+		return $verdicts;
 	}
 
 	/**
@@ -294,15 +329,14 @@ class CarouselShortcode {
 	/**
 	 * Prefetch on-sale ticket types for every occurrence in one query.
 	 *
-	 * Only fires when the carousel actually shows price (avoids an
-	 * unnecessary query for layouts that suppress pricing).
+	 * Always fires, independent of show_price: prices need it when shown,
+	 * and the sold-out badge (NTE-203) needs it on every layout.
 	 *
 	 * @param array<\NetterTechEvents\Models\Occurrence> $occurrences Occurrences to render.
-	 * @param bool                                       $show_price  Whether price is rendered.
 	 * @return array<int, array<\NetterTechEvents\Models\TicketType>> Map of occurrence_id => list of on-sale ticket types.
 	 */
-	private function prefetch_ticket_types_for_occurrences( array $occurrences, bool $show_price ): array {
-		if ( ! $show_price || empty( $occurrences ) ) {
+	private function prefetch_ticket_types_for_occurrences( array $occurrences ): array {
+		if ( empty( $occurrences ) ) {
 			return array();
 		}
 

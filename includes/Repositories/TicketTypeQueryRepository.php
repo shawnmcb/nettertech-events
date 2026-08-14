@@ -280,6 +280,37 @@ class TicketTypeQueryRepository implements TicketTypeQueryRepositoryInterface {
 	}
 
 	/**
+	 * Get event-scope (series pass) ticket types currently on sale for an event.
+	 *
+	 * A series pass belongs to no single occurrence, so it never appears in the
+	 * occurrence lookups above — which is exactly why it had no buy button on the
+	 * public page (NTE-156). The sale window is read in the passed zone, which the
+	 * caller anchors to the event's next occurrence so this agrees with the cart
+	 * gate (CartValidator reads the window in `next_for_event()`'s timezone).
+	 *
+	 * @since 1.1.3
+	 *
+	 * @param int                $event_id Event ID.
+	 * @param \DateTimeZone|null $zone     Zone the sale window is read in (default: site zone).
+	 * @return array<TicketType>
+	 */
+	public function get_on_sale_for_event( int $event_id, ?\DateTimeZone $zone = null ): array {
+		$types = $this->for_event(
+			$event_id,
+			array(
+				'scope'  => TicketTypeScope::EVENT->value,
+				'status' => 'active',
+			)
+		);
+
+		$zone = $zone ?? wp_timezone();
+
+		return array_values(
+			array_filter( $types, static fn( TicketType $type ) => $type->is_on_sale( $zone ) )
+		);
+	}
+
+	/**
 	 * Let extensions decide which tiers a buyer actually sees.
 	 *
 	 * The sale window answers "is this tier open right now?". It cannot answer the

@@ -12,6 +12,7 @@ namespace NetterTechEvents\Tests\Unit\Frontend;
 use Brain\Monkey\Functions;
 use Mockery;
 use NetterTechEvents\Contracts\CapacityServiceInterface;
+use NetterTechEvents\Contracts\OccurrenceRepositoryInterface;
 use NetterTechEvents\Contracts\TicketTypeRepositoryInterface;
 use NetterTechEvents\Frontend\Shortcodes\RSVPFormShortcode;
 use NetterTechEvents\Frontend\TicketDisplay;
@@ -85,7 +86,7 @@ class TicketDisplayCoverageTest extends \NetterTechEventsTestCase {
 
 		// Reset static state via reflection so each test starts clean.
 		$ref = new \ReflectionClass( TicketDisplay::class );
-		foreach ( array( 'scripts_enqueued', 'ticket_type_repo', 'capacity_service', 'templates', 'rsvp_shortcode' ) as $prop_name ) {
+		foreach ( array( 'scripts_enqueued', 'ticket_type_repo', 'capacity_service', 'templates', 'rsvp_shortcode', 'occurrence_repo' ) as $prop_name ) {
 			if ( $ref->hasProperty( $prop_name ) ) {
 				$prop  = $ref->getProperty( $prop_name );
 				$type  = $prop->getType();
@@ -136,6 +137,78 @@ class TicketDisplayCoverageTest extends \NetterTechEventsTestCase {
 
 		ob_start();
 		TicketDisplay::render_occurrence_actions( $occ, $event );
+		$out = ob_get_clean();
+
+		$this->assertSame( '', $out );
+	}
+
+	/**
+	 * An event-scope (series pass) tier is filtered out of the per-date form —
+	 * it belongs in the dedicated Series Pass section, not repeated per date
+	 * (NTE-156). With only a pass tier on sale, the occurrence form renders
+	 * nothing.
+	 *
+	 * @return void
+	 */
+	public function test_render_occurrence_actions_excludes_series_pass(): void {
+		TicketDisplay::init( $this->capacity_service, $this->ticket_type_repo, $this->templates );
+
+		$pass        = Mockery::mock( TicketType::class );
+		$pass->scope = 'event';
+		$this->ticket_type_repo->shouldReceive( 'get_on_sale_for_occurrence' )->andReturn( array( $pass ) );
+
+		$occ     = Mockery::mock( Occurrence::class );
+		$occ->id = 5;
+		$event   = new Event();
+		$event->id = 1;
+
+		ob_start();
+		TicketDisplay::render_occurrence_actions( $occ, $event );
+		$out = ob_get_clean();
+
+		$this->assertSame( '', $out );
+	}
+
+	/**
+	 * Series-pass render is a paid path: with WooCommerce absent (as in the test
+	 * environment) it emits nothing and never queries for pass tiers (NTE-156).
+	 *
+	 * @return void
+	 */
+	public function test_series_pass_noop_without_woocommerce(): void {
+		$occurrence_repo = Mockery::mock( OccurrenceRepositoryInterface::class );
+		TicketDisplay::init( $this->capacity_service, $this->ticket_type_repo, $this->templates, null, $occurrence_repo );
+
+		// The paid-path gate must short-circuit before any data access.
+		$this->ticket_type_repo->shouldNotReceive( 'get_on_sale_for_event' );
+		$occurrence_repo->shouldNotReceive( 'next_for_event' );
+
+		$event     = new Event();
+		$event->id = 7;
+
+		ob_start();
+		TicketDisplay::render_event_series_pass( $event );
+		$out = ob_get_clean();
+
+		$this->assertSame( '', $out );
+	}
+
+	/**
+	 * Series-pass render noops for an unsaved event (null id) — nothing to query.
+	 *
+	 * @return void
+	 */
+	public function test_series_pass_noop_when_event_id_null(): void {
+		$occurrence_repo = Mockery::mock( OccurrenceRepositoryInterface::class );
+		TicketDisplay::init( $this->capacity_service, $this->ticket_type_repo, $this->templates, null, $occurrence_repo );
+
+		$this->ticket_type_repo->shouldNotReceive( 'get_on_sale_for_event' );
+		$occurrence_repo->shouldNotReceive( 'next_for_event' );
+
+		$event = new Event(); // id stays null.
+
+		ob_start();
+		TicketDisplay::render_event_series_pass( $event );
 		$out = ob_get_clean();
 
 		$this->assertSame( '', $out );

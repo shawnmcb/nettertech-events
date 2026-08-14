@@ -205,21 +205,24 @@ class TicketTypesAdminController extends WP_REST_Controller {
 			);
 		}
 
-		// Check rate limit.
-		$rate_limited = $this->rate_limit_service->check_and_increment();
-		if ( null !== $rate_limited ) {
-			$response_data = $rate_limited->get_data();
-			return new WP_Error(
-				'rate_limit_exceeded',
-				__( 'Rate limit exceeded. Please try again later.', 'nettertech-events' ),
-				array(
-					'status'      => 429,
-					'retry_after' => $response_data['data']['retry_after'] ?? 60,
-				)
-			);
+		return true;
+	}
+
+	/**
+	 * Check rate limit.
+	 *
+	 * Runs in the handlers, not the permission callback (SA-07): permission
+	 * callbacks are authorization, not throttling, and can be invoked more
+	 * than once per request. Mirrors EventsAdminController::check_rate_limit().
+	 *
+	 * @return WP_REST_Response|null
+	 */
+	private function check_rate_limit(): ?WP_REST_Response {
+		if ( $this->rate_limit_service->should_bypass() ) {
+			return null;
 		}
 
-		return true;
+		return $this->rate_limit_service->check_and_increment();
 	}
 
 	/**
@@ -230,6 +233,11 @@ class TicketTypesAdminController extends WP_REST_Controller {
 	 * @return WP_REST_Response|WP_Error
 	 */
 	public function get_items( $request ): WP_REST_Response|WP_Error {
+		$rate_limit_response = $this->check_rate_limit();
+		if ( $rate_limit_response ) {
+			return $rate_limit_response;
+		}
+
 		$occurrence_id = $request->get_param( 'occurrence_id' );
 		$event_id      = $request->get_param( 'event_id' );
 		$status        = $request->get_param( 'status' );
@@ -276,6 +284,11 @@ class TicketTypesAdminController extends WP_REST_Controller {
 	 * @return WP_REST_Response|WP_Error
 	 */
 	public function create_item( $request ): WP_REST_Response|WP_Error {
+		$rate_limit_response = $this->check_rate_limit();
+		if ( $rate_limit_response ) {
+			return $rate_limit_response;
+		}
+
 		$validated = $this->validate_ticket_type_data( $request, false );
 		if ( is_wp_error( $validated ) ) {
 			return $validated;
@@ -340,6 +353,11 @@ class TicketTypesAdminController extends WP_REST_Controller {
 	 * @return WP_REST_Response|WP_Error
 	 */
 	public function get_item( $request ): WP_REST_Response|WP_Error {
+		$rate_limit_response = $this->check_rate_limit();
+		if ( $rate_limit_response ) {
+			return $rate_limit_response;
+		}
+
 		$id          = (int) $request->get_param( 'id' );
 		$ticket_type = $this->ticket_type_repo->find( $id );
 
@@ -368,6 +386,11 @@ class TicketTypesAdminController extends WP_REST_Controller {
 	 * @return WP_REST_Response|WP_Error
 	 */
 	public function update_item( $request ): WP_REST_Response|WP_Error {
+		$rate_limit_response = $this->check_rate_limit();
+		if ( $rate_limit_response ) {
+			return $rate_limit_response;
+		}
+
 		$id          = (int) $request->get_param( 'id' );
 		$ticket_type = $this->ticket_type_repo->find( $id );
 
@@ -425,6 +448,11 @@ class TicketTypesAdminController extends WP_REST_Controller {
 	 * @return WP_REST_Response|WP_Error
 	 */
 	public function delete_item( $request ): WP_REST_Response|WP_Error {
+		$rate_limit_response = $this->check_rate_limit();
+		if ( $rate_limit_response ) {
+			return $rate_limit_response;
+		}
+
 		$id          = (int) $request->get_param( 'id' );
 		$ticket_type = $this->ticket_type_repo->find( $id );
 

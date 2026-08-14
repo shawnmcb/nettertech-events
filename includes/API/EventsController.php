@@ -294,8 +294,12 @@ class EventsController extends WP_REST_Controller {
 				'excerpt'       => $event->excerpt,
 				'venue_name'    => $event->venue_name ?? '',
 				'venue_address' => $event->venue_address ?? '',
-				'permalink'     => $event->get_permalink(),
-				'image'         => $this->get_image_data( $event->featured_image_id ),
+				// Occurrence-resolved: consumers render one card/tooltip per
+				// occurrence, so the link and image must be the occurrence's
+				// (per-occurrence overrides, occurrence URL), not the series'
+				// (NTE-179 / NTE-181).
+				'permalink'     => $occurrence->get_url(),
+				'image'         => $this->get_image_data( $occurrence->get_featured_image_id() ),
 			);
 		}
 

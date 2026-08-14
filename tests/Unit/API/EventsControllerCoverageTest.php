@@ -144,6 +144,10 @@ class EventsControllerCoverageTest extends \NetterTechEventsTestCase {
 		$occurrence->all_day        = false;
 		$occurrence->status         = 'scheduled';
 		$occurrence->method( 'get_event' )->willReturn( $event );
+		$occurrence->method( 'get_url' )->willReturn(
+			'https://example.com/event/' . ( $event ? $event->id : 1 ) . '/2026-02-15-1900/'
+		);
+		$occurrence->method( 'get_featured_image_id' )->willReturn( $event ? $event->featured_image_id : null );
 		return $occurrence;
 	}
 

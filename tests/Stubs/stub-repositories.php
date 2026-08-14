@@ -50,6 +50,10 @@ class StubTicketTypeRepository implements TicketTypeRepositoryInterface {
 		return array();
 	}
 
+	public function get_on_sale_for_event( int $event_id, ?\DateTimeZone $zone = null ): array {
+		return array();
+	}
+
 	public function occurrence_is_free( int $occurrence_id ): bool {
 		return false;
 	}

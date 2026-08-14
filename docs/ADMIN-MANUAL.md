@@ -136,7 +136,7 @@ Each type has its own inventory and pricing.
 
 **Carousel** — Sliding display of upcoming events
 ```
-[nte_carousel limit="6" columns="3"]
+[nettertech_events_carousel limit="6" columns="3"]
 ```
 
 | Attribute | Default | Description |
@@ -148,7 +148,7 @@ Each type has its own inventory and pricing.
 
 **Event List** — Filterable grid or list
 ```
-[nte_list limit="12" layout="grid" show_filters="true"]
+[nettertech_events_list limit="12" layout="grid" show_filters="true"]
 ```
 
 | Attribute | Default | Description |
@@ -161,7 +161,7 @@ Each type has its own inventory and pricing.
 
 **Calendar** — Month/week/day views
 ```
-[nte_calendar view="month"]
+[nettertech_events_calendar view="month"]
 ```
 
 | Attribute | Default | Description |
@@ -172,7 +172,7 @@ Each type has its own inventory and pricing.
 
 **RSVP Form** — Registration for free events
 ```
-[nte_rsvp event_id="123"]
+[nettertech_events_rsvp event_id="123"]
 ```
 
 ### Beaver Builder Modules
@@ -731,7 +731,7 @@ For developers integrating with external systems:
 
 **Solutions:**
 1. Access events via **Events → All Events** in the admin menu
-2. Events have their own REST API at `/wp-json/nettertech-events/v1/events/`
+2. Events have their own REST API under `/wp-json/nettertech-events/v1/`
 3. For backups, your standard WordPress database backup includes all event tables (`nte_*`)
 4. Plugins that work with "posts" won't work with events — use the plugin's built-in features or hooks instead
 

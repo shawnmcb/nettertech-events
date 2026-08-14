@@ -923,6 +923,11 @@ jQuery(document).ready(function($) {
 			$removed,
 			'nettertech-events'
 		);
+
+		// Hand-picked (is_override) dates are the operator's own additions; the count-only warning
+		// above hid that a conversion destroys them too. Name them so the choice is informed
+		// (operator ruling 2026-07-20, spec-001 invention audit — R4).
+		$override_labels = $this->collect_override_date_labels( $occurrences );
 		?>
 		<div
 			id="nettertech-events-conversion-box"
@@ -938,6 +943,27 @@ jQuery(document).ready(function($) {
 				<?php echo esc_html( sprintf( $warning, number_format_i18n( $removed ) ) ); ?>
 				<?php esc_html_e( 'A date that has sold tickets will not be removed — the save is refused instead, and tells you which.', 'nettertech-events' ); ?>
 			</p>
+
+			<?php if ( ! empty( $override_labels ) ) : ?>
+				<p class="nettertech-events-conversion__warning">
+					<?php
+					echo esc_html(
+						sprintf(
+							/* translators: %s: number of hand-picked dates the operator added. */
+							_n(
+								'This event includes %s date you added by hand. Any you do not keep will be permanently removed:',
+								'This event includes %s dates you added by hand. Any you do not keep will be permanently removed:',
+								count( $override_labels ),
+								'nettertech-events'
+							),
+							number_format_i18n( count( $override_labels ) )
+						)
+					);
+					?>
+					<br>
+					<?php echo esc_html( implode( '; ', $override_labels ) ); ?>
+				</p>
+			<?php endif; ?>
 
 			<label for="nettertech_events_keep_occurrence">
 				<strong><?php esc_html_e( 'Date to keep:', 'nettertech-events' ); ?></strong>
@@ -962,5 +988,32 @@ jQuery(document).ready(function($) {
 			</select>
 		</div>
 		<?php
+	}
+
+	/**
+	 * Format the labels of the hand-picked (is_override) dates in a set of occurrences.
+	 *
+	 * These are the dates the operator added by hand; a conversion to single destroys every date
+	 * except the survivor, so naming them in the confirmation lets the operator see what a
+	 * conversion would cost (operator ruling 2026-07-20, spec-001 invention audit — R4).
+	 *
+	 * @param array<\NetterTechEvents\Models\Occurrence> $occurrences The event's occurrences.
+	 * @return array<int, string> Human-readable date labels for the override occurrences.
+	 */
+	private function collect_override_date_labels( array $occurrences ): array {
+		$labels = array();
+
+		foreach ( $occurrences as $occurrence ) {
+			if ( ! $occurrence->is_override ) {
+				continue;
+			}
+
+			$labels[] = (string) wp_date(
+				get_option( 'date_format' ) . ' ' . get_option( 'time_format' ),
+				$occurrence->get_start()->getTimestamp()
+			);
+		}
+
+		return $labels;
 	}
 }

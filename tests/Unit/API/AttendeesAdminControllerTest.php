@@ -256,26 +256,25 @@ class AttendeesAdminControllerTest extends \NetterTechEventsTestCase {
 	}
 
 	/**
-	 * Test admin_permissions_check returns error when rate limited.
+	 * Rate limiting runs in the handler, not the permission callback (SA-07).
+	 *
+	 * Permission callbacks are authorization only and may be invoked more
+	 * than once per request; the 429 belongs to request handling. A
+	 * rate-limited handler returns the limiter's response untouched, and
+	 * the permission callback still authorizes.
 	 *
 	 * @return void
 	 */
-	public function test_admin_permissions_check_returns_error_when_rate_limited(): void {
+	public function test_rate_limit_enforced_in_handler_not_permission_callback(): void {
 		Functions\when( 'current_user_can' )->justReturn( true );
 
 		$rate_limit = $this->getMockBuilder( RateLimitService::class )
 			->disableOriginalConstructor()
-			->onlyMethods( array( 'check_and_increment' ) )
+			->onlyMethods( array( 'should_bypass', 'check_and_increment' ) )
 			->getMock();
 
 		$rate_limit_response = $this->createMock( \WP_REST_Response::class );
-		$rate_limit_response->method( 'get_data' )->willReturn(
-			array(
-				'data' => array(
-					'retry_after' => 60,
-				),
-			)
-		);
+		$rate_limit->method( 'should_bypass' )->willReturn( false );
 		$rate_limit->method( 'check_and_increment' )->willReturn( $rate_limit_response );
 
 		$controller = new AttendeesAdminController(
@@ -285,10 +284,9 @@ class AttendeesAdminControllerTest extends \NetterTechEventsTestCase {
 		);
 
 		$request = $this->create_request();
-		$result  = $controller->admin_permissions_check( $request );
 
-		$this->assertInstanceOf( WP_Error::class, $result );
-		$this->assertEquals( 'rate_limit_exceeded', $result->get_error_code() );
+		$this->assertTrue( $controller->admin_permissions_check( $request ), 'Authorization must not consume rate-limit budget (SA-07)' );
+		$this->assertSame( $rate_limit_response, $controller->get_items( $request ), 'Handler must return the limiter response when rate limited' );
 	}
 
 	// =========================================================================

@@ -55,7 +55,8 @@ class IntegrationServiceProvider implements ServiceProviderInterface {
 					$occurrence_repo,
 					new CategoryProductCatMapper( $category_repo ),
 					$c->get( \NetterTechEvents\Contracts\HouseCapacityRepositoryInterface::class ),
-					$c->get( \NetterTechEvents\Contracts\CapacityCalculatorInterface::class )
+					$c->get( \NetterTechEvents\Contracts\CapacityCalculatorInterface::class ),
+					$c->get( \NetterTechEvents\Contracts\EventRepositoryInterface::class )
 				);
 			}
 		);

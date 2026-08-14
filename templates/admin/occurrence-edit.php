@@ -6,9 +6,11 @@
  *
  * @package NetterTechEvents\Templates\Admin
  *
- * @var \NetterTechEvents\Models\Occurrence      $occurrence Occurrence being edited.
- * @var \NetterTechEvents\Models\Event           $event      Parent event.
- * @var \NetterTechEvents\Admin\OccurrenceEditor $nte_editor The editor rendering this form.
+ * @var \NetterTechEvents\Models\Occurrence      $occurrence      Occurrence being edited.
+ * @var \NetterTechEvents\Models\Event           $event           Parent event.
+ * @var \NetterTechEvents\Admin\OccurrenceEditor $nte_editor      The editor rendering this form.
+ * @var string                                   $nte_save_error  Save validation error carried across the redirect, or ''.
+ * @var string                                   $nte_save_notice Informational save notice carried across the redirect, or ''.
  */
 
 declare(strict_types=1);
@@ -50,6 +52,18 @@ $nte_back_url = admin_url( 'admin.php?page=' . AdminMenu::SUBMENU_EDIT . '&event
 	</a>
 	<hr class="wp-header-end">
 
+	<?php if ( '' !== $nte_save_error ) : ?>
+		<div class="notice notice-error is-dismissible">
+			<p><?php echo esc_html( $nte_save_error ); ?></p>
+		</div>
+	<?php endif; ?>
+
+	<?php if ( '' !== $nte_save_notice ) : ?>
+		<div class="notice notice-info is-dismissible">
+			<p><?php echo esc_html( $nte_save_notice ); ?></p>
+		</div>
+	<?php endif; ?>
+
 	<p class="nte-occurrence-edit__context">
 		<?php
 		printf(
@@ -75,7 +89,14 @@ $nte_back_url = admin_url( 'admin.php?page=' . AdminMenu::SUBMENU_EDIT . '&event
 					</th>
 					<td>
 						<input type="date" id="nte-occurrence-start-date" name="start_date" value="<?php echo esc_attr( $nte_start_date ); ?>" required>
-						<input type="time" id="nte-occurrence-start-time" name="start_time" value="<?php echo esc_attr( $nte_start_time ); ?>">
+						<input type="time" id="nte-occurrence-start-time" name="start_time" value="<?php echo esc_attr( $nte_start_time ); ?>" data-nte-time-combobox>
+						<span class="nte-timezone-hint">
+							<?php
+							$nte_timezone = '' !== (string) $occurrence->timezone ? (string) $occurrence->timezone : wp_timezone_string();
+							/* translators: %s: timezone name, e.g. America/Chicago. */
+							echo esc_html( sprintf( __( 'Times are in %s', 'nettertech-events' ), $nte_timezone ) );
+							?>
+						</span>
 					</td>
 				</tr>
 				<tr>
@@ -84,7 +105,7 @@ $nte_back_url = admin_url( 'admin.php?page=' . AdminMenu::SUBMENU_EDIT . '&event
 					</th>
 					<td>
 						<input type="date" id="nte-occurrence-end-date" name="end_date" value="<?php echo esc_attr( $nte_end_date ); ?>">
-						<input type="time" id="nte-occurrence-end-time" name="end_time" value="<?php echo esc_attr( $nte_end_time ); ?>">
+						<input type="time" id="nte-occurrence-end-time" name="end_time" value="<?php echo esc_attr( $nte_end_time ); ?>" data-nte-time-combobox data-nte-duration-from="#nte-occurrence-start-time">
 						<p class="description">
 							<label>
 								<input type="checkbox" name="all_day" value="1" <?php checked( $occurrence->all_day ); ?>>

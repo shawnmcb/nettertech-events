@@ -129,17 +129,17 @@ Add these to any page or post:
 
 **Event List** — Grid of upcoming events
 ```
-[nte_list limit="12" layout="grid" show_filters="true"]
+[nettertech_events_list limit="12" layout="grid" show_filters="true"]
 ```
 
 **Calendar** — Month/week/day views
 ```
-[nte_calendar view="month"]
+[nettertech_events_calendar view="month"]
 ```
 
 **Carousel** — Sliding display
 ```
-[nte_carousel limit="6" columns="3"]
+[nettertech_events_carousel limit="6" columns="3"]
 ```
 
 ### Gutenberg Blocks

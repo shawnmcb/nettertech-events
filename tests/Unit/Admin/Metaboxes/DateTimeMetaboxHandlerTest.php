@@ -58,6 +58,9 @@ class DateTimeMetaboxHandlerTest extends \NetterTechEventsTestCase {
 
 		// Mock WordPress functions used during render.
 		Functions\when( 'wp_enqueue_script' )->justReturn( null );
+		Functions\when( 'wp_enqueue_style' )->justReturn( null );
+		Functions\when( 'wp_script_is' )->justReturn( false );
+		Functions\when( 'wp_timezone_string' )->justReturn( 'America/Chicago' );
 		Functions\when( 'wp_localize_script' )->justReturn( null );
 		Functions\when( 'wp_json_encode' )->alias( 'json_encode' );
 		Functions\when( 'get_option' )->justReturn( array() );
@@ -94,6 +97,79 @@ class DateTimeMetaboxHandlerTest extends \NetterTechEventsTestCase {
 
 		$this->assertStringContainsString( 'name="start_date"', $output );
 		$this->assertStringContainsString( 'name="start_time"', $output );
+	}
+
+	/**
+	 * Time inputs opt into the suggest-and-type combobox (NTE-190), the end
+	 * time annotates durations against the start, and the interpreting
+	 * timezone is shown with the fields.
+	 *
+	 * @return void
+	 */
+	public function test_render_marks_time_inputs_for_combobox_and_shows_timezone(): void {
+		$handler = $this->create_handler();
+
+		ob_start();
+		$handler->render_schedule( null, array(), 0 );
+		$output = ob_get_clean();
+
+		$this->assertMatchesRegularExpression(
+			'/name="start_time"[^>]*data-nte-time-combobox/s',
+			$output
+		);
+		$this->assertMatchesRegularExpression(
+			'/name="end_time"[^>]*data-nte-duration-from="#start_time"/s',
+			$output
+		);
+		$this->assertStringContainsString( 'nte-timezone-hint', $output );
+		$this->assertStringContainsString( 'America/Chicago', $output );
+	}
+
+	/**
+	 * An occurrence's own timezone wins over the site timezone in the hint.
+	 *
+	 * @return void
+	 */
+	public function test_render_prefers_occurrence_timezone_in_hint(): void {
+		$occurrence                 = new Occurrence();
+		$occurrence->start_datetime = '2026-06-15 14:30:00';
+		$occurrence->end_datetime   = '2026-06-15 16:00:00';
+		$occurrence->timezone       = 'Europe/Dublin';
+
+		$handler = $this->create_handler();
+
+		ob_start();
+		$handler->render_schedule( $occurrence, array(), 0 );
+		$output = ob_get_clean();
+
+		$this->assertStringContainsString( 'Europe/Dublin', $output );
+	}
+
+	/**
+	 * The submit-time validation script no longer raises blocking alert()
+	 * dialogs directly — it routes through the inline validation module
+	 * (alert survives only as the module-missing fallback).
+	 *
+	 * @return void
+	 */
+	public function test_render_scripts_route_validation_through_module(): void {
+		$captured = array();
+		Functions\when( 'wp_add_inline_script' )->alias(
+			function ( $handle, $js = '' ) use ( &$captured ) {
+				$captured[] = (string) $js;
+				return true;
+			}
+		);
+
+		$handler = $this->create_handler();
+
+		ob_start();
+		$handler->render_schedule( null, array(), 0 );
+		ob_get_clean();
+
+		$scripts = implode( '', $captured );
+		$this->assertStringContainsString( 'nettertechEventsDatetimeValidation', $scripts );
+		$this->assertStringContainsString( 'reportError(', $scripts );
 	}
 
 	/**
@@ -404,6 +480,182 @@ class DateTimeMetaboxHandlerTest extends \NetterTechEventsTestCase {
 	}
 
 	// =========================================================================
+	// NTE-177 (FR-009): Recurrence Pattern collapsed-by-default + summary tests.
+	// =========================================================================
+
+	/**
+	 * A saved pattern collapses the section: the toggle starts aria-expanded="false"
+	 * and the body starts hidden.
+	 *
+	 * @return void
+	 */
+	public function test_recurrence_section_collapsed_when_pattern_saved(): void {
+		$this->event->event_type      = 'recurring';
+		$this->event->recurrence_rule = 'FREQ=WEEKLY;BYDAY=MO,WE,FR';
+
+		$this->recurrence_service
+			->shouldReceive( 'describe_rule' )
+			->andReturn( 'Every week on Monday, Wednesday, Friday' );
+
+		$this->recurrence_service
+			->shouldReceive( 'count_occurrences' )
+			->andReturn( 12 );
+
+		$handler = $this->create_handler();
+
+		ob_start();
+		$handler->render_schedule( null, array(), 0 );
+		$output = ob_get_clean();
+
+		$this->assertStringContainsString( 'id="nte-recurrence-toggle"', $output );
+		$this->assertStringContainsString( 'aria-expanded="false"', $output );
+		$this->assertStringContainsString( 'aria-controls="nte-recurrence-body"', $output );
+		$this->assertMatchesRegularExpression(
+			'/id="nte-recurrence-body" style="display: none;"/',
+			$output
+		);
+	}
+
+	/**
+	 * No saved pattern yet: nothing to collapse, so no toggle is rendered and the
+	 * body starts visible.
+	 *
+	 * @return void
+	 */
+	public function test_recurrence_section_expanded_when_no_pattern_yet(): void {
+		$this->event->event_type      = 'recurring';
+		$this->event->recurrence_rule = '';
+
+		$this->recurrence_service
+			->shouldReceive( 'count_occurrences' )
+			->andReturn( 0 );
+
+		$handler = $this->create_handler();
+
+		ob_start();
+		$handler->render_schedule( null, array(), 0 );
+		$output = ob_get_clean();
+
+		$this->assertStringNotContainsString( 'id="nte-recurrence-toggle"', $output );
+		$this->assertMatchesRegularExpression(
+			'/id="nte-recurrence-body" style=""/',
+			$output
+		);
+	}
+
+	/**
+	 * The one-line summary combines the pattern description and occurrence count,
+	 * pluralized correctly for a count greater than one.
+	 *
+	 * @return void
+	 */
+	public function test_recurrence_summary_includes_description_and_plural_count(): void {
+		$this->event->event_type      = 'recurring';
+		$this->event->recurrence_rule = 'FREQ=WEEKLY;BYDAY=MO,WE,FR';
+
+		$this->recurrence_service
+			->shouldReceive( 'describe_rule' )
+			->andReturn( 'Every week on Monday, Wednesday, Friday' );
+
+		$this->recurrence_service
+			->shouldReceive( 'count_occurrences' )
+			->andReturn( 12 );
+
+		$handler = $this->create_handler();
+
+		ob_start();
+		$handler->render_schedule( null, array(), 0 );
+		$output = ob_get_clean();
+
+		$this->assertStringContainsString(
+			'Every week on Monday, Wednesday, Friday (12 occurrences)',
+			$output
+		);
+	}
+
+	/**
+	 * A single occurrence uses the singular form, not "1 occurrences".
+	 *
+	 * @return void
+	 */
+	public function test_recurrence_summary_uses_singular_for_one_occurrence(): void {
+		$this->event->event_type      = 'recurring';
+		$this->event->recurrence_rule = 'FREQ=DAILY';
+
+		$this->recurrence_service
+			->shouldReceive( 'describe_rule' )
+			->andReturn( 'Every day' );
+
+		$this->recurrence_service
+			->shouldReceive( 'count_occurrences' )
+			->andReturn( 1 );
+
+		$handler = $this->create_handler();
+
+		ob_start();
+		$handler->render_schedule( null, array(), 0 );
+		$output = ob_get_clean();
+
+		$this->assertStringContainsString( 'Every day (1 occurrence)', $output );
+		$this->assertStringNotContainsString( '(1 occurrences)', $output );
+	}
+
+	/**
+	 * With zero occurrences generated yet, the summary is just the bare description —
+	 * no "(0 occurrences)" parenthetical.
+	 *
+	 * @return void
+	 */
+	public function test_recurrence_summary_omits_count_when_zero(): void {
+		$this->event->event_type      = 'recurring';
+		$this->event->recurrence_rule = 'FREQ=MONTHLY';
+
+		$this->recurrence_service
+			->shouldReceive( 'describe_rule' )
+			->andReturn( 'Every month' );
+
+		$this->recurrence_service
+			->shouldReceive( 'count_occurrences' )
+			->andReturn( 0 );
+
+		$handler = $this->create_handler();
+
+		ob_start();
+		$handler->render_schedule( null, array(), 0 );
+		$output = ob_get_clean();
+
+		$this->assertStringContainsString( 'id="nte-recurrence-summary"', $output );
+		$this->assertMatchesRegularExpression( '/nte-recurrence-summary">Every month<\/p>/', $output );
+	}
+
+	/**
+	 * If the recurrence service can't describe the rule (empty string), no summary
+	 * paragraph or toggle is rendered — nothing sensible to show or collapse.
+	 *
+	 * @return void
+	 */
+	public function test_recurrence_summary_omitted_when_description_empty(): void {
+		$this->event->event_type      = 'recurring';
+		$this->event->recurrence_rule = 'FREQ=WEEKLY';
+
+		$this->recurrence_service
+			->shouldReceive( 'describe_rule' )
+			->andReturn( '' );
+
+		$this->recurrence_service
+			->shouldReceive( 'count_occurrences' )
+			->andReturn( 0 );
+
+		$handler = $this->create_handler();
+
+		ob_start();
+		$handler->render_schedule( null, array(), 0 );
+		$output = ob_get_clean();
+
+		$this->assertStringNotContainsString( 'id="nte-recurrence-summary"', $output );
+	}
+
+	// =========================================================================
 	// render_upcoming_dates() Tests
 	// =========================================================================
 
@@ -434,6 +686,9 @@ class DateTimeMetaboxHandlerTest extends \NetterTechEventsTestCase {
 	/**
 	 * The add-a-date fields ride the event form, so they must actually be there.
 	 *
+	 * Field names are now the repeatable, unkeyed array shape (FR-002) rather than
+	 * the old single-field names.
+	 *
 	 * @return void
 	 */
 	public function test_upcoming_dates_box_offers_add_date_fields(): void {
@@ -445,17 +700,18 @@ class DateTimeMetaboxHandlerTest extends \NetterTechEventsTestCase {
 		$handler->render_schedule( null, array(), 1 );
 		$output = ob_get_clean();
 
-		$this->assertStringContainsString( 'name="nettertech_events_new_date"', (string) $output );
-		$this->assertStringContainsString( 'name="nettertech_events_new_start_time"', (string) $output );
-		$this->assertStringContainsString( 'name="nettertech_events_new_end_time"', (string) $output );
+		$this->assertStringContainsString( 'name="nettertech_events_manual_dates[0][date]"', (string) $output );
+		$this->assertStringContainsString( 'name="nettertech_events_manual_dates[0][start_time]"', (string) $output );
+		$this->assertStringContainsString( 'name="nettertech_events_manual_dates[0][end_time]"', (string) $output );
 	}
 
 	/**
-	 * An unsaved event has nothing to add a date to.
+	 * FR-001: a brand-new (unsaved) event MUST still offer the add-a-date control —
+	 * the old "saved event only" gate is removed.
 	 *
 	 * @return void
 	 */
-	public function test_upcoming_dates_box_hides_add_date_for_unsaved_event(): void {
+	public function test_upcoming_dates_box_offers_add_date_fields_for_unsaved_event(): void {
 		Functions\when( 'admin_url' )->justReturn( 'http://example.test/wp-admin/admin.php' );
 
 		$handler = $this->create_handler();
@@ -464,7 +720,52 @@ class DateTimeMetaboxHandlerTest extends \NetterTechEventsTestCase {
 		$handler->render_schedule( null, array(), 0 );
 		$output = ob_get_clean();
 
-		$this->assertStringNotContainsString( 'name="nettertech_events_new_date"', (string) $output );
+		$this->assertStringContainsString( 'name="nettertech_events_manual_dates[0][date]"', (string) $output );
+	}
+
+	/**
+	 * FR-002: the repeatable-row scaffolding (add button, row template, remove control)
+	 * must be present so JS can wire up append/remove.
+	 *
+	 * @return void
+	 */
+	public function test_upcoming_dates_box_offers_repeatable_row_scaffolding(): void {
+		Functions\when( 'admin_url' )->justReturn( 'http://example.test/wp-admin/admin.php' );
+
+		$handler = $this->create_handler();
+
+		ob_start();
+		$handler->render_schedule( null, array(), 0 );
+		$output = ob_get_clean();
+
+		$this->assertStringContainsString( 'id="nte-add-date-rows"', $output );
+		$this->assertStringContainsString( 'id="nte-add-date-add-row"', $output );
+		$this->assertStringContainsString( '<template id="nte-add-date-row-template">', $output );
+		$this->assertStringContainsString( 'data-nte-remove-row', $output );
+	}
+
+	/**
+	 * The row container carries the next-index counter the clone JS increments, and the
+	 * inert template row's field names carry the `__INDEX__` placeholder the clone JS
+	 * text-replaces — both required so appended rows get an explicit, unique row index
+	 * (an unkeyed `[]` array was tried first and silently dropped every row, because PHP
+	 * assigns a fresh key to every `[]` occurrence rather than grouping by row).
+	 *
+	 * @return void
+	 */
+	public function test_upcoming_dates_box_wires_explicit_row_indices(): void {
+		Functions\when( 'admin_url' )->justReturn( 'http://example.test/wp-admin/admin.php' );
+
+		$handler = $this->create_handler();
+
+		ob_start();
+		$handler->render_schedule( null, array(), 0 );
+		$output = ob_get_clean();
+
+		$this->assertStringContainsString( 'data-nte-next-index="1"', $output );
+		$this->assertStringContainsString( 'name="nettertech_events_manual_dates[__INDEX__][date]"', $output );
+		$this->assertStringContainsString( 'name="nettertech_events_manual_dates[__INDEX__][start_time]"', $output );
+		$this->assertStringContainsString( 'name="nettertech_events_manual_dates[__INDEX__][end_time]"', $output );
 	}
 
 	// =========================================================================
@@ -493,26 +794,10 @@ class DateTimeMetaboxHandlerTest extends \NetterTechEventsTestCase {
 	}
 
 	/**
-	 * Line 111: the default $event_id is 0, so add-a-date is hidden by default.
-	 *
-	 * Kills IncrementInteger 0 -> 1 on the default argument: with a default of 1
-	 * the add-a-date fields would render for a caller that passed no id at all.
-	 * (The DecrementInteger 0 -> -1 mutant is equivalent — both 0 and -1 fail the
-	 * `> 0` gate identically — so it is left as an accepted survivor.)
-	 *
-	 * @return void
+	 * NTE-177 (FR-001): add-a-date fields now render regardless of $event_id — the
+	 * "saved event only" gate this test used to pin is gone by design. Superseded
+	 * by test_upcoming_dates_box_offers_add_date_fields_for_unsaved_event() above.
 	 */
-	public function test_upcoming_dates_default_event_id_hides_add_date(): void {
-		Functions\when( 'admin_url' )->justReturn( 'http://example.test/wp-admin/admin.php' );
-
-		$handler = $this->create_handler();
-
-		ob_start();
-		$handler->render_schedule( null, array(), 0 );
-		$output = (string) ob_get_clean();
-
-		$this->assertStringNotContainsString( 'name="nettertech_events_new_date"', $output );
-	}
 
 	/**
 	 * Line 116: the box heading is rendered.
@@ -593,6 +878,50 @@ class DateTimeMetaboxHandlerTest extends \NetterTechEventsTestCase {
 	}
 
 	/**
+	 * Manual date rows opt their time inputs into the combobox (NTE-190) —
+	 * both the rendered row 0 and the inert __INDEX__ template row, so cloned
+	 * rows inherit the attribute.
+	 *
+	 * @return void
+	 */
+	public function test_add_date_time_inputs_marked_for_combobox(): void {
+		$output = $this->render_dates_box();
+
+		$this->assertMatchesRegularExpression(
+			'/manual_dates\[0\]\[start_time\]"\s+data-nte-time-combobox/s',
+			$output
+		);
+		$this->assertMatchesRegularExpression(
+			'/manual_dates\[__INDEX__\]\[end_time\]"\s+data-nte-time-combobox/s',
+			$output
+		);
+	}
+
+	/**
+	 * Occurrence-editor template structural guard (NTE-190): its time inputs
+	 * carry the combobox opt-in and the end time annotates duration against
+	 * the start input's stable id. (Full-template render needs the admin page
+	 * controller; behavior is covered by the Playwright suite.)
+	 *
+	 * @return void
+	 */
+	public function test_occurrence_edit_template_marks_time_inputs(): void {
+		$template = (string) file_get_contents(
+			dirname( __DIR__, 4 ) . '/templates/admin/occurrence-edit.php'
+		);
+
+		$this->assertMatchesRegularExpression(
+			'/id="nte-occurrence-start-time"[^\n]*data-nte-time-combobox/',
+			$template
+		);
+		$this->assertMatchesRegularExpression(
+			'/id="nte-occurrence-end-time"[^\n]*data-nte-duration-from="#nte-occurrence-start-time"/',
+			$template
+		);
+		$this->assertStringContainsString( 'nte-timezone-hint', $template );
+	}
+
+	/**
 	 * Line 241: the add-a-date help paragraph is rendered.
 	 *
 	 * Kills FunctionCallRemoval of `esc_html_e( 'The date is added when you update the event.' )`.
@@ -600,7 +929,7 @@ class DateTimeMetaboxHandlerTest extends \NetterTechEventsTestCase {
 	 * @return void
 	 */
 	public function test_add_date_renders_help_text(): void {
-		$this->assertStringContainsString( 'The date is added when you update the event.', $this->render_dates_box() );
+		$this->assertStringContainsString( 'Dates are added when you update the event.', $this->render_dates_box() );
 	}
 
 	/**

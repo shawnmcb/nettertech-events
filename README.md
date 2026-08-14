@@ -1,36 +1,13 @@
 # NetterTech Events
 
-![Code Style](https://img.shields.io/badge/Code_Style-0_errors-brightgreen)
+![PHPCS](https://img.shields.io/badge/PHPCS-0_errors-brightgreen)
 ![PHPStan](https://img.shields.io/badge/PHPStan-Level_7-blue)
-![Tests](https://img.shields.io/badge/Tests-6%2C755_unit_%2B_164_E2E-brightgreen)
-![Coverage](https://img.shields.io/badge/Coverage-81%25-brightgreen)
-![Mutation Testing](https://img.shields.io/badge/Mutation_Testing-%E2%89%A5_80%25-blue)
+![Tests](https://img.shields.io/badge/Tests-5%2C661_passing-brightgreen)
+![Coverage](https://img.shields.io/badge/Coverage-74.48%25-yellow)
 ![PHP](https://img.shields.io/badge/PHP-8.2%2B-purple)
-![Accessibility](https://img.shields.io/badge/WCAG-2.2_AA-brightgreen)
 ![License](https://img.shields.io/badge/License-GPL_v2%2B-blue)
 
-A WordPress events plugin built for calendar query performance at scale. Event
-data lives in purpose-built, indexed database tables with pre-computed
-occurrences, not `post_meta`, so a date-range query is an indexed lookup instead
-of the `meta_query` table scan that most events plugins degrade into as the
-calendar grows.
-
-**What that buys you:**
-
-- Warm-cache TTFB of **6–11ms** on event and single-event pages, measured on a
-  production-copy dataset (Chrome DevTools traces; see the
-  [Performance Guide](docs/PERFORMANCE.md) for methodology and cold-cache numbers)
-- N+1 query prevention via identity maps; denormalized counters keep capacity
-  and ticket-sales lookups O(1)
-- The architecture is the point: the schema is designed so the expensive queries
-  a busy events calendar makes are the ones the indexes serve
-
-Backed by the engineering to match: **6,755 unit tests** and **164 end-to-end
-tests** at **81% line coverage**, plus **mutation testing** that verifies those
-tests would actually catch a regression rather than merely pass, PHPStan Level 7,
-zero code-style violations, WCAG 2.2 AA throughout, and **165 documented hooks** kept
-in sync with the code by a structural test that fails if any hook ships
-undocumented.
+A performant WordPress events plugin with recurring events, ticketing, and WooCommerce integration.
 
 ## Requirements
 
@@ -76,7 +53,7 @@ Displays upcoming events in a sliding carousel with navigation.
 
 **Event List** — `[nettertech_events_list]`
 
-Displays events in a filterable grid or list layout.
+Displays events in a filterable grid or list layout. `[nettertech_events_grid]` and `[nettertech_events]` are registered as aliases of this shortcode.
 
 | Attribute | Default | Description |
 |-----------|---------|-------------|
@@ -133,8 +110,8 @@ Displays weekly recurring events in a compact table grouped by day of week. Repl
 - **Categories** — Built-in category editor with hierarchy support
 - **Spaces** — Admin interface for managing bookable spaces and physical locations (list, create, edit, delete); assign spaces to events via metabox in the event editor
 - **Attendees** — Attendee management and search
-- **Check-In** — Manual door check-in by attendee name or email search. Camera-based QR check-in scanning is available in [NetterTech Events Pro](https://nettertech.com/events).
-- **QR Generator** — Auto-generated QR codes for each event and ticket, plus a standalone QR generator tool. Customization includes preset color palettes and logo embedding (your site logo or a custom upload).
+- **Check-In** — Manual door check-in by name or email search (QR scanning available in [NetterTech Events Pro](https://nettertech.com/events))
+- **QR Generator** (Pro) — Generate QR codes for event promotion and check-in. Available in [NetterTech Events Pro](https://nettertech.com/events).
 - **Event Revisions** — Revision history with diff view and one-click restore for event changes
 - **Activity Log** — OWASP A09 compliant audit trail of administrative actions
 - **WordPress Search Integration** — Events are discoverable via the Gutenberg link dialog and admin bar search through automatic shadow posts
@@ -142,7 +119,7 @@ Displays weekly recurring events in a compact table grouped by day of week. Repl
 
 ### REST API
 
-Base URL: `/wp-json/nettertech-events/v1/`. Main endpoint groups below; see [docs/openapi.yaml](docs/openapi.yaml) for the complete, authoritative specification.
+Base URL: `/wp-json/nettertech-events/v1/` — 21 endpoints across 8 controllers.
 
 | Group | Endpoints | Auth |
 |-------|-----------|------|
@@ -152,6 +129,9 @@ Base URL: `/wp-json/nettertech-events/v1/`. Main endpoint groups below; see [doc
 | Waitlist | `/waitlist/join`, `/waitlist/status`, `/waitlist/leave` | None |
 | Admin CRUD | `/admin/events`, `/admin/events/{id}`, `/admin/attendees`, `/admin/attendees/{id}`, `/admin/ticket-types`, `/admin/ticket-types/{id}` | Cookie |
 | Security | `/csp-report` | None |
+
+See [docs/openapi.yaml](docs/openapi.yaml) for the complete specification.
+
 ### Ticketing & RSVP
 
 - **Three ticket scopes**:
@@ -180,7 +160,7 @@ Base URL: `/wp-json/nettertech-events/v1/`. Main endpoint groups below; see [doc
 
 ## Database Schema
 
-The plugin stores event data in purpose-built, indexed tables rather than `post_meta`. See [docs/DATABASE-SCHEMA.md](docs/DATABASE-SCHEMA.md) for the complete reference with column definitions, indexes, and ER diagram. The core tables:
+The plugin uses 20 custom tables for performance. See [docs/DATABASE-SCHEMA.md](docs/DATABASE-SCHEMA.md) for the complete reference with column definitions, indexes, and ER diagram.
 
 | Table | Purpose |
 |-------|---------|
@@ -219,7 +199,7 @@ nettertech-events/
 │   ├── Admin/               # Admin pages, metaboxes, list tables
 │   ├── Core/                # Plugin bootstrap, loader, assets
 │   ├── Database/
-│   │   ├── Tables/          # Table definitions
+│   │   ├── Tables/          # Table definitions (20 tables)
 │   │   └── Queries/         # Query builders
 │   ├── Enums/               # PHP 8.1+ enums (TicketTypeScope, etc.)
 │   ├── Frontend/            # Shortcodes, templates, router
@@ -232,7 +212,7 @@ nettertech-events/
 │   └── dist/
 │       ├── css/             # Compiled stylesheets
 │       └── js/              # Compiled JavaScript
-├── templates/               # Theme-overridable templates
+├── templates/               # Theme-overridable templates (29 files)
 ├── tests/                   # PHPUnit tests (Unit + Integration)
 └── languages/               # Translation files
 ```
@@ -243,9 +223,8 @@ The plugin uses CSS custom properties for theming:
 
 ```css
 :root {
-    --nte-color-primary: #2563eb;        /* links, buttons, accents */
-    --nte-date-bg: #dc2626;              /* date-badge background */
-    --nte-color-background-alt: #f8fafc; /* card and section backgrounds */
+    --nte-date-bg: #dc2626;
+    --nte-color-primary: #667eea;
 }
 ```
 
@@ -282,21 +261,141 @@ The plugin is designed for **WCAG 2.2 AA compliance** with comprehensive accessi
 
 ## Actions & Filters
 
-The plugin exposes a documented extension API of 165 action and filter hooks, all
-prefixed `nettertech_events_`, covering the event lifecycle (create, update,
-delete, publish), attendees and tickets, the waitlist, REST responses, template
-rendering, and asset loading.
-
-The full reference lives in **[docs/HOOKS.md](docs/HOOKS.md)**: every hook with its
-signature, parameters, firing location, and a usage example. A structural test
-keeps that reference in sync with the code, so a hook cannot ship undocumented and
-the examples cannot silently rot.
+### Plugin Lifecycle
 
 ```php
-// Example: add a custom action button inside each occurrence row
-add_action( 'nettertech_events_single_occurrence_actions', function ( $occurrence, $event ) {
-    printf( '<a href="%s">Details</a>', esc_url( get_permalink( $event->id ) ) );
+// Fires after plugin is fully initialized
+do_action( 'nettertech_events_init', $plugin );
+
+// Fires on plugin activation
+do_action( 'nettertech_events_activated' );
+
+// Fires on plugin deactivation
+do_action( 'nettertech_events_deactivated' );
+```
+
+### Event Actions
+
+```php
+// Before/after event save (create or update)
+do_action( 'nettertech_events_before_save_event', $event, $data );
+do_action( 'nettertech_events_after_save_event', $event );
+
+// Before/after event deletion
+do_action( 'nettertech_events_before_delete_event', $event );
+do_action( 'nettertech_events_after_delete_event', $id, $event );
+
+// Before/after event duplication
+do_action( 'nettertech_events_before_duplicate_event', $duplicate, $source );
+do_action( 'nettertech_events_after_duplicate_event', $saved, $source );
+
+// After occurrences are generated for recurring event
+do_action( 'nettertech_events_occurrences_generated', $event, $occurrences, $rule );
+
+// When occurrence status changes (scheduled, cancelled, etc.)
+do_action( 'nettertech_events_occurrence_status_changed', $id, $new_status, $old_status );
+```
+
+### Attendee & Ticket Actions
+
+```php
+// After attendee created from WooCommerce order
+do_action( 'nettertech_events_attendee_created', $attendee, $order, $item );
+
+// After attendee cancelled (order cancelled/refunded)
+do_action( 'nettertech_events_attendee_cancelled', $attendee, $order );
+
+// After tickets partially refunded
+do_action( 'nettertech_events_tickets_refunded', $attendee, $refunded_qty, $new_qty, $order, $refund );
+
+// After RSVP form submitted
+do_action( 'nettertech_events_rsvp_submitted', $attendee );
+```
+
+### Cache Actions
+
+```php
+// Fires after plugin caches are invalidated
+// Hook here to clear your own related caches
+do_action( 'nettertech_events_cache_invalidated' );
+```
+
+### Template Actions
+
+```php
+// After single event content (add ticket forms, related events, etc.)
+do_action( 'nettertech_events_after_single_content', $event );
+
+// After series page content
+do_action( 'nettertech_events_after_series_content', $event );
+
+// Inside occurrence row - add custom action buttons
+do_action( 'nettertech_events_single_occurrence_actions', $occurrence, $event );
+
+// Inside empty state - add custom content
+do_action( 'nettertech_events_empty_state_content', $context );
+
+// Before/after template file is loaded
+do_action( 'nettertech_events_before_template_load', $file, $args );
+do_action( 'nettertech_events_after_template_load', $file, $args );
+```
+
+### Display Filters
+
+```php
+// Customize empty state messages
+add_filter( 'nettertech_events_carousel_empty_message', function( $message ) {
+    return 'Check back soon for upcoming events!';
+});
+
+add_filter( 'nettertech_events_list_empty_message', function( $message ) {
+    return 'No events match your search.';
+});
+
+add_filter( 'nettertech_events_empty_state_message', function( $message, $context ) {
+    return $context === 'calendar' ? 'Nothing scheduled this month.' : $message;
 }, 10, 2 );
+```
+
+### Asset Filters
+
+```php
+// Modify the detected views (forces view assets to load where added)
+add_filter( 'nettertech_events_detected_views', function( $views ) {
+    if ( is_page( 'my-events-page' ) ) {
+        $views[] = 'list';
+    }
+    return $views;
+});
+
+// Modify localized JavaScript data
+add_filter( 'nettertech_events_localize_data', function( $data ) {
+    $data['customSetting'] = 'value';
+    return $data;
+});
+```
+
+### Template Filters
+
+```php
+// Modify template file candidates
+add_filter( 'nettertech_events_get_template_part', function( $templates, $slug, $name ) {
+    // Add custom template variant
+    array_unshift( $templates, "custom-{$slug}.php" );
+    return $templates;
+}, 10, 3 );
+
+// Modify template arguments before loading
+add_filter( 'nettertech_events_template_args', function( $args, $file ) {
+    $args['custom_data'] = 'value';
+    return $args;
+}, 10, 2 );
+
+// Modify template search paths
+add_filter( 'nettertech_events_template_paths', function( $paths ) {
+    $paths[] = '/custom/template/path/';
+    return $paths;
+});
 ```
 
 ## Template Overrides
@@ -340,11 +439,10 @@ The plugin includes comprehensive test coverage:
 
 | Type | Count | Framework |
 |------|-------|-----------|
-| Unit Tests | 6,755 (21,072 assertions) | PHPUnit 10 + Brain Monkey |
-| E2E Tests | 164 `test()` calls across 17 spec files | Playwright |
-| Line Coverage | 80.63% | pcov |
-| Method Coverage | 70.26% | pcov |
-| Mutation Testing | Mutation score ≥ 80% enforced on push | Infection |
+| Unit Tests | 5,623 (17,290 assertions) | PHPUnit 10 + Brain Monkey |
+| E2E Tests | 280 `test()` calls across 17 spec files | Playwright |
+| Statement Coverage | 74.48% | pcov |
+| Method Coverage | 68.19% | pcov |
 
 **Run Tests:**
 
@@ -395,7 +493,7 @@ Bypass hooks when needed: `git commit --no-verify` or `git push --no-verify`
 
 ## Roadmap
 
-### Completed
+### Completed (v1.0.0)
 - [x] Single event frontend template
 - [x] Recurring event pages with occurrence list
 - [x] Occurrence-specific pages with tickets
@@ -416,10 +514,10 @@ Bypass hooks when needed: `git commit --no-verify` or `git push --no-verify`
 - [x] GDPR privacy tools (WordPress exporter/eraser)
 - [x] Activity logging (OWASP A09 audit trail)
 - [x] WCAG 2.2 AA accessibility compliance
-- [x] Comprehensive automated test suite (unit, integration, and end-to-end) with mutation testing
+- [x] Comprehensive test suite (5,623 unit + 280 E2E test cases in 17 specs, 74.48% statement coverage)
 - [x] Gutenberg blocks (Calendar, Carousel, Grid)
 - [x] Beaver Builder modules
-- [x] ServiceRegistry DI pattern with typed service contracts
+- [x] ServiceRegistry DI pattern with 32 contracts
 - [x] Security audit remediation (OWASP 2025 compliant)
 - [x] N+1 query prevention with identity maps
 - [x] Denormalized counter caching for ticket sales
@@ -428,10 +526,25 @@ Bypass hooks when needed: `git commit --no-verify` or `git push --no-verify`
 - [x] Waitlist functionality with automatic promotion when capacity opens
 - [x] Event revision history with diff view and one-click restore
 
-### Planned
+### Planned (Post-v1.0 Release)
 - [ ] Multi-day event support
 - [ ] Object caching integration (Redis/Memcached)
 - [ ] Google Calendar sync
+
+## Quality Metrics
+
+| Metric | Grade | Score |
+|--------|-------|-------|
+| Security | A | 94/100 |
+| Code Quality | A- | 91/100 |
+| Test Coverage | A | 93/100 |
+| Standards Compliance | A+ | 97/100 |
+| Architecture | B+ | 88/100 |
+| Performance | B+ | 86/100 |
+| Documentation & i18n | B | 77/100 |
+| **Overall** | **B+** | **88/100** |
+
+*Based on an internal software audit (empirically verified against live tooling).*
 
 ## Documentation
 
@@ -447,7 +560,7 @@ Bypass hooks when needed: `git commit --no-verify` or `git push --no-verify`
 | [Developer Guide](docs/DEVELOPER-GUIDE.md) | Codebase walkthrough, workflows, debugging |
 | [Database Schema](docs/DATABASE-SCHEMA.md) | Complete table reference with ER diagram |
 | [Contributing](CONTRIBUTING.md) | Development setup and standards |
-| [Architecture Docs](docs/architecture/) | Architecture Decision Records |
+| [Architecture Docs](docs/architecture/) | 16 Architecture Decision Records |
 
 ## License
 

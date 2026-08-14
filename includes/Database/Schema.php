@@ -56,7 +56,7 @@ class Schema {
 	 *
 	 * @var string
 	 */
-	public const DB_VERSION = '3.16.0';
+	public const DB_VERSION = '3.17.0';
 
 	/**
 	 * Table prefix for plugin tables.
@@ -235,6 +235,7 @@ class Schema {
 			'3.14.0' => 'migrate_to_3_14_0',
 			'3.15.0' => 'migrate_to_3_15_0',
 			'3.16.0' => 'migrate_to_3_16_0',
+			'3.17.0' => 'migrate_to_3_17_0',
 		);
 	}
 
@@ -1176,6 +1177,36 @@ class Schema {
 			}
 			// phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter
 		} while ( ! empty( $rows ) );
+	}
+
+	/**
+	 * Migration to v3.17.0: backfill occurrences.origin_start_datetime.
+	 *
+	 * The column (added by dbDelta in create_tables()) records the rule slot a
+	 * row was generated at, so regeneration can suppress a moved override's
+	 * origin slot by datetime instead of by sequence number (NTE-182). Existing
+	 * rows get origin = current start_datetime — purely additive, no value is
+	 * modified or removed. For overrides moved before this migration the true
+	 * origin is unknowable, so their origin-slot suppression starts from their
+	 * current slot; a later full regeneration may recreate such a row's old
+	 * slot as a fresh scheduled occurrence, which is recoverable, unlike the
+	 * silent occurrence loss this replaces. Idempotent: only NULL rows are
+	 * touched.
+	 *
+	 * @return void
+	 */
+	private static function migrate_to_3_17_0(): void {
+		global $wpdb;
+
+		$occurrences_table = self::table( 'occurrences' );
+
+		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Table name from Schema::table(); one-time backfill of a custom table.
+		$wpdb->query(
+			"UPDATE {$occurrences_table}
+			 SET origin_start_datetime = start_datetime
+			 WHERE origin_start_datetime IS NULL"
+		);
+		// phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter
 	}
 
 	/**

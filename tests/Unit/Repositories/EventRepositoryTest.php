@@ -1496,102 +1496,6 @@ class EventRepositoryTest extends \NetterTechEventsTestCase {
 	}
 
 	// =========================================================================
-	// has_ticket_types() Tests
-	// =========================================================================
-
-	/**
-	 * Test has_ticket_types returns true when tickets exist.
-	 *
-	 * @return void
-	 */
-	public function test_has_ticket_types_returns_true(): void {
-		global $wpdb;
-		$original_wpdb = $wpdb;
-
-		$mock_wpdb = $this->getMockBuilder( \wpdb::class )
-			->disableOriginalConstructor()
-			->onlyMethods( array( 'get_var', 'prepare' ) )
-			->getMock();
-
-		$mock_wpdb->prefix = 'wp_';
-
-		$captured_sql = '';
-		$mock_wpdb->method( 'prepare' )
-			->willReturnCallback( function ( $sql, ...$args ) use ( &$captured_sql ) {
-				$captured_sql = $sql;
-				return $sql;
-			} );
-
-		$mock_wpdb->method( 'get_var' )
-			->willReturn( '3' );
-
-		$wpdb = $mock_wpdb;
-
-		try {
-			$repo   = new EventRepository( $wpdb );
-			$result = $repo->has_ticket_types( 1 );
-
-			$this->assertTrue( $result );
-			$this->assertStringContainsString( 'nettertech_events_occurrences', $captured_sql );
-			$this->assertStringContainsString( 'nettertech_events_ticket_types', $captured_sql );
-			// Must count BOTH event-scoped (tt.event_id) and occurrence-scoped
-			// (o.event_id via LEFT JOIN) ticket types — regression guard for the
-			// bug that hid every event-scoped-ticketed event from "ticketed".
-			$this->assertStringContainsString( 'LEFT JOIN', $captured_sql );
-			$this->assertStringContainsString( 'tt.event_id = %d', $captured_sql );
-			$this->assertStringContainsString( 'o.event_id = %d', $captured_sql );
-		} finally {
-			$wpdb = $original_wpdb;
-		}
-	}
-
-	/**
-	 * Test has_ticket_types returns false when no tickets.
-	 *
-	 * @return void
-	 */
-	public function test_has_ticket_types_returns_false(): void {
-		global $wpdb;
-		$original_wpdb = $wpdb;
-
-		$mock_wpdb = $this->getMockBuilder( \wpdb::class )
-			->disableOriginalConstructor()
-			->onlyMethods( array( 'get_var', 'prepare' ) )
-			->getMock();
-
-		$mock_wpdb->prefix = 'wp_';
-
-		$captured_sql = '';
-		$mock_wpdb->method( 'prepare' )
-			->willReturnCallback( function ( $sql, ...$args ) use ( &$captured_sql ) {
-				$captured_sql = $sql;
-				return $sql;
-			} );
-
-		$mock_wpdb->method( 'get_var' )
-			->willReturn( '0' );
-
-		$wpdb = $mock_wpdb;
-
-		try {
-			$repo   = new EventRepository( $wpdb );
-			$result = $repo->has_ticket_types( 1 );
-
-			$this->assertFalse( $result );
-			$this->assertStringContainsString( 'nettertech_events_occurrences', $captured_sql );
-			$this->assertStringContainsString( 'nettertech_events_ticket_types', $captured_sql );
-			// Must count BOTH event-scoped (tt.event_id) and occurrence-scoped
-			// (o.event_id via LEFT JOIN) ticket types — regression guard for the
-			// bug that hid every event-scoped-ticketed event from "ticketed".
-			$this->assertStringContainsString( 'LEFT JOIN', $captured_sql );
-			$this->assertStringContainsString( 'tt.event_id = %d', $captured_sql );
-			$this->assertStringContainsString( 'o.event_id = %d', $captured_sql );
-		} finally {
-			$wpdb = $original_wpdb;
-		}
-	}
-
-	// =========================================================================
 	// search() Tests
 	// =========================================================================
 
@@ -2283,7 +2187,6 @@ class EventRepositoryTest extends \NetterTechEventsTestCase {
 			'save'             => array( 'save' ),
 			'delete'           => array( 'delete' ),
 			'slug_exists'      => array( 'slug_exists' ),
-			'has_ticket_types' => array( 'has_ticket_types' ),
 			'search'           => array( 'search' ),
 		);
 	}

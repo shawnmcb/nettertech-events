@@ -141,6 +141,15 @@ ServiceRegistry::set( EventRepositoryInterface::class, $mock_repo );
 ServiceRegistry::reset(); // Clean up in tearDown()
 ```
 
+## Naming Prefixes
+
+The plugin uses two prefixes by design; this split is intentional and stable:
+
+- **`nettertech_events_` / `nettertech-events`** for every developer-facing identifier: hooks, shortcodes, options, capabilities, the REST namespace, and the text domain. All new work uses this prefix.
+- **`nte_` / `nte-` / `--nte-`** for high-volume internal and presentational identifiers: database table names (`wp_nte_*`), the `nte_event` shadow post type, CSS classes, and CSS custom properties. These predate the long prefix and stay short on purpose: table names are internal, and the CSS surface is a published theming API whose rename would break existing site customizations for no functional gain.
+
+Do not "fix" `nte_` identifiers in these categories to the long prefix, and do not introduce `nte_` for anything in the first list.
+
 ## Common Workflows
 
 ### Adding a REST Endpoint
@@ -185,13 +194,13 @@ class MyController extends \WP_REST_Controller {
 1. **Fire the hook** in the appropriate service/repository:
 
 ```php
-do_action( 'nte_after_event_save', $event );
+do_action( 'nettertech_events_after_save_event', $event );
 // or
-$value = apply_filters( 'nte_event_capacity', $capacity, $event );
+$value = apply_filters( 'nettertech_events_capacity_check', $capacity, $event );
 ```
 
 2. **Document** in `docs/HOOKS.md` with parameters, example, and file location.
-3. **Use the `nte_` prefix** for all hooks.
+3. **Use the `nettertech_events_` prefix** for all hooks (see Naming Prefixes below).
 
 ### Extending a Model
 

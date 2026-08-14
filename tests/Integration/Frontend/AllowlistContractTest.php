@@ -103,8 +103,12 @@ class AllowlistContractTest extends \NetterTechEventsIntegrationTestCase {
 	 * This is the documented contract behind NTE-131: markup routed through
 	 * the template pipeline must not rely on inline styles for behavior
 	 * (e.g., display:none initial states belong to JS/CSS, not style attrs).
-	 * If this test ever fails because style survives, the allowlist widened —
-	 * revisit the rule in ADR-018 before accepting it.
+	 * WP 7.0 made this contract active work: core's safecss_filter_attr()
+	 * gained `display`, so a wp_kses_allowed_html('post')-seeded list keeps
+	 * style attrs unless get_allowlist() strips them — which it now does
+	 * explicitly. If this fails again, the strip in get_allowlist() regressed.
+	 * (An earlier revision cited ADR-018 here; that number is the versioning
+	 * ADR — no allowlist ADR exists, NTE-131 is the contract's home.)
 	 *
 	 * @return void
 	 */

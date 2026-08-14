@@ -99,10 +99,6 @@
 	color: var(--nte-color-text-muted, #5a616e);
 }
 
-.nte-calendar__day--other-month .nte-calendar__event {
-	filter: saturate(0.5);
-}
-
 .nte-calendar__day--today {
 	background: #eff6ff;
 	background: color-mix(in srgb, var(--nte-color-primary) 8%, var(--nte-color-background, #fff));
@@ -138,6 +134,10 @@
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+.nte-calendar__day--other-month .nte-calendar__event {
+	filter: saturate(0.5);
 }
 
 .nte-calendar__event:hover {
@@ -671,6 +671,7 @@
 	.nte-calendar__tooltip {
 		position-area: top center;
 		position-try-fallbacks: flip-block, flip-inline;
+		/* stylelint-disable-next-line property-no-unknown */
 		position-try-order: most-block-size;
 		margin-block: var(--nte-spacing-xs);
 	}

@@ -168,6 +168,9 @@ class Plugin {
 		// Register activity logging hooks (OWASP A09).
 		$this->init_activity_logging();
 
+		// Keep ticket/product visibility in step with event status (NTE-177).
+		$this->init_ticket_status_sync();
+
 		// Register bulk import handler (cache invalidation, logging, WC sync).
 		$this->init_bulk_import_handler();
 
@@ -415,7 +418,8 @@ class Plugin {
 			$this->container->get( CapacityServiceInterface::class ),
 			$this->container->get( TicketTypeRepositoryInterface::class ),
 			$templates,
-			$this->container->get( \NetterTechEvents\Frontend\Shortcodes\RSVPFormShortcode::class )
+			$this->container->get( \NetterTechEvents\Frontend\Shortcodes\RSVPFormShortcode::class ),
+			$this->container->get( OccurrenceRepositoryInterface::class )
 		);
 		$ical_button = new \NetterTechEvents\Frontend\ICalButton(
 			$this->container->get( CalendarLinkServiceInterface::class )
@@ -473,11 +477,12 @@ class Plugin {
 
 		$edit_url = admin_url( 'admin.php?page=nettertech-events&action=edit&event_id=' . $event->id );
 
-		// Inline SVG using currentColor so it inherits WP admin bar color scheme.
+		// Same ticket-with-star icon as the dashboard menu (NTE-176/NTE-194,
+		// single source in AdminMenuRegistrar); currentColor inherits the WP
+		// admin bar color scheme and hover states.
 		$icon = '<span class="ab-icon" style="display:inline-block;width:20px;height:20px;margin-top:2px;">'
-			. '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" style="width:20px;height:20px;">'
-			. '<path d="M2 4.5A1.5 1.5 0 013.5 3h13A1.5 1.5 0 0118 4.5v2.879a.5.5 0 01-.354.476A2 2 0 0016 9.787v.426a2 2 0 001.646 1.932.5.5 0 01.354.476V15.5a1.5 1.5 0 01-1.5 1.5h-13A1.5 1.5 0 012 15.5v-2.879a.5.5 0 01.354-.476A2 2 0 004 10.213v-.426a2 2 0 00-1.646-1.932A.5.5 0 012 7.379V4.5z"/>'
-			. '</svg></span>';
+			. \NetterTechEvents\Admin\AdminMenuRegistrar::icon_svg( 'currentColor', 'width:20px;height:20px;' )
+			. '</span>';
 
 		wp_add_inline_style(
 			'admin-bar',
@@ -648,6 +653,13 @@ class Plugin {
 			$this->container->get( EventRepositoryInterface::class )
 		);
 		$space_resolver->register();
+
+		// Seating add-on bridge: answer ticket-type→occurrence from core's
+		// ticket-type model (no-op when the Seating add-on is absent).
+		$occurrence_resolver = new \NetterTechEvents\Integrations\Seating\TicketTypeOccurrenceResolver(
+			$this->container->get( TicketTypeRepositoryInterface::class )
+		);
+		$occurrence_resolver->register();
 	}
 
 	/**
@@ -660,6 +672,29 @@ class Plugin {
 	private function init_activity_logging(): void {
 		$hooks = $this->container->get( ActivityLogHooks::class );
 		$hooks->register();
+	}
+
+	/**
+	 * Register the ticket/product status sync service (NTE-177).
+	 *
+	 * Listens to the event published/unpublished lifecycle actions and flips the
+	 * event's ticket types (and their WC products) between active and draft. The
+	 * ProductManager is only wired when WooCommerce is active; when it is absent
+	 * the service still keeps ticket statuses in step.
+	 *
+	 * @return void
+	 */
+	private function init_ticket_status_sync(): void {
+		$product_manager = class_exists( 'WooCommerce' )
+			? $this->container->get( \NetterTechEvents\Integrations\WooCommerce\ProductManager::class )
+			: null;
+
+		$service = new \NetterTechEvents\Services\TicketStatusSyncService(
+			$this->container->get( TicketTypeRepositoryInterface::class ),
+			$this->container->get( OccurrenceRepositoryInterface::class ),
+			$product_manager instanceof \NetterTechEvents\Integrations\WooCommerce\ProductManager ? $product_manager : null
+		);
+		$service->register();
 	}
 
 	/**

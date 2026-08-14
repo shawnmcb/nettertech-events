@@ -5,13 +5,160 @@ All notable changes to NetterTech Events will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.1.2] - Unreleased
+## [1.4.3]
+
+### Fixed
+
+- **Re-pinned the no-inline-styles embed contract against WP 7.0+ kses.** WP 7.0 added `display` to `safecss_filter_attr()`'s allowed properties, and `style` has long been a kses global attribute, so inline styles survived the `wp_kses_allowed_html('post')`-seeded allowlist — silently breaking the NTE-131 contract (no style attributes in markup rendered inside third-party pages) on WP 7.0+ sites. `ShortcodeOutput::get_allowlist()` now strips `style` from every element explicitly. Caught by the integration suite's allowlist contract test on oz's first run against a 7.x core (7.1-RC3 via WordPress Beta Tester).
+
+## [1.4.2]
+
+### Fixed
+
+- **"Export All" was dead on WordPress 7.0+.** WP 7.0's `common.js` attaches a validator to every form containing a `.bulkactions` element; when the submit button's `name` is `bulk_action` it looks up core's own bulk select (absent here), reads `-1`, and blocks the submit with the admin notice "Please select a bulk action to perform." The Export All button now posts a dedicated `nettertech_events_export_all` key — outside the validator's watched submitter names — and the handler routes it to the export path (the legacy `bulk_action=export_all` value still works). Reproduced and diagnosed live against WP 7.0.3; WP 6.9 sites were never affected, which is why local testing passed.
+
+## [1.4.1]
+
+### Fixed
+
+- **"Export All" on the event-scoped Purchases view exported the whole database.** The view (NTE-118) posts its `filter_event_id`, but the bulk handler never read it and the exporter had no event parameter, so the button promised the event's record count while the CSV shipped every attendee in the store. The event scope is now threaded through `handle()` → `export_all_filtered()` with an `o.event_id` predicate mirroring the list query's own scoping.
+- **Tickets & Attendance cell padding was zeroed by a cascade ordering bug.** The base `.nte-summary-table td` rule shared specificity with the consolidated variant's cell rule and won on source order, landing the right-aligned Issued figure flush against the Checked-in value ("12 issued0"). The variant's cell rules now follow the base cell rules (and precede the base tfoot rules, preserving the tfoot's historical tie-break winners).
+
+### Improved
+
+- **The attendees list, summary card, and export now share visible units.** The list header reads "Showing N purchase records (M tickets)" — the ticket total computed over the exact WHERE clause as the row count — and the Export All button is labeled in records, so a 5-row list under a 32-ticket summary no longer reads as a mismatch.
+- **Select-all announces its page scope.** Ticking the header checkbox reveals a hint (also sent through `wp.a11y.speak`) that selection covers only the current page's rows, pointing at Export All for every filtered record.
+
+### Development
+
+- **Stylelint is clean and part of the toolchain again.** Swept all 278 outstanding errors across the dist stylesheets (formatting autofix plus hand-fixed specificity-order, named-color, and line-length findings; rule moves verified behavior-neutral by specificity) and scoped `lint:css` to `*.css` so the `index.php` directory guards no longer fail the run.
+
+## [1.4.0]
+
+### Fixed
+
+- **Recurring events keep their day of the week when the horizon extends (NTE-200).** A bare `FREQ=WEEKLY` series (the admin "Weekly" preset) could silently move to a different weekday and duplicate its dates once the background horizon cron ran: the generator relocated the rule's start anchor to "today," and per RFC 5545 a rule without an explicit BYDAY takes its weekday from that anchor, so a Monday series became a Friday one and `COUNT` restarted. Expansion now always begins from the original anchor and future-only dates are filtered out, preserving weekday, time-of-day, and `COUNT` totality. Series with an explicit BYDAY were never affected.
+- **Hardened rate-limit client-IP resolution against header spoofing (NTE-SEC-2026-07-A).** Behind a generic reverse proxy, exactly one forwarded header is now trusted per trust reason — Cloudflare's own ranges consult `CF-Connecting-IP`, other proxies consult `X-Forwarded-For`'s proxy-written last hop (filterable to `X-Real-IP`) — instead of scanning a priority list an attacker could steer with a fabricated header.
+- **Admin REST rate limiting no longer rides in the permission callback (SA-07).** The Attendees and Ticket-Types admin controllers now throttle in their request handlers (matching the Events controller), since permission callbacks are authorization only and may run more than once per request.
+
+### Added
+
+- **15-minute suggest-and-type time entry on every admin time surface (NTE-190).** A shared `nte-time-combobox` upgrades the Schedule box, Add-a-date rows, the occurrence editor, and ticket sale windows: quarter-hour options are suggested as you type, end-time suggestions carry the resulting duration, and any exact time (`7:05 pm`) is still accepted. The native `input[type=time]` remains the source of truth, so the surfaces degrade to fully usable native controls with scripting off.
+- **Split date + time ticket sale-window entry with presets.** `SaleWindowInput` composes a grouped date + time fieldset with one-click "Now" and "At event start" presets, replacing `datetime-local`. All three sale-window save paths were unified on the composer; stored values are unchanged.
+- **Inline, screen-reader-announced date/time validation.** Field-adjacent `aria-live` messaging replaced the blocking `alert()`, and time fields state the timezone their entries are interpreted in.
+- **Attendee list alphabetization by first or last name (NTE-195).** The Name column carries a First | Last mode toggle, sorting on a `SUBSTRING_INDEX` final token with a full-name tiebreak against a whitelisted column set. Multi-word surnames sort on their final token — documented in the ticket.
+- **Attendee CSV exports honor the list's sort mode.** Exports come out in the order shown on screen, including the first/last-name mode, instead of always newest-first.
+- **Card availability contract for extensions (NTE-203).** New `OccurrenceAvailabilityPresenter` answers "is this occurrence sold out?" from the same per-type capacity summaries the checkout uses (shared house, pending holds, buffer stock, seating overrides — never the per-tier stock column; no on-sale types is never sold out). Listing controllers compute batched per-card verdicts when an extension opts in via the `nettertech_events_cards_need_availability` filter, cards expose the verdict as a modifier class and to the new `nettertech_events_event_card_status` action (which fires only for non-cancelled, non-past cards), and the calendar/grid JS dispatch `nte-calendar:rendered` (now with `events`), `nte-calendar:popup-rendered`, and `nte-grid:rendered` lifecycle events with `data-event-id` anchors. Base renders no availability label itself — visible sold-out badges ship in Pro on this contract.
+
+### Fixed
+
+- **The Voided row on Tickets & Attendance now explains itself (NTE-201).** A footnote states that voided seats come from cancelled, refunded, or failed orders and are excluded from issued counts — previously the figure appeared with no definition anywhere in the UI.
+- **Calendar tooltip availability text is now localized (NTE-203).** "Sold out" / "Low stock" / "Tickets available" were hardcoded English; they now use the plugin's translatable strings.
+- **Event editor no longer fatals without WooCommerce (NTE-193).** The currency symbol was resolved unguarded; found by a dist test-install on a clean wp-env.
+- **Every recurring event gets the series page, ticketed or not (NTE-197).** The series template was gated on the event having active ticket types while the More Dates panel emitted its "View all" link unconditionally, so unticketed recurring events dead-ended on a single-event page showing one date. The dead `has_ticket_types()` repository chain was removed rather than left callerless; `EventQuery::where_has_ticket_types()` is unaffected and still backs the events list-table filter.
+- **Events with added dates reach the series page too (NTE-199).** Routing now counts an event's scheduled dates instead of reading `event_type`, which is set solely from the Event Type dropdown. An event saved as "Single" that carries manually added dates was reporting as non-recurring and could reproduce the NTE-197 dead-end; the count is taken over the same status the series page lists, so routing and rendering cannot disagree.
+
+### Changed
+
+- **One source for the ticket-with-star icon (NTE-194).** The admin-bar Edit-event node and `AdminMenuRegistrar::get_menu_icon()` now share a single SVG source instead of drifting.
+- WordPressCS raised to 3.4.1 (dev dependency) for CVE-2026-45293, arbitrary code execution in WordPressCS.
+
+## [1.3.2]
+
+### Fixed
+
+- **Add-a-date rows carrying only a date and start time now save (NTE-184).** The end time is derived from the default event duration instead of the row being silently discarded, and every skipped or auto-filled row is named in a post-save notice. This drop caused a failed CJAC restore.
+- **Re-saving a single event no longer clobbers an earlier hand-picked date (NTE-185).** `create_single_occurrence` selects the earliest non-override occurrence — a re-introduction of the NTE-153 bug class.
+- **Saving from a screen without the ticket section no longer deletes a date's ticket types (NTE-186).** The NTE-178 scope-marker guard had never been applied to the occurrence save path.
+- **Ticket status fails closed (NTE-188).** An unresolvable parent event previously left tickets at `active`, risking purchasability before publish; it now falls back to draft.
+- **Blank occurrence-editor times are derived and validated (NTE-189).** Previously a blank end produced a zero-length occurrence with no validation; end-derivation and validation are unified with the NTE-184 helper.
+- **Buffered occurrence tickets are no longer silently dropped when no non-override primary exists (NTE-187).**
+
+### Changed
+
+- "Apply to all dates" leaves individually customized dates alone and lists them in the save notice; editing a date no longer resets its rescheduled status.
+- Converting a recurring event to a single event names the hand-picked dates that would be removed before it proceeds.
+- Unpublishing an event reverts existing products to draft and never mints new ones.
+- Series passes and ticket templates can be managed on single-date events — the `>1-occurrence` gate on event-scope ticket saving is gone.
+- Choosing a shared-capacity type on an event-level tier raises an error instead of silently downgrading to fixed capacity.
+
+## [1.3.1]
+
+### Fixed
+
+- **Re-saving a recurring event no longer loses a date when one of its dates carries an override (NTE-182).** The collision filter now matches on `origin_start_datetime` rather than sequence number; most visible as the lost first day of a short daily run. (The underlying incident remains open pending a reproduction — see NTE-182.)
+- **Event cards and calendar entries link to the clicked date (NTE-179, NTE-181).** The REST occurrence payload emits occurrence-resolved links and images, so grids and the calendar hover preview stop pointing at the series page and stop showing the series image where a date-specific override exists.
+- **`event_type` is hydrated on the minimal `Event` built by the list query (NTE-179).**
+
+## [1.3.0]
+
+### Added
+
+- **Ticket-type→occurrence resolution seam for the Seating add-on (NTE-169).** `TicketTypeOccurrenceResolver` now answers the `nettertech_events_seating_resolve_occurrence` filter from core's ticket-type model, so Seating's product→occurrence mapping resolves in production (previously no listener existed and resolution always returned 0). Registered alongside the existing `OccurrenceSpaceResolver`.
+
+### Fixed
+
+- **Saves that never rendered a ticket scope's rows no longer delete that scope's tiers (NTE-178).** The tickets metabox emits a hidden `ticket_types_rendered[<scope>]` receipt per scope it actually draws, and `TicketTypeSaver::save_for_event()` only processes — and only deletes from — scopes the form vouches for. `save_for_event()` also now honors `ticketing_enabled`, matching the buffered first-save path. Non-form callers of `save_for_event()` must supply the scope markers.
+
+## [1.2.0]
+
+### Added
+
+- **Draft-first event authoring (NTE-177).** A brand-new event can be fully built before its first save: repeatable ad-hoc date rows ("+ Add another date") and occurrence-scope ticket types buffer in the form and are created together on first save, with occurrence-scope tickets binding to the primary occurrence.
+- **Status-synced draft tickets.** Ticket status is derived from the parent event (published ⇒ active, otherwise draft), and a new lifecycle sync moves tiers between draft and active when the event is published or unpublished — a draft event's ticket products are never purchasable. Deliberately parked statuses (e.g. a withdrawn tier's `inactive`) are never touched, orders are never modified, and products are never deleted.
+- **Recurrence pattern progressive disclosure.** The pattern section collapses by default behind a one-line summary with an accessible toggle when a pattern exists.
+
+### Fixed
+
+- **Moved single-occurrence edits no longer resurrect their original slot.** Regeneration collision suppression now also keys on sequence number, so a date-moved override cannot reappear as a duplicate on the next save.
+- **Occurrences carrying operator-configured ticket tiers survive regeneration.** Previously every event re-save deleted and recreated pattern occurrences, orphaning directly-bound tiers and their products (status and stock sync silently stopped reaching them).
+- **Per-occurrence featured-image overrides now render on card listings**, matching the single-event page.
+
+## [1.1.4]
+
+### Added
+
+- **Series passes get a public buy button (NTE-156).** A pass renders its own "Series Pass" section ("valid for every date of this event") on the public event page, shown once whether the event lists as single or recurring, instead of being scattered through each date's ticket form.
+
+### Fixed
+
+- The per-date ticket form no longer repeats the event's series pass; each date's form lists only that date's own ticket types.
+- A per-date featured-image override survives a `scope=this` save (NTE-159 C), now pinned by regression test.
+
+### Changed
+
+- Events admin-menu icon refreshed to the notched-ticket + star mark (NTE-176).
+- The intentional two-prefix naming convention (`nettertech_events_` dev-facing, `nte_` for DB and CSS) is documented in the developer guide, and a structural documentation-drift gate fails the suite when docs and source disagree.
+
+## [1.1.3]
+
+### Changed
+
+- Test and tooling configuration reads environment variables with portable defaults instead of machine-specific fallback paths; integration-test setup is documented in `tests/Integration/README.md`.
+- Internal working-hours tooling removed from the repository.
+
+## [1.1.2]
+
+Consolidates the internal 1.1.2.1–1.1.2.2 build line.
 
 ### Added
 
 - **Twelve new extension hooks since 1.1.1**, all now registered as `Hooks` constants and documented: `nettertech_events_attendees_columns`, `_attendees_column_content`, and `_attendees_prime` (attendees-table extensibility), `_purchases_synopsis` (attendees summary-card slot), `_admin_ticket_rows`, `_ticket_row_fields`, `_ticket_types_to_delete`, `_sale_schedule_ui_available`, and `_on_sale_ticket_types` (ticket-tier admin and sale-window extensibility), `_product_cat_ids` (WooCommerce product category resolution), `_csp_script_src` (CSP script origins), and `_trusted_proxy_ranges` (client IP resolution behind proxies).
 - **New lifecycle hooks now fired by core:** `nettertech_events_ticket_type_created` and `_ticket_type_updated` (fired from the ticket type repository on every creation and update path), `_attendee_checked_in` (fired on admin check-in), `_settings_updated` (fired with the changed setting keys after a settings save), and `_attendees_exported` (fired after an attendee CSV export). Activity-log listeners for these hooks were previously registered but could never fire.
 - **Documentation completeness gate.** A structural test (`HooksDocumentationTest`) derives every fired hook from source, including template call sites, constant-referenced names, and cron schedules, and fails if any is missing from the hook reference. A hook can no longer ship undocumented.
+- **Series passes wired end to end (NTE-156, NTE-158).** A pass gets its own product; one purchase admits the buyer to every date of the event (one attendee per date, each ready for check-in); and a pass occupies a seat on every date it spans, so its availability is bounded by the tightest date's room.
+- **Series Passes and This Occurrence tabs on any multi-date event (NTE-155).** The ticket editor exposes both on any event with more than one date, not only pattern-recurring ones, and the events list reads "Single (N dates)" when a single event carries extra hand-picked dates.
+- **Consolidated Tickets & Attendance panel (NTE-143 C2–C6).** The attendees screen merges per-ticket-type issued counts, check-ins, and — with Pro — net revenue with refunds already subtracted into one panel beside Event Details. The table gains a sortable Ticket type column and an attendee-id/ticket-code identity line; attendees can be edited in place and added manually (manual adds respect capacity); bulk actions gain Re-send Confirmation Email.
+- **Two new extension filters:** `nettertech_events_ticket_type_revenue` (per-type net revenue for the consolidated panel) and `nettertech_events_sale_schedule_ui_available` (lets an add-on suppress base's sale-window guidance when it renders a real price-schedule control) (NTE-157).
+
+### Fixed
+
+- **Editing a ticket no longer re-creates its WooCommerce product (NTE-160).** The product, its SKU, and its sales history survive every save, and a SKU typed into the event editor is honored instead of being overwritten by a generated default.
+- **One sold series pass no longer counts once per date in the Ticket Overview**, and pass sales appear in revenue reporting — including orders whose product an earlier save had orphaned.
+- **The attendees Coupon column stopped loading every order in the store** to decorate one page; it loads only that page's own orders (NTE-143 C6).
+- **Occurrence ticket saves no longer drop the sale window and order fields.**
+- **No recurrence is invented where nobody chose one, and a date can be removed and priced (NTE-154).**
+- **The capacity pending floor is restored to zero and guarded.**
 
 ### Changed
 

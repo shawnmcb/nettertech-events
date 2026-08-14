@@ -545,6 +545,7 @@ class CalendarShortcodeTest extends \NetterTechEventsTestCase {
 		$occurrence                 = Mockery::mock( Occurrence::class );
 		$occurrence->start_datetime = ( new \DateTime() )->format( 'Y-m-d 10:00:00' );
 		$occurrence->shouldReceive( 'get_event' )->andReturn( $event );
+		$occurrence->shouldReceive( 'get_url' )->andReturn( 'https://example.com/event/1' );
 
 		$this->occurrence_repo
 			->shouldReceive( 'in_range' )
@@ -573,6 +574,7 @@ class CalendarShortcodeTest extends \NetterTechEventsTestCase {
 			$occurrence                 = Mockery::mock( Occurrence::class );
 			$occurrence->start_datetime = ( new \DateTime() )->format( 'Y-m-d 10:00:00' );
 			$occurrence->shouldReceive( 'get_event' )->andReturn( $event );
+			$occurrence->shouldReceive( 'get_url' )->andReturn( '#' );
 
 			$events[] = $occurrence;
 		}
@@ -790,6 +792,7 @@ class CalendarShortcodeTest extends \NetterTechEventsTestCase {
 		$occurrence                 = Mockery::mock( Occurrence::class );
 		$occurrence->start_datetime = $start->format( 'Y-m-d' ) . ' 10:00:00';
 		$occurrence->shouldReceive( 'get_event' )->andReturn( $event );
+		$occurrence->shouldReceive( 'get_url' )->andReturn( 'https://example.com/event/week' );
 
 		$this->occurrence_repo
 			->shouldReceive( 'in_range' )
@@ -820,6 +823,7 @@ class CalendarShortcodeTest extends \NetterTechEventsTestCase {
 		$occurrence                 = Mockery::mock( Occurrence::class );
 		$occurrence->start_datetime = $start->format( 'Y-m-d' ) . ' 14:30:00';
 		$occurrence->shouldReceive( 'get_event' )->andReturn( $event );
+		$occurrence->shouldReceive( 'get_url' )->andReturn( '#' );
 
 		$this->occurrence_repo
 			->shouldReceive( 'in_range' )
@@ -876,6 +880,7 @@ class CalendarShortcodeTest extends \NetterTechEventsTestCase {
 		$occurrence                 = Mockery::mock( Occurrence::class );
 		$occurrence->start_datetime = $now->format( 'Y-m-d' ) . ' 15:00:00';
 		$occurrence->shouldReceive( 'get_event' )->andReturn( $event );
+		$occurrence->shouldReceive( 'get_url' )->andReturn( 'https://example.com/event/day' );
 
 		$this->occurrence_repo
 			->shouldReceive( 'in_range' )
@@ -905,6 +910,7 @@ class CalendarShortcodeTest extends \NetterTechEventsTestCase {
 		$occurrence                 = Mockery::mock( Occurrence::class );
 		$occurrence->start_datetime = $now->format( 'Y-m-d' ) . ' 19:00:00';
 		$occurrence->shouldReceive( 'get_event' )->andReturn( $event );
+		$occurrence->shouldReceive( 'get_url' )->andReturn( '#' );
 
 		$this->occurrence_repo
 			->shouldReceive( 'in_range' )
@@ -956,6 +962,7 @@ class CalendarShortcodeTest extends \NetterTechEventsTestCase {
 		$occurrence                 = Mockery::mock( Occurrence::class );
 		$occurrence->start_datetime = $now->format( 'Y-m-d' ) . ' 10:00:00';
 		$occurrence->shouldReceive( 'get_event' )->andReturn( $event );
+		$occurrence->shouldReceive( 'get_url' )->andReturn( '#' );
 
 		$this->occurrence_repo
 			->shouldReceive( 'in_range' )

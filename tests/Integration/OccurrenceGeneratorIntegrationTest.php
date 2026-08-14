@@ -373,6 +373,103 @@ class OccurrenceGeneratorIntegrationTest extends \NetterTechEventsIntegrationTes
 	}
 
 	/**
+	 * An occurrence with a directly-bound (non-template) tier must survive
+	 * regeneration: deleting it would orphan the tier and its commerce product,
+	 * silently detaching status sync and stock updates (NTE-177).
+	 *
+	 * @return void
+	 */
+	public function test_occurrence_with_direct_tier_survives_regeneration(): void {
+		$event = $this->insert_recurring_event( $this->slug( 'tier-regen' ) );
+		$rrule = 'FREQ=WEEKLY;BYDAY=WE;COUNT=4';
+		$start = new \DateTimeImmutable( '2032-11-03 19:00:00' ); // Wednesday.
+		$end   = new \DateTimeImmutable( '2032-11-03 21:00:00' );
+
+		$this->recurrence_service->generate_occurrences( $event, $start, $end, $rrule, true );
+		$initial = $this->occurrence_repo->for_event( $event->id );
+		$this->assertCount( 4, $initial );
+		usort( $initial, static fn( $a, $b ) => strcmp( $a->start_datetime, $b->start_datetime ) );
+		$bound = $initial[0];
+
+		$tier                = new \NetterTechEvents\Models\TicketType();
+		$tier->occurrence_id = (int) $bound->id;
+		$tier->event_id      = (int) $event->id;
+		$tier->name          = 'Direct Tier';
+		$tier->price         = 10.0;
+		$tier->status        = 'draft';
+		global $wpdb;
+		$tier_repo = new TicketTypeRepository( $wpdb );
+		$tier      = $tier_repo->save( $tier );
+
+		$this->recurrence_service->generate_occurrences( $event, $start, $end, $rrule, true );
+
+		$after = $this->occurrence_repo->for_event( $event->id );
+		$ids   = array_map( static fn( $o ) => (int) $o->id, $after );
+		$this->assertContains( (int) $bound->id, $ids, 'The tier-bearing occurrence row (same id) must survive regeneration.' );
+		$this->assertCount( 4, $after, 'No duplicate row at the protected slot.' );
+
+		if ( null !== $tier->id ) {
+			$tier_repo->delete( $tier->id );
+		}
+	}
+
+	/**
+	 * A MOVED override (scope=this date change) must survive a full regeneration
+	 * without the generator resurrecting its ORIGINAL slot as a duplicate row
+	 * (NTE-177 / FR-011: the moved row no longer collides by start_datetime, so
+	 * collision suppression must also key on sequence_number).
+	 *
+	 * @return void
+	 */
+	public function test_moved_override_original_slot_not_resurrected_by_regeneration(): void {
+		$event = $this->insert_recurring_event( $this->slug( 'move-regen' ) );
+		$rrule = 'FREQ=WEEKLY;BYDAY=WE;COUNT=4';
+		$start = new \DateTimeImmutable( '2032-10-06 19:00:00' ); // Wednesday.
+		$end   = new \DateTimeImmutable( '2032-10-06 21:00:00' );
+
+		$this->recurrence_service->generate_occurrences( $event, $start, $end, $rrule, true );
+		$initial = $this->occurrence_repo->for_event( $event->id );
+		$this->assertCount( 4, $initial );
+
+		// Move the 2nd occurrence two days later (as OccurrenceSaveHandler scope=this does).
+		usort( $initial, static fn( $a, $b ) => strcmp( $a->start_datetime, $b->start_datetime ) );
+		$moved         = $initial[1];
+		$original_slot = $moved->start_datetime;
+		$new_start     = ( new \DateTimeImmutable( $moved->start_datetime ) )->modify( '+2 days' );
+		$new_end       = ( new \DateTimeImmutable( $moved->end_datetime ) )->modify( '+2 days' );
+
+		$moved->start_datetime = $new_start->format( 'Y-m-d H:i:s' );
+		$moved->end_datetime   = $new_end->format( 'Y-m-d H:i:s' );
+		$moved->is_override    = true;
+		$this->occurrence_repo->save( $moved );
+
+		// Full regeneration, as happens on the next event save.
+		$this->recurrence_service->generate_occurrences( $event, $start, $end, $rrule, true );
+
+		$all     = $this->occurrence_repo->for_event( $event->id );
+		$at_old  = array_values(
+			array_filter( $all, static fn( $o ) => $o->start_datetime === $original_slot )
+		);
+		$at_new  = array_values(
+			array_filter( $all, static fn( $o ) => $o->start_datetime === $new_start->format( 'Y-m-d H:i:s' ) )
+		);
+
+		$this->assertCount(
+			0,
+			$at_old,
+			'The moved override\'s ORIGINAL slot must not be resurrected by regeneration.'
+		);
+		$this->assertCount( 1, $at_new, 'The moved override must survive regeneration at its new slot.' );
+		$this->assertSame( (int) $moved->id, (int) $at_new[0]->id );
+		$this->assertTrue( (bool) $at_new[0]->is_override );
+		$this->assertCount(
+			4,
+			$all,
+			'Regeneration must keep the occurrence count stable (3 scheduled + 1 moved override).'
+		);
+	}
+
+	/**
 	 * An in-place override (NTE-077: edited without moving the date) must survive a
 	 * full regeneration without the generator recreating a duplicate row at its slot.
 	 *

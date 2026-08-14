@@ -11,6 +11,7 @@ namespace NetterTechEvents\Admin\Attendees;
 
 defined( 'ABSPATH' ) || exit;
 
+use NetterTechEvents\Admin\AttendeesPage;
 use NetterTechEvents\Contracts\AttendeeFieldRepositoryInterface;
 use NetterTechEvents\Contracts\AttendeeFieldValueRepositoryInterface;
 use NetterTechEvents\Database\Schema;
@@ -86,19 +87,25 @@ class AttendeesExporter {
 	 * Export selected attendees to CSV.
 	 *
 	 * @param array<int> $attendee_ids Attendee IDs to export.
+	 * @param string     $orderby      Sort key selected on the list (validated against whitelist).
+	 * @param string     $order        Sort direction selected on the list.
 	 * @return void
 	 */
-	public function export_selected( array $attendee_ids ): void {
+	public function export_selected( array $attendee_ids, string $orderby = '', string $order = '' ): void {
 		if ( empty( $attendee_ids ) ) {
 			return;
 		}
 
-		$attendees_table   = Schema::table( 'attendees' );
-		$occurrences_table = Schema::table( 'occurrences' );
-		$events_table      = Schema::table( 'events' );
+		$attendees_table    = Schema::table( 'attendees' );
+		$occurrences_table  = Schema::table( 'occurrences' );
+		$events_table       = Schema::table( 'events' );
+		$ticket_types_table = Schema::table( 'ticket_types' );
 
 		$count        = count( $attendee_ids );
 		$placeholders = implode( ', ', array_fill( 0, $count, '%d' ) );
+		// Whitelisted expression from AttendeesPage::SORTABLE_COLUMNS, so the
+		// CSV comes out in the order the operator sees on the list (NTE-195).
+		$order_clause = AttendeesPage::build_order_clause( $orderby, $order );
 
 		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- Export query.
 		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table names from Schema class are safe.
@@ -109,8 +116,9 @@ class AttendeesExporter {
 				FROM {$attendees_table} a
 				LEFT JOIN {$occurrences_table} o ON a.occurrence_id = o.id
 				LEFT JOIN {$events_table} e ON o.event_id = e.id
+				LEFT JOIN {$ticket_types_table} tt ON a.ticket_type_id = tt.id
 				WHERE a.id IN ({$placeholders})
-				ORDER BY a.id DESC",
+				ORDER BY {$order_clause}",
 				$attendee_ids
 			),
 			ARRAY_A
@@ -126,20 +134,27 @@ class AttendeesExporter {
 	 * Export all filtered attendees to CSV.
 	 *
 	 * @param int    $occurrence_id      Filter by occurrence ID.
+	 * @param int    $event_id           Filter by event ID (the event-scoped Purchases view, NTE-118).
 	 * @param string $search             Search query.
 	 * @param string $status_filter      Status filter.
 	 * @param string $placeholder_filter Placeholder data filter.
+	 * @param string $orderby            Sort key selected on the list (validated against whitelist).
+	 * @param string $order              Sort direction selected on the list.
 	 * @return void
 	 */
 	public function export_all_filtered(
 		int $occurrence_id = 0,
+		int $event_id = 0,
 		string $search = '',
 		string $status_filter = '',
-		string $placeholder_filter = ''
+		string $placeholder_filter = '',
+		string $orderby = '',
+		string $order = ''
 	): void {
-		$attendees_table   = Schema::table( 'attendees' );
-		$occurrences_table = Schema::table( 'occurrences' );
-		$events_table      = Schema::table( 'events' );
+		$attendees_table    = Schema::table( 'attendees' );
+		$occurrences_table  = Schema::table( 'occurrences' );
+		$events_table       = Schema::table( 'events' );
+		$ticket_types_table = Schema::table( 'ticket_types' );
 
 		$where  = array( '1=1' );
 		$params = array();
@@ -147,6 +162,11 @@ class AttendeesExporter {
 		if ( $occurrence_id > 0 ) {
 			$where[]  = 'a.occurrence_id = %d';
 			$params[] = $occurrence_id;
+		}
+
+		if ( $event_id > 0 ) {
+			$where[]  = 'o.event_id = %d';
+			$params[] = $event_id;
 		}
 
 		if ( ! empty( $search ) ) {
@@ -170,6 +190,9 @@ class AttendeesExporter {
 		}
 
 		$where_clause = implode( ' AND ', $where );
+		// Whitelisted expression from AttendeesPage::SORTABLE_COLUMNS, so the
+		// CSV comes out in the order the operator sees on the list (NTE-195).
+		$order_clause = AttendeesPage::build_order_clause( $orderby, $order );
 
 		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- Export query.
 		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQL.NotPrepared -- Table names from Schema class are safe.
@@ -178,8 +201,9 @@ class AttendeesExporter {
 			FROM {$attendees_table} a
 			LEFT JOIN {$occurrences_table} o ON a.occurrence_id = o.id
 			LEFT JOIN {$events_table} e ON o.event_id = e.id
+			LEFT JOIN {$ticket_types_table} tt ON a.ticket_type_id = tt.id
 			WHERE {$where_clause}
-			ORDER BY a.id DESC";
+			ORDER BY {$order_clause}";
 
 		if ( ! empty( $params ) ) {
 			$sql = $this->db->prepare( $sql, $params );

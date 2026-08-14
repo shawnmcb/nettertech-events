@@ -677,6 +677,67 @@ class OccurrenceGeneratorTest extends \NetterTechEventsTestCase {
 		$this->assertDatesEqual( '2028-01-15 10:00:00', $occurrences[3]->start_datetime );
 	}
 
+	// =========================================================================
+	// Future-only collection Tests (NTE-200)
+	// =========================================================================
+
+	/**
+	 * A bare FREQ=WEEKLY rule collected from a mid-series boundary keeps its
+	 * weekday, its time-of-day, its COUNT totality, and its sequence numbers
+	 * (NTE-200).
+	 *
+	 * The boundary is deterministic (anchor + 5 weeks − 1 hour) so the test
+	 * never depends on the wall clock: exactly 5 of the 8 expanded Mondays
+	 * fall before it and must be consumed-but-not-collected.
+	 *
+	 * @return void
+	 */
+	public function test_weekly_collect_from_keeps_weekday_count_and_sequence(): void {
+		$anchor   = new \DateTimeImmutable( '2026-05-04 19:00:00' ); // Monday.
+		$end      = $anchor->modify( '+2 hours' );
+		$boundary = $anchor->modify( '+5 weeks' )->modify( '-1 hour' );
+		$rule     = RecurrenceRule::weekly()->with_count( 8 );
+
+		$occurrences = $this->generator->generate( $this->event, $anchor, $end, $rule, null, $boundary );
+
+		$this->assertCount( 3, $occurrences, 'COUNT=8 minus 5 consumed past slots leaves 3 — never 8 more (the COUNT-restart defect)' );
+
+		$expected_sequence = array( 6, 7, 8 );
+		foreach ( $occurrences as $i => $occurrence ) {
+			$start = new \DateTimeImmutable( $occurrence->start_datetime );
+			$this->assertSame( '1', $start->format( 'N' ), 'A BYDAY-less weekly rule must stay on its DTSTART weekday (Monday)' );
+			$this->assertSame( '19:00:00', $start->format( 'H:i:s' ), 'Original time-of-day must be preserved (11:18 pm regression)' );
+			$this->assertSame( $expected_sequence[ $i ], $occurrence->sequence_number, 'Sequence numbers are full-rule positions, not restarted' );
+		}
+
+		$this->assertDatesEqual( '2026-06-08 19:00:00', $occurrences[0]->start_datetime );
+	}
+
+	/**
+	 * An uncounted series whose anchor is years past still reaches the
+	 * horizon: past expansion must not exhaust the safety cap (NTE-200).
+	 *
+	 * @return void
+	 */
+	public function test_uncounted_old_weekly_series_still_reaches_horizon(): void {
+		$now    = new \DateTimeImmutable( 'monday this week 19:00:00' );
+		$anchor = $now->modify( '-104 weeks' ); // Two years of past Mondays.
+		$end    = $anchor->modify( '+2 hours' );
+		$rule   = RecurrenceRule::weekly();
+
+		$occurrences = $this->generator->generate( $this->event, $anchor, $end, $rule, null, new \DateTimeImmutable() );
+
+		$this->assertNotEmpty( $occurrences, 'Old series must still produce future rows (uncounted cap must not be eaten by the past)' );
+		$this->assertGreaterThan( 40, count( $occurrences ), 'Roughly a year of weekly rows expected to the horizon' );
+
+		$boundary = new \DateTimeImmutable();
+		foreach ( $occurrences as $occurrence ) {
+			$start = new \DateTimeImmutable( $occurrence->start_datetime );
+			$this->assertSame( '1', $start->format( 'N' ), 'Weekday must remain the anchor weekday' );
+			$this->assertGreaterThanOrEqual( $boundary->getTimestamp(), $start->getTimestamp() + 1, 'No past rows may be collected' );
+		}
+	}
+
 	/**
 	 * @param string $expected Expected date.
 	 * @param string $actual   Actual date.

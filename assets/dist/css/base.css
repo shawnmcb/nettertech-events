@@ -176,6 +176,7 @@
 	width: 100%;
 	height: 100%;
 	object-fit: cover;
+
 	/* Per-event vertical crop anchor (NTE-132); var inherits from the
 	   .nte-event-card__image wrapper, defaults to centered. */
 	object-position: 50% var(--nte-card-image-anchor-y, 50%);
@@ -550,7 +551,7 @@
 }
 
 .nte-regulars__link::after {
-	content: '';
+	content: "";
 	position: absolute;
 	inset: 0;
 	z-index: 1;
@@ -598,13 +599,13 @@
 		padding: 0.5rem;
 	}
 
-	.nte-regulars__row--day-start .nte-regulars__td {
-		border-top: none;
-	}
-
 	.nte-regulars__td {
 		border-bottom: none;
 		padding: 0.25rem 0;
+	}
+
+	.nte-regulars__row--day-start .nte-regulars__td {
+		border-top: none;
 	}
 
 	.nte-regulars__td--day {

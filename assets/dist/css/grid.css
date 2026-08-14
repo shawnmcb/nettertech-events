@@ -663,6 +663,7 @@
 	width: 100%;
 	height: 100%;
 	object-fit: cover;
+
 	/* Per-event vertical crop anchor (NTE-132); var inherits from the
 	   .nte-event-card__image wrapper, defaults to centered. */
 	object-position: 50% var(--nte-card-image-anchor-y, 50%);
@@ -697,8 +698,9 @@
 
 /*
  * Past Events archive: the whole page is already, clearly past events, so the
- * per-card "past" dimming is redundant — it just mutes the imagery. Restore full
- * vibrance within the past archive only (past cards on mixed/upcoming views keep
+ * per-card "past" dimming is redundant — it just mutes the imagery.
+ * Restore full vibrance within the past archive only (past cards on
+ * mixed/upcoming views keep
  * their muted treatment, where it still distinguishes them). Scoped by the
  * archive container, so specificity (0,3,0) wins over the base rules (0,2,0).
  */

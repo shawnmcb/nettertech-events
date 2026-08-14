@@ -16,7 +16,8 @@ value="2026-07-04" style="width: 55%;"
 required>
 <label for="start_time" class="screen-reader-text">Start Time</label>
 <input type="time" name="start_time" id="start_time"
-value="18:00" style="width: 40%;">
+value="18:00" style="width: 40%;"
+data-nte-time-combobox>
 </fieldset>
 <div class="nte-end-time-section" style="margin-top: 10px;">
 <button type="button"
@@ -37,6 +38,7 @@ required="required">
 <label for="end_time" class="screen-reader-text">End Time</label>
 <input type="time" name="end_time" id="end_time"
 value="22:00" style="width: 40%;"
+data-nte-time-combobox data-nte-duration-from="#start_time"
 required="required">
 </fieldset>
 </div>

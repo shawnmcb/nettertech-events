@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace NetterTechEvents\Tests\Unit\Admin\Metaboxes;
 
+use Brain\Monkey\Actions;
 use Brain\Monkey\Functions;
 use NetterTechEvents\Admin\Metaboxes\TicketsMetabox;
 use NetterTechEvents\Contracts\CapacityServiceInterface;
@@ -107,6 +108,12 @@ class TicketsMetaboxTest extends \NetterTechEventsTestCase {
 		Functions\when( 'esc_html_e' )->alias( function ( $text ) { echo $text; } );
 		Functions\when( '__' )->returnArg();
 		Functions\when( 'wp_nonce_field' )->justReturn();
+		Functions\when( 'wp_enqueue_script' )->justReturn( null );
+		Functions\when( 'wp_enqueue_style' )->justReturn( null );
+		Functions\when( 'wp_script_is' )->justReturn( false );
+		Functions\when( 'wp_localize_script' )->justReturn( null );
+		Functions\when( 'current_time' )->justReturn( '2026-07-22' );
+		Functions\when( 'wp_timezone_string' )->justReturn( 'America/Chicago' );
 		Functions\when( 'checked' )->alias(
 			function ( $checked, $current = true, $echo = true ) {
 				$result = ( $checked === $current ) ? ' checked="checked"' : '';
@@ -237,15 +244,15 @@ class TicketsMetaboxTest extends \NetterTechEventsTestCase {
 	}
 
 	// =========================================================================
-	// render() Tests - Save First Notice
+	// render() Tests - Buffered (unsaved event) form
 	// =========================================================================
 
 	/**
-	 * Test render shows save first notice when no event.
+	 * A brand-new (contextless) event renders a working, buffered ticket form (NTE-177).
 	 *
 	 * @return void
 	 */
-	public function test_render_shows_save_first_notice_when_no_event(): void {
+	public function test_render_shows_buffered_form_when_no_event(): void {
 		$this->metabox->set_context( null );
 
 		ob_start();
@@ -253,15 +260,45 @@ class TicketsMetaboxTest extends \NetterTechEventsTestCase {
 		$output = ob_get_clean();
 
 		$this->assertStringContainsString( 'nte-tickets-metabox', $output );
-		$this->assertStringContainsString( 'Save the event first', $output );
+		// Buffered form, not the old "save first" dead end.
+		$this->assertStringNotContainsString( 'Save the event first', $output );
+		$this->assertStringContainsString( 'name="ticketing_enabled"', $output );
+		$this->assertStringContainsString( 'nte_tickets_metabox_rendered', $output );
+		$this->assertStringContainsString( 'nte-add-ticket', $output );
+
+		// WooCommerce inactive in the test environment → the warning notice renders.
+		$this->assertStringContainsString( 'WooCommerce is not active', $output );
+		// Copy strings that must not be dropped.
+		$this->assertStringContainsString( 'Enable Ticketing', $output );
+		$this->assertStringContainsString( 'Add ticket types now', $output );
+		$this->assertStringContainsString( 'Add Ticket Type', $output );
+		// The occurrence-scope row template must render (its named inputs prove scope).
+		$this->assertStringContainsString( 'ticket_types[occurrence]', $output );
 	}
 
 	/**
-	 * Test render shows save first notice when event has no ID.
+	 * The buffered form fires the ticket add-button hook once with count 0, occurrence scope.
 	 *
 	 * @return void
 	 */
-	public function test_render_shows_save_first_notice_when_event_has_no_id(): void {
+	public function test_buffered_form_fires_add_button_hook_with_zero_count(): void {
+		Actions\expectDone( 'nettertech_events_ticket_add_button_area' )
+			->once()
+			->with( null, 0, 'occurrence' );
+
+		$this->metabox->set_context( null );
+
+		ob_start();
+		$this->metabox->render();
+		ob_get_clean();
+	}
+
+	/**
+	 * An event with no ID (unsaved) also renders the buffered ticket form.
+	 *
+	 * @return void
+	 */
+	public function test_render_shows_buffered_form_when_event_has_no_id(): void {
 		$event = new Event();
 		// No ID set.
 
@@ -271,7 +308,9 @@ class TicketsMetaboxTest extends \NetterTechEventsTestCase {
 		$this->metabox->render();
 		$output = ob_get_clean();
 
-		$this->assertStringContainsString( 'Save the event first', $output );
+		$this->assertStringNotContainsString( 'Save the event first', $output );
+		$this->assertStringContainsString( 'name="ticketing_enabled"', $output );
+		$this->assertStringContainsString( 'nte-add-ticket', $output );
 	}
 
 	// =========================================================================
@@ -962,8 +1001,8 @@ class TicketsMetaboxTest extends \NetterTechEventsTestCase {
 		$this->assertStringContainsString( 'Capacity', $output );
 		$this->assertStringContainsString( 'Min per Order', $output );
 		$this->assertStringContainsString( 'Max per Order', $output );
-		$this->assertStringContainsString( 'Sale Start', $output );
-		$this->assertStringContainsString( 'Sale End', $output );
+		$this->assertStringContainsString( 'Sale starts', $output );
+		$this->assertStringContainsString( 'Sale ends', $output );
 		$this->assertStringContainsString( 'Description', $output );
 	}
 
@@ -1015,9 +1054,29 @@ class TicketsMetaboxTest extends \NetterTechEventsTestCase {
 		$this->metabox->render();
 		$output = ob_get_clean();
 
-		$this->assertStringContainsString( 'datetime-local', $output );
-		$this->assertStringContainsString( 'sale_start', $output );
-		$this->assertStringContainsString( 'sale_end', $output );
+		// NTE-190: combined datetime-local spinner replaced by split
+		// date + suggest-and-type time entry per boundary.
+		$this->assertStringNotContainsString( 'datetime-local', $output );
+		$this->assertStringContainsString( 'sale_start_date', $output );
+		$this->assertStringContainsString( 'sale_start_time', $output );
+		$this->assertStringContainsString( 'sale_end_date', $output );
+		$this->assertStringContainsString( 'sale_end_time', $output );
+
+		// Stored values decompose into the split fields.
+		$this->assertStringContainsString( 'value="2026-01-01"', $output );
+		$this->assertStringContainsString( 'value="09:00"', $output );
+		$this->assertStringContainsString( 'value="2026-01-14"', $output );
+		$this->assertStringContainsString( 'value="23:59"', $output );
+
+		// Grouped + labeled boundaries with presets.
+		$this->assertStringContainsString( 'Sale starts', $output );
+		$this->assertStringContainsString( 'Sale ends', $output );
+		$this->assertStringContainsString( 'data-nte-sale-preset="now"', $output );
+		$this->assertStringContainsString( 'data-nte-sale-preset="event-start"', $output );
+		$this->assertMatchesRegularExpression(
+			'/name="[^"]*\[sale_start_time\]"[^>]*data-nte-time-combobox/s',
+			$output
+		);
 	}
 
 	// =========================================================================
@@ -1243,6 +1302,11 @@ class TicketsMetaboxTest extends \NetterTechEventsTestCase {
 		// No flat toggle, and no Templates tab for a hand-picked-dates single.
 		$this->assertStringNotContainsString( 'nte-ticketing-toggle', $output );
 		$this->assertStringNotContainsString( 'Ticket Templates', $output );
+		// Scope receipts (NTE-178): the form vouches only for sections it drew —
+		// event and occurrence here, never the unrendered template scope.
+		$this->assertStringContainsString( 'ticket_types_rendered[event]', $output );
+		$this->assertStringContainsString( 'ticket_types_rendered[occurrence]', $output );
+		$this->assertStringNotContainsString( 'ticket_types_rendered[template]', $output );
 	}
 
 	/**
@@ -1284,5 +1348,8 @@ class TicketsMetaboxTest extends \NetterTechEventsTestCase {
 		$this->assertStringContainsString( 'nte-ticket-tabs', $output );
 		$this->assertStringContainsString( 'Series Passes', $output );
 		$this->assertStringContainsString( 'Ticket Templates', $output );
+		// Scope receipt (NTE-178): a recurring event rendered its Templates tab,
+		// so the form vouches for the template scope.
+		$this->assertStringContainsString( 'ticket_types_rendered[template]', $output );
 	}
 }

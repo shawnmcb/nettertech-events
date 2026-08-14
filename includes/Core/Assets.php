@@ -251,7 +251,7 @@ class Assets {
 		wp_register_script(
 			'nettertech-events-admin',
 			NETTERTECH_EVENTS_PLUGIN_URL . 'assets/dist/js/admin.js',
-			array( 'wp-element', 'wp-components', 'wp-api-fetch' ),
+			array( 'wp-element', 'wp-components', 'wp-api-fetch', 'wp-a11y' ),
 			NETTERTECH_EVENTS_VERSION,
 			array(
 				'in_footer' => true,

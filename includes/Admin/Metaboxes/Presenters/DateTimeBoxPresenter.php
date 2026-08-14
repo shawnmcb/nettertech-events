@@ -38,6 +38,7 @@ final class DateTimeBoxPresenter {
 	 * @param string $capacity          Occurrence capacity as string (empty = unlimited).
 	 * @param bool   $end_time_expanded Whether end-time fields render expanded.
 	 * @param bool   $require_end_time  Whether end-time inputs carry `required`.
+	 * @param string $timezone_label    Timezone the wall-clock times are read in ('' hides the hint).
 	 */
 	public function __construct(
 		private readonly string $start_date,
@@ -47,8 +48,19 @@ final class DateTimeBoxPresenter {
 		private readonly bool $all_day,
 		private readonly string $capacity,
 		private readonly bool $end_time_expanded,
-		private readonly bool $require_end_time
+		private readonly bool $require_end_time,
+		private readonly string $timezone_label = ''
 	) {}
+
+	/**
+	 * Timezone the entered wall-clock times are interpreted in (FR-009,
+	 * NTE-190). Empty string suppresses the hint.
+	 *
+	 * @return string
+	 */
+	public function timezone_label(): string {
+		return $this->timezone_label;
+	}
 
 	/**
 	 * Start date input value.

@@ -70,14 +70,6 @@ interface EventQueryRepositoryInterface {
 	public function paginate( array $args = array() ): array;
 
 	/**
-	 * Check if an event has any active ticket types.
-	 *
-	 * @param int $event_id Event ID.
-	 * @return bool True if the event has at least one active ticket type.
-	 */
-	public function has_ticket_types( int $event_id ): bool;
-
-	/**
 	 * Search events by title.
 	 *
 	 * @param string               $search Search term.

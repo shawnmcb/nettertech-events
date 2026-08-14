@@ -126,7 +126,10 @@ class TicketsMetabox {
 	 */
 	public function render(): void {
 		if ( ! $this->event || ! $this->event->id ) {
-			$this->render_save_first_notice();
+			// A brand-new (unsaved) event can now be fully ticketed before its
+			// first save (NTE-177); the rows buffer in the form and bind to the
+			// primary occurrence once the event is created.
+			$this->render_buffered_tickets();
 			return;
 		}
 
@@ -241,13 +244,69 @@ class TicketsMetabox {
 	}
 
 	/**
-	 * Render notice to save event first.
+	 * Render the ticket form for a brand-new (unsaved) event.
+	 *
+	 * Before NTE-177 an unsaved event showed only a "save the event first" notice, forcing operators
+	 * to publish a half-built event just to add tickets. The form now renders immediately: rows are
+	 * ordinary buffered form state that post with the main event save and bind to the primary
+	 * occurrence on first save (EventSaveHandler::process_buffered_tickets). Only the occurrence scope
+	 * is offered pre-save — series passes and templates presuppose a saved event with occurrences.
+	 *
+	 * @since 1.1.4
 	 *
 	 * @return void
 	 */
-	private function render_save_first_notice(): void {
-		$presenter = new Presenters\SaveFirstNoticePresenter();
-		include dirname( __DIR__, 3 ) . '/templates/admin/metaboxes/tickets-save-first-notice.php';
+	private function render_buffered_tickets(): void {
+		$has_woocommerce = class_exists( 'WooCommerce' );
+
+		wp_nonce_field( self::NONCE_ACTION, self::NONCE_ACTION );
+		?>
+		<div class="nte-tickets-metabox">
+			<input type="hidden" name="nte_tickets_metabox_rendered" value="1">
+			<?php // Per-scope render receipt (NTE-178); see render_recurring_event_tickets(). ?>
+			<input type="hidden" name="ticket_types_rendered[<?php echo esc_attr( TicketTypeScope::OCCURRENCE->value ); ?>]" value="1">
+
+			<?php if ( ! $has_woocommerce ) : ?>
+				<div class="notice notice-warning inline">
+					<p>
+						<?php esc_html_e( 'WooCommerce is not active. Paid ticketing requires WooCommerce.', 'nettertech-events' ); ?>
+					</p>
+				</div>
+			<?php endif; ?>
+
+			<div class="nte-ticketing-toggle">
+				<label class="nte-toggle-label">
+					<input type="checkbox" name="ticketing_enabled" id="nte-ticketing-enabled" value="1">
+					<span class="nte-toggle-slider"></span>
+					<strong><?php esc_html_e( 'Enable Ticketing', 'nettertech-events' ); ?></strong>
+				</label>
+			</div>
+
+			<div id="nte-tickets-container" class="nte-hidden">
+				<p class="description">
+					<?php esc_html_e( 'Add ticket types now — they are created when you first save the event.', 'nettertech-events' ); ?>
+				</p>
+
+				<div id="nte-ticket-types-list"></div>
+
+				<div class="nte-add-ticket-row">
+					<button type="button" class="button nte-add-ticket" data-scope="occurrence">
+						<span class="dashicons dashicons-plus-alt2"></span>
+						<?php esc_html_e( 'Add Ticket Type', 'nettertech-events' ); ?>
+					</button>
+				</div>
+
+				<?php
+				do_action( 'nettertech_events_ticket_add_button_area', $this->event, 0, 'occurrence' );
+				?>
+			</div>
+
+			<?php $this->renderer->render_ticket_template( TicketTypeScope::OCCURRENCE ); ?>
+		</div>
+		<?php
+
+		$this->assets->render_scripts();
+		$this->assets->render_styles();
 	}
 
 	/**
@@ -259,6 +318,8 @@ class TicketsMetabox {
 	private function render_single_event_tickets( array $tickets ): void {
 		$is_enabled = ! empty( $tickets );
 		?>
+		<?php // Per-scope render receipt (NTE-178); see render_recurring_event_tickets(). ?>
+		<input type="hidden" name="ticket_types_rendered[<?php echo esc_attr( TicketTypeScope::OCCURRENCE->value ); ?>]" value="1">
 		<div class="nte-ticketing-toggle">
 			<label class="nte-toggle-label">
 				<input type="checkbox" name="ticketing_enabled" id="nte-ticketing-enabled" value="1"
@@ -331,6 +392,19 @@ class TicketsMetabox {
 		// form (NTE-156), so say explicitly that ticketing is on.
 		?>
 		<input type="hidden" name="ticketing_enabled" value="1">
+		<?php
+		// Per-scope render receipts (NTE-178): the saver only processes — and in
+		// particular only deletes from — a scope this form actually offered rows
+		// for. The form-level nte_tickets_metabox_rendered cannot say which
+		// sections were on the page; these can.
+		?>
+		<input type="hidden" name="ticket_types_rendered[<?php echo esc_attr( TicketTypeScope::EVENT->value ); ?>]" value="1">
+		<?php if ( $show_templates ) : ?>
+			<input type="hidden" name="ticket_types_rendered[<?php echo esc_attr( TicketTypeScope::TEMPLATE->value ); ?>]" value="1">
+		<?php endif; ?>
+		<?php if ( $this->occurrence ) : ?>
+			<input type="hidden" name="ticket_types_rendered[<?php echo esc_attr( TicketTypeScope::OCCURRENCE->value ); ?>]" value="1">
+		<?php endif; ?>
 		<div class="nte-ticket-tabs" role="tablist" aria-label="<?php esc_attr_e( 'Ticket management tabs', 'nettertech-events' ); ?>">
 			<button type="button" class="nte-tab-button active" data-tab="series-passes"
 					role="tab" aria-selected="true" aria-controls="nte-tab-series-passes" id="nte-tabbutton-series-passes">

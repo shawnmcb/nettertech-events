@@ -12,6 +12,7 @@ namespace NetterTechEvents\Integrations\WooCommerce;
 defined( 'ABSPATH' ) || exit;
 
 use NetterTechEvents\Contracts\CapacityCalculatorInterface;
+use NetterTechEvents\Contracts\EventRepositoryInterface;
 use NetterTechEvents\Contracts\HouseCapacityRepositoryInterface;
 use NetterTechEvents\Services\Capacity\HouseRule;
 use NetterTechEvents\Models\TicketType;
@@ -73,6 +74,14 @@ class ProductManager {
 	private ?CapacityCalculatorInterface $calculator;
 
 	/**
+	 * Event repository for series-pass product naming. Injected; the
+	 * ServiceRegistry fallback covers un-provided construction (tests).
+	 *
+	 * @var EventRepositoryInterface|null
+	 */
+	private ?EventRepositoryInterface $event_repo;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param TicketTypeRepository                  $ticket_type_repo   Ticket type repository.
@@ -80,19 +89,22 @@ class ProductManager {
 	 * @param CategoryProductCatMapper|null         $product_cat_mapper Event-category mapper (NTE-129).
 	 * @param HouseCapacityRepositoryInterface|null $house_repo         House capacity repository.
 	 * @param CapacityCalculatorInterface|null      $calculator         Capacity calculator.
+	 * @param EventRepositoryInterface|null         $event_repo         Event repository (ServiceRegistry fallback when null).
 	 */
 	public function __construct(
 		TicketTypeRepository $ticket_type_repo,
 		OccurrenceRepository $occurrence_repo,
 		?CategoryProductCatMapper $product_cat_mapper = null,
 		?HouseCapacityRepositoryInterface $house_repo = null,
-		?CapacityCalculatorInterface $calculator = null
+		?CapacityCalculatorInterface $calculator = null,
+		?EventRepositoryInterface $event_repo = null
 	) {
 		$this->ticket_type_repo   = $ticket_type_repo;
 		$this->occurrence_repo    = $occurrence_repo;
 		$this->product_cat_mapper = $product_cat_mapper;
 		$this->house_repo         = $house_repo;
 		$this->calculator         = $calculator;
+		$this->event_repo         = $event_repo;
 	}
 
 	/**
@@ -228,9 +240,9 @@ class ProductManager {
 	/**
 	 * Assign the NTE-managed `product_cat` set to a ticket product (NTE-129).
 	 *
-	 * No-clobber semantics (FR-005): product categories the operator added
-	 * manually (those without the back-reference meta) are preserved; only the
-	 * NTE-owned set is managed. The new set is filterable.
+	 * No-clobber semantics: product categories the operator added manually (those
+	 * without the back-reference meta) are preserved; only the NTE-owned set is
+	 * managed. The new set is filterable.
 	 *
 	 * @param \WC_Product $product  Ticket product (unsaved).
 	 * @param int         $event_id Linked event ID.
@@ -651,9 +663,13 @@ class ProductManager {
 	 * @param bool               $include_free  Include free tickets (default: true).
 	 * @param array<int, string> $admin_skus    Tier id => operator-entered SKU, honored
 	 *                                          only while the product has none (NTE-114).
+	 * @param bool               $existing_only When true, only re-sync tiers that already have a
+	 *                                          WooCommerce product; never mint a new one. Used by the
+	 *                                          unpublish path so a draft transition reverts existing
+	 *                                          products without creating any (R5).
 	 * @return array<int> Array of product IDs created.
 	 */
-	public function create_products_for_occurrence( int $occurrence_id, bool $include_free = true, array $admin_skus = array() ): array {
+	public function create_products_for_occurrence( int $occurrence_id, bool $include_free = true, array $admin_skus = array(), bool $existing_only = false ): array {
 		$occurrence = $this->occurrence_repo->find( $occurrence_id );
 
 		if ( ! $occurrence ) {
@@ -666,6 +682,10 @@ class ProductManager {
 		foreach ( $ticket_types as $ticket_type ) {
 			// Skip free tickets if not included (legacy behavior).
 			if ( ! $include_free && $ticket_type->price <= 0 ) {
+				continue;
+			}
+			// Never mint a product on an existing-only (unpublish) resync.
+			if ( $existing_only && empty( $ticket_type->wc_product_id ) ) {
 				continue;
 			}
 			$admin_sku     = null !== $ticket_type->id ? ( $admin_skus[ $ticket_type->id ] ?? null ) : null;
@@ -703,7 +723,8 @@ class ProductManager {
 			$product = new \WC_Product_Simple();
 		}
 
-		$event       = \NetterTechEvents\Core\ServiceRegistry::event_repository()->find( (int) $ticket_type->event_id );
+		$event_repo  = $this->event_repo ?? \NetterTechEvents\Core\ServiceRegistry::event_repository();
+		$event       = $event_repo->find( (int) $ticket_type->event_id );
 		$event_title = $event ? $event->title : __( 'Event', 'nettertech-events' );
 
 		$product->set_name(
@@ -767,16 +788,24 @@ class ProductManager {
 	 *
 	 * @since 1.1.3
 	 *
-	 * @param int                $event_id   Event ID.
-	 * @param array<int, string> $admin_skus Tier id => operator-entered SKU, honored
-	 *                                       only while the product has none (NTE-114).
+	 * @param int                $event_id      Event ID.
+	 * @param array<int, string> $admin_skus    Tier id => operator-entered SKU, honored
+	 *                                          only while the product has none (NTE-114).
+	 * @param bool               $existing_only When true, only re-sync event tiers that already have
+	 *                                          a WooCommerce product; never mint a new one. Used by the
+	 *                                          unpublish path so a draft transition reverts existing
+	 *                                          products without creating any (R5).
 	 * @return array<int> Product IDs synced.
 	 */
-	public function create_products_for_event( int $event_id, array $admin_skus = array() ): array {
+	public function create_products_for_event( int $event_id, array $admin_skus = array(), bool $existing_only = false ): array {
 		$product_ids = array();
 
 		foreach ( $this->ticket_type_repo->for_event( $event_id ) as $ticket_type ) {
 			if ( TicketTypeScope::EVENT->value !== $ticket_type->scope ) {
+				continue;
+			}
+			// Never mint a product on an existing-only (unpublish) resync.
+			if ( $existing_only && empty( $ticket_type->wc_product_id ) ) {
 				continue;
 			}
 			$product_id = $this->sync_event_product( $ticket_type, null !== $ticket_type->id ? ( $admin_skus[ $ticket_type->id ] ?? null ) : null );

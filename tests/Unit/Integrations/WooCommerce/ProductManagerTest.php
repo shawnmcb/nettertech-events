@@ -867,6 +867,39 @@ class ProductManagerTest extends \NetterTechEventsTestCase {
 	}
 
 	/**
+	 * existing_only re-syncs occurrence tiers that already have a product and mints nothing (R5).
+	 *
+	 * Operator ruling 2026-07-20 (spec-001 invention audit): an unpublish transition must revert
+	 * existing products to draft without creating any for tiers that never had one.
+	 *
+	 * @return void
+	 */
+	public function test_create_products_for_occurrence_existing_only_skips_productless_tiers(): void {
+		$occurrence = OccurrenceFactory::create( array( 'id' => 10 ) );
+		$this->occurrence_repo->method( 'find' )->willReturn( $occurrence );
+
+		$with_product                = TicketTypeFactory::create( array( 'id' => 1, 'price' => 25.0 ) );
+		$with_product->wc_product_id = 999;
+		$no_product                  = TicketTypeFactory::create( array( 'id' => 2, 'price' => 25.0 ) );
+		$no_product->wc_product_id   = null;
+		$this->ticket_type_repo->method( 'for_occurrence' )->willReturn( array( $with_product, $no_product ) );
+
+		$manager = $this->getMockBuilder( ProductManager::class )
+			->setConstructorArgs( array( $this->ticket_type_repo, $this->occurrence_repo ) )
+			->onlyMethods( array( 'sync_product' ) )
+			->getMock();
+		// Only the tier that already has a product is re-synced.
+		$manager->expects( $this->once() )
+			->method( 'sync_product' )
+			->with( $with_product, $occurrence, null )
+			->willReturn( 999 );
+
+		$result = $manager->create_products_for_occurrence( 10, true, array(), true );
+
+		$this->assertSame( array( 999 ), $result );
+	}
+
+	/**
 	 * Test create_products_for_occurrence passes the operator SKU for a saved tier.
 	 *
 	 * @return void
@@ -1914,6 +1947,42 @@ class ProductManagerTest extends \NetterTechEventsTestCase {
 		} finally {
 			ServiceRegistry::reset();
 		}
+	}
+
+	/**
+	 * existing_only re-syncs event tiers that already have a product and mints nothing (R5).
+	 *
+	 * @return void
+	 */
+	public function test_create_products_for_event_existing_only_skips_productless_tiers(): void {
+		$with_product                = TicketTypeFactory::create( array( 'id' => 3, 'name' => 'Full Pass' ) );
+		$with_product->scope         = TicketTypeScope::EVENT->value;
+		$with_product->event_id      = 5;
+		$with_product->wc_product_id = 777;
+
+		$no_product                  = TicketTypeFactory::create( array( 'id' => 4, 'name' => 'New Pass' ) );
+		$no_product->scope           = TicketTypeScope::EVENT->value;
+		$no_product->event_id        = 5;
+		$no_product->wc_product_id   = null;
+
+		$this->ticket_type_repo
+			->method( 'for_event' )
+			->with( 5 )
+			->willReturn( array( $with_product, $no_product ) );
+
+		$manager = $this->getMockBuilder( ProductManager::class )
+			->setConstructorArgs( array( $this->ticket_type_repo, $this->occurrence_repo ) )
+			->onlyMethods( array( 'sync_event_product' ) )
+			->getMock();
+		// Only the tier that already has a product is re-synced; the productless one is skipped.
+		$manager->expects( $this->once() )
+			->method( 'sync_event_product' )
+			->with( $with_product, null )
+			->willReturn( 777 );
+
+		$result = $manager->create_products_for_event( 5, array(), true );
+
+		$this->assertSame( array( 777 ), $result );
 	}
 
 	// =========================================================================

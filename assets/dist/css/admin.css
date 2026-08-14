@@ -369,23 +369,108 @@
 }
 
 /* Revisions Metabox */
-.nte-revision-list { margin: 0; padding: 0; list-style: none; }
-.nte-revision-item { padding: 8px 12px; border-bottom: 1px solid #f0f0f0; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; }
-.nte-revision-item:last-child { border-bottom: none; }
-.nte-revision-meta { flex: 1; }
-.nte-revision-author { font-weight: 600; }
-.nte-revision-time { color: #646970; font-size: 12px; margin-left: 8px; }
-.nte-revision-summary { color: #646970; font-size: 12px; display: block; margin-top: 2px; }
-.nte-revision-actions { display: flex; gap: 8px; flex-shrink: 0; }
-.nte-revision-actions button { font-size: 12px; cursor: pointer; }
-.nte-revision-diff-panel { width: 100%; margin-top: 12px; padding: 12px; background: #f9f9f9; border: 1px solid #ddd; border-radius: 4px; }
-.nte-revision-diff-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-.nte-revision-diff-table th { text-align: left; padding: 6px 10px; background: #f0f0f0; border: 1px solid #ddd; font-weight: 600; }
-.nte-revision-diff-table td { padding: 6px 10px; border: 1px solid #ddd; vertical-align: top; word-break: break-word; }
-.nte-revision-change-summary { color: #646970; font-style: italic; margin-bottom: 8px; }
-.nte-revision-close-diff { margin-top: 8px; }
-.nte-no-revisions { padding: 12px; color: #646970; font-style: italic; }
-.nte-revision-count { color: #646970; font-weight: normal; font-size: 13px; }
+.nte-revision-list {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.nte-revision-item {
+	padding: 8px 12px;
+	border-bottom: 1px solid #f0f0f0;
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: space-between;
+	align-items: center;
+}
+
+.nte-revision-item:last-child {
+	border-bottom: none;
+}
+
+.nte-revision-meta {
+	flex: 1;
+}
+
+.nte-revision-author {
+	font-weight: 600;
+}
+
+.nte-revision-time {
+	color: #646970;
+	font-size: 12px;
+	margin-left: 8px;
+}
+
+.nte-revision-summary {
+	color: #646970;
+	font-size: 12px;
+	display: block;
+	margin-top: 2px;
+}
+
+.nte-revision-actions {
+	display: flex;
+	gap: 8px;
+	flex-shrink: 0;
+}
+
+.nte-revision-actions button {
+	font-size: 12px;
+	cursor: pointer;
+}
+
+.nte-revision-diff-panel {
+	width: 100%;
+	margin-top: 12px;
+	padding: 12px;
+	background: #f9f9f9;
+	border: 1px solid #ddd;
+	border-radius: 4px;
+}
+
+.nte-revision-diff-table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 13px;
+}
+
+.nte-revision-diff-table th {
+	text-align: left;
+	padding: 6px 10px;
+	background: #f0f0f0;
+	border: 1px solid #ddd;
+	font-weight: 600;
+}
+
+.nte-revision-diff-table td {
+	padding: 6px 10px;
+	border: 1px solid #ddd;
+	vertical-align: top;
+	word-break: break-word;
+}
+
+.nte-revision-change-summary {
+	color: #646970;
+	font-style: italic;
+	margin-bottom: 8px;
+}
+
+.nte-revision-close-diff {
+	margin-top: 8px;
+}
+
+.nte-no-revisions {
+	padding: 12px;
+	color: #646970;
+	font-style: italic;
+}
+
+.nte-revision-count {
+	color: #646970;
+	font-weight: 400;
+	font-size: 13px;
+}
 
 /* Clear filters link */
 .nte-clear-filters {
@@ -417,6 +502,7 @@
 
 /* Responsive: keep event filters visible at WP mobile breakpoint */
 @media screen and (max-width: 782px) {
+
 	.tablenav.top .nte-event-filters {
 		display: block;
 		margin: 8px 0;
@@ -460,6 +546,10 @@
 	transition: border-color 0.15s, transform 0.15s;
 }
 
+.nte-qr-color-option:hover .nte-qr-color-swatch {
+	transform: scale(1.05);
+}
+
 .nte-qr-color-option input:checked + .nte-qr-color-swatch {
 	border-color: #2271b1;
 	transform: scale(1.1);
@@ -470,12 +560,8 @@
 	outline-offset: 2px;
 }
 
-.nte-qr-color-option:hover .nte-qr-color-swatch {
-	transform: scale(1.05);
-}
-
 .nte-qr-color-swatch--custom {
-	background: conic-gradient(red, yellow, lime, aqua, blue, magenta, red);
+	background: conic-gradient(#f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00);
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -603,18 +689,50 @@
 }
 
 /* Event editor */
-#titlediv { margin-bottom: 20px; }
-#titlewrap input { font-size: 1.7em; height: 1.7em; width: 100%; padding: 3px 8px; }
-#edit-slug-box { padding: 5px 0; }
-.postbox-header h2 { padding: 8px 12px !important; }
+#titlediv {
+	margin-bottom: 20px;
+}
+
+#titlewrap input {
+	font-size: 1.7em;
+	height: 1.7em;
+	width: 100%;
+	padding: 3px 8px;
+}
+
+#edit-slug-box {
+	padding: 5px 0;
+}
+
+.postbox-header h2 {
+	padding: 8px 12px !important;
+}
 
 /* Activity log */
-.nte-activity-log-table { margin-top: 15px; }
-.nte-activity-log-table .column-time { width: 150px; }
-.nte-activity-log-table .column-user { width: 120px; }
-.nte-activity-log-table .column-action { width: 100px; }
-.nte-activity-log-table .column-type { width: 100px; }
-.nte-activity-log-table .column-ip { width: 120px; }
+.nte-activity-log-table {
+	margin-top: 15px;
+}
+
+.nte-activity-log-table .column-time {
+	width: 150px;
+}
+
+.nte-activity-log-table .column-user {
+	width: 120px;
+}
+
+.nte-activity-log-table .column-action {
+	width: 100px;
+}
+
+.nte-activity-log-table .column-type {
+	width: 100px;
+}
+
+.nte-activity-log-table .column-ip {
+	width: 120px;
+}
+
 .nte-activity-log-table .action-badge {
 	display: inline-block;
 	padding: 2px 8px;
@@ -622,37 +740,106 @@
 	font-size: 12px;
 	font-weight: 500;
 }
-.nte-activity-log-table .action-create { background: #d4edda; color: #155724; }
-.nte-activity-log-table .action-update { background: #fff3cd; color: #856404; }
-.nte-activity-log-table .action-delete { background: #f8d7da; color: #721c24; }
-.nte-activity-log-table .action-check_in { background: #cce5ff; color: #004085; }
-.nte-activity-log-table .action-export { background: #e2e3e5; color: #383d41; }
-.nte-activity-log-filters { margin: 15px 0; padding: 15px; background: #fff; border: 1px solid #ccd0d4; }
-.nte-activity-log-filters .filter-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
-.nte-activity-log-filters label { display: block; margin-bottom: 3px; font-weight: 500; }
+
+.nte-activity-log-table .action-create {
+	background: #d4edda;
+	color: #155724;
+}
+
+.nte-activity-log-table .action-update {
+	background: #fff3cd;
+	color: #856404;
+}
+
+.nte-activity-log-table .action-delete {
+	background: #f8d7da;
+	color: #721c24;
+}
+
+.nte-activity-log-table .action-check_in {
+	background: #cce5ff;
+	color: #004085;
+}
+
+.nte-activity-log-table .action-export {
+	background: #e2e3e5;
+	color: #383d41;
+}
+
+.nte-activity-log-filters {
+	margin: 15px 0;
+	padding: 15px;
+	background: #fff;
+	border: 1px solid #ccd0d4;
+}
+
+.nte-activity-log-filters .filter-row {
+	display: flex;
+	gap: 10px;
+	flex-wrap: wrap;
+	align-items: flex-end;
+}
+
+.nte-activity-log-filters label {
+	display: block;
+	margin-bottom: 3px;
+	font-weight: 500;
+}
 
 /* Attendees */
-.nte-attendees-table { margin-top: 15px; }
-.nte-attendees-table .check-column { width: 40px; padding: 8px 10px; }
+.nte-attendees-table {
+	margin-top: 15px;
+}
+
+.nte-attendees-table .check-column {
+	width: 40px;
+	padding: 8px 10px;
+}
+
 /* Name, Email and Event carry no fixed width. Under `table-layout: fixed` a
    declared width is honored rather than shrunk, so pinning every column made
    the widths sum to ~1150px and the table overflowed the admin content area
    on anything narrower. The text columns now absorb the remaining space. */
-.nte-attendees-table .column-datetime { width: 12%; }
-.nte-attendees-table .column-ticket-type { width: 11%; overflow-wrap: break-word; }
-.nte-attendees-table .column-quantity { width: 5%; text-align: center; }
-.nte-attendees-table .column-status { width: 9%; }
-.nte-attendees-table .column-checkin { width: 10%; }
+.nte-attendees-table .column-datetime {
+	width: 12%;
+}
+
+.nte-attendees-table .column-ticket-type {
+	width: 11%;
+	overflow-wrap: break-word;
+}
+
+.nte-attendees-table .column-quantity {
+	width: 5%;
+	text-align: center;
+}
+
+.nte-attendees-table .column-status {
+	width: 9%;
+}
+
+.nte-attendees-table .column-checkin {
+	width: 10%;
+}
+
 /* Extension columns (e.g. Pro's Coupon) — a defined width so the header and
    values are not squeezed into the fixed table's leftover space and wrap
-   mid-word. Long single tokens wrap at character boundaries rather than overflow. */
-.nte-attendees-table .nte-ext-column { width: 9%; overflow-wrap: break-word; }
+   mid-word. Long single tokens wrap at character boundaries rather than
+   overflow. */
+.nte-attendees-table .nte-ext-column {
+	width: 9%;
+	overflow-wrap: break-word;
+}
 
 /* Collapsed rows render each cell as a labelled block, so the centred Qty
    column would otherwise sit adrift of the caption beside it. */
 @media screen and (max-width: 782px) {
-	.nte-attendees-table .column-quantity { text-align: left; }
+
+	.nte-attendees-table .column-quantity {
+		text-align: left;
+	}
 }
+
 .nte-attendees-table .status-badge {
 	display: inline-block;
 	padding: 2px 8px;
@@ -660,14 +847,44 @@
 	font-size: 12px;
 	font-weight: 500;
 }
-.nte-attendees-table .status-confirmed { background: #d4edda; color: #155724; }
-.nte-attendees-table .status-pending { background: #fff3cd; color: #856404; }
-.nte-attendees-table .status-cancelled { background: #f8d7da; color: #721c24; }
-.nte-attendees-table .status-refunded { background: #e2e3e5; color: #383d41; }
-.nte-attendees-table .status-voided { background: #e2e3e5; color: #383d41; }
-.nte-attendees-table .checkin-yes { color: #155724; }
-.nte-attendees-table .checkin-no { color: #6c757d; }
-.nte-attendees-table .checkin-partial { color: #856404; }
+
+.nte-attendees-table .status-confirmed {
+	background: #d4edda;
+	color: #155724;
+}
+
+.nte-attendees-table .status-pending {
+	background: #fff3cd;
+	color: #856404;
+}
+
+.nte-attendees-table .status-cancelled {
+	background: #f8d7da;
+	color: #721c24;
+}
+
+.nte-attendees-table .status-refunded {
+	background: #e2e3e5;
+	color: #383d41;
+}
+
+.nte-attendees-table .status-voided {
+	background: #e2e3e5;
+	color: #383d41;
+}
+
+.nte-attendees-table .checkin-yes {
+	color: #155724;
+}
+
+.nte-attendees-table .checkin-no {
+	color: #6c757d;
+}
+
+.nte-attendees-table .checkin-partial {
+	color: #856404;
+}
+
 /* Attendees screen — filter bar.
    The group class is namespaced: WordPress core's themes.css styles a bare
    `.filter-group` (float, 24% width, its own border and padding) for the
@@ -713,6 +930,7 @@
 }
 
 @media screen and (max-width: 782px) {
+
 	.nte-attendees-filters .nte-filter-group {
 		flex: 1 1 100%;
 	}
@@ -724,14 +942,26 @@
 }
 
 /* Event QR metabox */
+#nte-qr-postbox .nte-qr-color-option:hover .nte-qr-color-swatch {
+	transform: scale(1.1);
+}
+
 #nte-qr-postbox .nte-qr-color-option input:checked + .nte-qr-color-swatch {
 	border-color: #2271b1;
 	transform: scale(1.15);
 }
-#nte-qr-postbox .nte-qr-color-option:hover .nte-qr-color-swatch { transform: scale(1.1); }
+
+.nte-event-qr-logo-opt .dashicons {
+	font-size: 16px;
+	width: 16px;
+	height: 16px;
+	color: #50575e;
+}
+
 #nte-qr-postbox .nte-qr-color-swatch--custom .dashicons {
 	text-shadow: 0 0 3px rgba(0, 0, 0, 0.7), 0 0 6px rgba(0, 0, 0, 0.3);
 }
+
 .nte-event-qr-logo-opt {
 	display: inline-flex;
 	align-items: center;
@@ -744,27 +974,34 @@
 	background: #fff;
 	transition: border-color 0.15s, background-color 0.15s;
 }
+
 .nte-event-qr-logo-opt input[type="radio"] {
 	position: absolute;
 	opacity: 0;
 	pointer-events: none;
 }
-.nte-event-qr-logo-opt:hover { border-color: #2271b1; }
-.nte-event-qr-logo-opt:focus { outline: 2px solid #2271b1; outline-offset: 1px; }
+
+.nte-event-qr-logo-opt:hover {
+	border-color: #2271b1;
+}
+
+.nte-event-qr-logo-opt:focus {
+	outline: 2px solid #2271b1;
+	outline-offset: 1px;
+}
+
 .nte-event-qr-logo-opt--selected {
 	border-color: #2271b1;
 	background-color: #f0f6fc;
 }
+
 .nte-event-qr-logo-opt--disabled {
 	opacity: 0.5;
 	cursor: not-allowed;
 }
-.nte-event-qr-logo-opt--disabled:hover { border-color: #ddd; }
-.nte-event-qr-logo-opt .dashicons {
-	font-size: 16px;
-	width: 16px;
-	height: 16px;
-	color: #50575e;
+
+.nte-event-qr-logo-opt--disabled:hover {
+	border-color: #ddd;
 }
 
 /* Ticketing metabox */
@@ -775,20 +1012,29 @@
 	background: #f9f9f9;
 	border-radius: 4px;
 }
+
 .ticket-type-row .remove-ticket-type {
 	color: #a00;
 	text-decoration: none;
 	font-size: 12px;
 }
-.ticket-type-row .remove-ticket-type:hover { color: #dc3232; }
+
+.ticket-type-row .remove-ticket-type:hover {
+	color: #dc3232;
+}
+
 .ticket-type-row input[type="text"],
 .ticket-type-row input[type="number"],
-.ticket-type-row select { width: 100%; }
+.ticket-type-row select {
+	width: 100%;
+}
+
 .ticket-type-fields {
 	display: grid;
 	grid-template-columns: 1fr 1fr 1fr;
 	gap: 8px;
 }
+
 .ticket-type-fields label {
 	display: block;
 	font-size: 12px;
@@ -841,40 +1087,10 @@
 }
 
 @media screen and (max-width: 960px) {
+
 	.nte-attendees-summary--two-col {
 		grid-template-columns: 1fr;
 	}
-}
-
-.nte-summary-table--consolidated {
-	width: 100%;
-	border-collapse: collapse;
-}
-
-.nte-summary-table--consolidated thead th {
-	padding: 4px 14px 6px 0;
-	color: #646970;
-	border-bottom: 1px solid #f0f0f1;
-	font-size: 11px;
-	font-weight: 600;
-	letter-spacing: 0.02em;
-	text-align: left;
-	text-transform: uppercase;
-}
-
-.nte-summary-table--consolidated td,
-.nte-summary-table--consolidated tfoot th {
-	padding: 6px 14px 6px 0;
-	border-bottom: 1px solid #f6f7f7;
-	text-align: left;
-	vertical-align: top;
-}
-
-.nte-summary-table--consolidated tfoot td,
-.nte-summary-table--consolidated tfoot th {
-	border-bottom: 0;
-	border-top: 1px solid #f0f0f1;
-	font-weight: 600;
 }
 
 .nte-summary-revenue {
@@ -985,7 +1201,7 @@
 	padding: 5px 0;
 	border-bottom: 1px solid #f6f7f7;
 	text-align: left;
-	font-weight: normal;
+	font-weight: 400;
 	vertical-align: baseline;
 }
 
@@ -1012,6 +1228,37 @@
 	font-size: 12px;
 }
 
+/* Consolidated (Tickets & Attendance) variant — declared after the base
+   .nte-summary-table cell rules so its horizontal padding wins the
+   equal-specificity cascade (without it the Issued figure lands flush
+   against the Checked-in value, reading "12 issued0"), but before the
+   base tfoot rules, which keep winning their ties as they always have. */
+.nte-summary-table--consolidated thead th {
+	padding: 4px 14px 6px 0;
+	color: #646970;
+	border-bottom: 1px solid #f0f0f1;
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: 0.02em;
+	text-align: left;
+	text-transform: uppercase;
+}
+
+.nte-summary-table--consolidated td,
+.nte-summary-table--consolidated tfoot th {
+	padding: 6px 14px 6px 0;
+	border-bottom: 1px solid #f6f7f7;
+	text-align: left;
+	vertical-align: top;
+}
+
+.nte-summary-table--consolidated tfoot td,
+.nte-summary-table--consolidated tfoot th {
+	border-bottom: 0;
+	border-top: 1px solid #f0f0f1;
+	font-weight: 600;
+}
+
 .nte-summary-table tfoot th,
 .nte-summary-table tfoot td {
 	padding-top: 8px;
@@ -1035,4 +1282,39 @@
 
 .nte-summary-card .nte-purchases-synopsis > .description {
 	margin: 0;
+}
+
+/* Attendees: Name-column alphabetization mode toggle (NTE-195). */
+.nte-attendees-table .nte-name-sort-mode {
+	display: block;
+	font-size: 11px;
+	font-weight: 400;
+	line-height: 1.6;
+	color: #646970;
+	white-space: nowrap;
+}
+
+.nte-attendees-table .nte-name-sort-mode a {
+	display: inline-block;
+	padding: 2px;
+	min-height: 24px;
+	text-decoration: none;
+}
+
+/* The "|" divider between the First/Last links: align to the links' text
+   box so it doesn't ride the taller 24px link targets. */
+.nte-attendees-table .nte-name-sort-mode > span[aria-hidden] {
+	display: inline-block;
+	margin-top: 1px;
+	vertical-align: top;
+}
+
+.nte-attendees-table .nte-name-sort-mode a[aria-current="true"] {
+	font-weight: 600;
+	text-decoration: underline;
+}
+
+.nte-attendees-table .nte-name-sort-mode a:focus-visible {
+	outline: 2px solid var(--wp-admin-theme-color, #2271b1);
+	outline-offset: 1px;
 }

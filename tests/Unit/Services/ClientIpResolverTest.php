@@ -135,13 +135,25 @@ class ClientIpResolverTest extends \NetterTechEventsTestCase {
 	 *
 	 * @return void
 	 */
-	public function test_loopback_remote_with_real_ip_header_uses_forwarded(): void {
+	public function test_loopback_remote_with_real_ip_header_requires_optin(): void {
 		$_SERVER['REMOTE_ADDR']     = '127.0.0.1';
 		$_SERVER['HTTP_X_REAL_IP'] = '8.8.8.8';
 
+		// Exactly one header is trusted per reason (NTE-SEC-2026-07-A);
+		// X-Real-IP-only proxies opt in via the header filter. Without the
+		// opt-in the header is ignored, not scanned as a fallback.
 		$resolver = new ClientIpResolver();
+		$this->assertSame( '127.0.0.1', $resolver->resolve(), 'Untrusted header must not be scanned' );
+		$this->assertArrayHasKey( 'headers_ignored', $resolver->get_sample() );
 
-		$this->assertSame( '8.8.8.8', $resolver->resolve() );
+		Functions\when( 'apply_filters' )->alias(
+			function ( string $hook, $value ) {
+				return 'nettertech_events_forwarded_header' === $hook ? 'HTTP_X_REAL_IP' : $value;
+			}
+		);
+
+		$opted_in = new ClientIpResolver();
+		$this->assertSame( '8.8.8.8', $opted_in->resolve(), 'Filter opt-in trusts exactly that header' );
 	}
 
 	/**
@@ -237,14 +249,37 @@ class ClientIpResolverTest extends \NetterTechEventsTestCase {
 	 *
 	 * @return void
 	 */
-	public function test_cf_header_takes_priority_over_xff(): void {
+	public function test_generic_proxy_ignores_fabricated_cf_header(): void {
+		// THE NTE-SEC-2026-07-A attack: behind a generic reverse proxy
+		// (private source), the attacker fabricates CF-Connecting-IP,
+		// which the proxy passes through untouched while appending the
+		// real client to XFF. The priority-list scan let the fabricated
+		// header win; a private source must trust only the generic-proxy
+		// header (XFF last hop).
 		$_SERVER['REMOTE_ADDR']            = '10.0.0.5';
 		$_SERVER['HTTP_CF_CONNECTING_IP'] = '8.8.8.8';
 		$_SERVER['HTTP_X_FORWARDED_FOR']  = '8.8.4.4';
 
 		$resolver = new ClientIpResolver();
 
-		$this->assertSame( '8.8.8.8', $resolver->resolve() );
+		$this->assertSame( '8.8.4.4', $resolver->resolve(), 'Fabricated CF header must not beat the proxy-written XFF hop' );
+	}
+
+	/**
+	 * The converse spoof: a Cloudflare-range connection must consult only
+	 * CF-Connecting-IP — a client-supplied XFF tail must not win when the
+	 * CF header is somehow absent.
+	 *
+	 * @return void
+	 */
+	public function test_cloudflare_range_without_cf_header_falls_back_to_remote(): void {
+		$_SERVER['REMOTE_ADDR']           = '104.16.1.1';
+		$_SERVER['HTTP_X_FORWARDED_FOR'] = '8.8.4.4';
+
+		$resolver = new ClientIpResolver();
+
+		$this->assertSame( '104.16.1.1', $resolver->resolve(), 'CF-range trust reason must not scan other headers' );
+		$this->assertArrayHasKey( 'headers_ignored', $resolver->get_sample() );
 	}
 
 	/**

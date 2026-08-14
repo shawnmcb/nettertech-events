@@ -21,6 +21,7 @@
  * @var string                              $context->image_ratio  CSS aspect-ratio value for per-instance override (default: '').
  * @var string                              $context->heading_tag  HTML heading tag for the card title (default: 'h2').
  * @var bool                                $context->heading_date Whether to include the date in the heading for disambiguation (default: false).
+ * @var array                               $context->prefetched_availability Optional availability verdict ('sold_out' => bool), supplied by listing controllers when an extension opts in via the nettertech_events_cards_need_availability filter. Exposed as a card class and to the card-status action; base renders no label (default: unset).
  *
  * @package NetterTechEvents
  */
@@ -50,6 +51,10 @@ $nettertech_events_card_anchor_map = array(
 $nettertech_events_card_anchor_y   = $nettertech_events_card_anchor_map[ (string) $context->event->image_vertical_anchor ] ?? '50%';
 $nettertech_events_image_style    .= sprintf( '--nte-card-image-anchor-y: %s;', esc_attr( $nettertech_events_card_anchor_y ) );
 
+// Occurrence-level hero override with event fallback (NTE-177 / FR-011): a
+// per-occurrence featured image must show on cards, not just the single page.
+$nettertech_events_card_image_id = $context->occurrence->get_featured_image_id();
+
 // Display timestamps: strtotime(wall-clock) + date_i18n is the WP idiom that renders
 // the authored local components — leave unchanged.
 $nettertech_events_start_time   = strtotime( $context->occurrence->start_datetime );
@@ -64,6 +69,18 @@ $nettertech_events_is_past      = $context->occurrence->is_past();
 $nettertech_events_is_cancelled = 'cancelled' === $context->occurrence->status;
 $nettertech_events_permalink    = $context->occurrence->get_url();
 
+// Availability verdict (NTE-203): supplied by listing controllers when an
+// extension opts in via the nettertech_events_cards_need_availability filter.
+// Base renders no sold-out label — visible availability UI is an extension
+// concern (the card-status action below) — but the verdict is exposed as a
+// card modifier class so extensions can style the whole card. Cancelled and
+// past cards ignore it: those states already end the sale.
+$nettertech_events_is_sold_out = false;
+if ( ! $nettertech_events_is_cancelled && ! $nettertech_events_is_past && $context->has( 'prefetched_availability' ) ) {
+	$nettertech_events_card_availability = (array) $context->get( 'prefetched_availability', array() );
+	$nettertech_events_is_sold_out       = ! empty( $nettertech_events_card_availability['sold_out'] );
+}
+
 $nettertech_events_card_classes = array( 'nte-event-card' );
 if ( $nettertech_events_is_past ) {
 	$nettertech_events_card_classes[] = 'nte-event-card--past';
@@ -71,11 +88,14 @@ if ( $nettertech_events_is_past ) {
 if ( $nettertech_events_is_cancelled ) {
 	$nettertech_events_card_classes[] = 'nte-event-card--cancelled';
 }
+if ( $nettertech_events_is_sold_out ) {
+	$nettertech_events_card_classes[] = 'nte-event-card--sold-out';
+}
 ?>
 <article class="<?php echo esc_attr( implode( ' ', $nettertech_events_card_classes ) ); ?>">
 	<a href="<?php echo esc_url( $nettertech_events_permalink ); ?>" class="nte-event-card__link">
 		<?php if ( $context->get( 'show_image', true ) ) : ?>
-			<?php if ( $context->event->featured_image_id ) : ?>
+			<?php if ( $nettertech_events_card_image_id ) : ?>
 				<div class="nte-event-card__image"<?php echo $nettertech_events_image_style ? ' style="' . esc_attr( $nettertech_events_image_style ) . '"' : ''; ?>>
 					<?php
 					/*
@@ -88,7 +108,7 @@ if ( $nettertech_events_is_cancelled ) {
 					 */
 					// wp_get_attachment_image() is a recognized escape primitive in PHPCS.
 					echo wp_get_attachment_image(
-						$context->event->featured_image_id,
+						$nettertech_events_card_image_id,
 						'nettertech-events-tile',
 						false,
 						array(
@@ -145,6 +165,13 @@ if ( $nettertech_events_is_cancelled ) {
 					<p class="nte-event-card__status nte-event-card__status--past">
 						<?php esc_html_e( 'Completed', 'nettertech-events' ); ?>
 					</p>
+				<?php else : ?>
+					<?php
+					// Extension status slot for active cards (e.g. a Pro sold-out
+					// badge). Documented on Hooks::EVENT_CARD_STATUS; output must
+					// satisfy ShortcodeOutput::get_allowlist().
+					do_action( \NetterTechEvents\Core\Hooks::EVENT_CARD_STATUS, $context );
+					?>
 				<?php endif; ?>
 
 				<?php if ( $context->get( 'show_venue', true ) && ! empty( $context->event->venue_name ) && ! $context->event->is_virtual_event() ) : ?>

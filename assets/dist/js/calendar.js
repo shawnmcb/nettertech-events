@@ -23,6 +23,7 @@
             };
 
             this.currentDate = this.parseInitialDate(element);
+            this.strings = window.nettertechEvents?.strings || {};
             this.events = [];
             this.isLoading = false;
             this.isTouchDevice = false;
@@ -290,7 +291,7 @@
             this.bindTooltipEvents();
 
             this.element.dispatchEvent(new CustomEvent('nte-calendar:rendered', {
-                detail: { view: this.options.view, grid: this.grid },
+                detail: { view: this.options.view, grid: this.grid, events: this.events },
                 bubbles: true
             }));
         }
@@ -572,19 +573,19 @@
                         : `$${tickets.min_price} – $${tickets.max_price}`;
 
                     let availClass = '';
-                    let availText = 'Tickets available';
+                    let availText = this.strings.available || 'Tickets available';
                     if (tickets.sold_out) {
                         availClass = ' nte-calendar__tooltip-availability--sold-out';
-                        availText = 'Sold out';
+                        availText = this.strings.soldOut || 'Sold out';
                     } else if (tickets.low_stock) {
                         availClass = ' nte-calendar__tooltip-availability--low-stock';
-                        availText = 'Low stock';
+                        availText = this.strings.limited || 'Low stock';
                     }
 
                     ticketsHtml = `
                         <div class="nte-calendar__tooltip-tickets">
                             <span class="nte-calendar__tooltip-price">${this.escapeHtml(priceText)}</span>
-                            <span class="nte-calendar__tooltip-availability${availClass}">${availText}</span>
+                            <span class="nte-calendar__tooltip-availability${availClass}">${this.escapeHtml(availText)}</span>
                         </div>`;
                 }
 
@@ -819,7 +820,7 @@
                     </div>
                     <div class="nte-calendar-popup__content">
                         ${dayEvents.map(e => `
-                            <a href="${this.escapeHtml(e.event?.permalink || '#')}" class="nte-calendar-popup__event">
+                            <a href="${this.escapeHtml(e.event?.permalink || '#')}" class="nte-calendar-popup__event" data-event-id="${e.id}">
                                 <span class="nte-calendar-popup__time">${this.formatTime(e.start_datetime)}</span>
                                 <span class="nte-calendar-popup__name">${this.escapeHtml(e.event?.title || 'Event')}</span>
                                 ${e.event?.venue_name ? `<span class="nte-calendar-popup__venue">${this.escapeHtml(e.event.venue_name)}</span>` : ''}
@@ -843,6 +844,14 @@
 
             // Focus trap.
             popup.querySelector('.nte-calendar-popup__close').focus();
+
+            // Extension lifecycle: lets add-ons decorate the day-events popup
+            // (entries carry data-event-id) after every open, mirroring
+            // nte-calendar:rendered for the grid.
+            this.element.dispatchEvent(new CustomEvent('nte-calendar:popup-rendered', {
+                detail: { popup, events: dayEvents, date: dateStr },
+                bubbles: true
+            }));
         }
 
         closePopup() {

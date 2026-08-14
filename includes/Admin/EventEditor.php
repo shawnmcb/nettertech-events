@@ -185,6 +185,13 @@ class EventEditor {
 			delete_transient( $transient_key );
 		}
 
+		// Informational save notice (derived times, skipped date rows — NTE-184).
+		$notice_key = 'nettertech_events_save_notice_' . get_current_user_id();
+		$notice     = get_transient( $notice_key );
+		if ( $notice ) {
+			delete_transient( $notice_key );
+		}
+
 		?>
 		<a class="nte-skip-link screen-reader-text" href="#nte-main-content">
 			<?php esc_html_e( 'Skip to main content', 'nettertech-events' ); ?>
@@ -200,6 +207,12 @@ class EventEditor {
 			<?php if ( $error ) : ?>
 				<div class="notice notice-error is-dismissible">
 					<p><?php echo esc_html( $error ); ?></p>
+				</div>
+			<?php endif; ?>
+
+			<?php if ( $notice ) : ?>
+				<div class="notice notice-info is-dismissible">
+					<p><?php echo esc_html( $notice ); ?></p>
 				</div>
 			<?php endif; ?>
 

@@ -306,11 +306,11 @@ class EventQueryTest extends \NetterTechEventsTestCase {
 	/**
 	 * Test where_has_ticket_types links ticket types via BOTH scopes.
 	 *
-	 * Mirrors EventQueryRepository::has_ticket_types(): an active ticket type
-	 * qualifies an event whether it is event-scoped (tt.event_id = event,
-	 * occurrence_id NULL) or occurrence-scoped (tt.occurrence_id -> o.id ->
-	 * o.event_id). Regression guard: counting only the occurrence linkage hid
-	 * every event-scoped-ticketed event from the "ticketed" filter.
+	 * An active ticket type qualifies an event whether it is event-scoped
+	 * (tt.event_id = event, occurrence_id NULL) or occurrence-scoped
+	 * (tt.occurrence_id -> o.id -> o.event_id). Regression guard: counting only
+	 * the occurrence linkage hid every event-scoped-ticketed event from the
+	 * "ticketed" filter.
 	 *
 	 * @return void
 	 */

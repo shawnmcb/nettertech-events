@@ -57,14 +57,14 @@ Retry-After: 30          (only on 429 responses)
 
 ```php
 // Increase rate limit for high-traffic check-in scenarios
-add_filter('nte_rate_limit_config', function($config) {
-    $config['requests'] = 120;  // 120 requests
-    $config['window']   = 60;   // per 60 seconds
-    return $config;
+add_filter('nettertech_events_rate_limit_settings', function($settings) {
+    $settings['limit']  = 120;  // 120 requests
+    $settings['window'] = 60;   // per 60 seconds
+    return $settings;
 });
 
 // Exempt logged-in users from rate limiting
-add_filter('nte_rate_limit_bypass', function($bypass) {
+add_filter('nettertech_events_rate_limit_bypass', function($bypass) {
     return is_user_logged_in();
 });
 ```
