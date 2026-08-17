@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace NetterTechEvents\Admin;
 
+use NetterTechEvents\Admin\Attendees\AttendeeOrderStatusFilter;
 defined( 'ABSPATH' ) || exit;
 
 use NetterTechEvents\Admin\Attendees\AttendeesBulkActions;
@@ -212,9 +213,19 @@ class AttendeesPage {
 			$params[] = $like;
 		}
 
-		if ( ! empty( $status_filter ) ) {
+		// Order-outcome filtering (NTE-212): with no status chosen, hide seats
+		// voided by an order that never paid (failed/cancelled) so the Purchases
+		// view reflects money actually received; refund-voided seats stay
+		// visible. The pseudo-status "failed_order" shows exactly the hidden rows.
+		$order_status = new AttendeeOrderStatusFilter( $this->db );
+		$order_join   = $order_status->join_clause( 'a' );
+		if ( AttendeeOrderStatusFilter::FILTER_FAILED_ORDER === $status_filter ) {
+			$where[] = $order_status->only_unpaid_predicate( 'a' );
+		} elseif ( ! empty( $status_filter ) ) {
 			$where[]  = 'a.status = %s';
 			$params[] = $status_filter;
+		} else {
+			$where[] = $order_status->exclude_unpaid_predicate( 'a' );
 		}
 
 		// Filter by placeholder data (name, event, or date).
@@ -239,6 +250,7 @@ class AttendeesPage {
 		$count_sql = "SELECT COUNT(*) FROM {$attendees_table} a
 			LEFT JOIN {$occurrences_table} o ON a.occurrence_id = o.id
 			LEFT JOIN {$events_table} e ON o.event_id = e.id
+			{$order_join}
 			WHERE {$where_clause}";
 		if ( ! empty( $params ) ) {
 			$count_sql = $this->db->prepare( $count_sql, $params );
@@ -252,6 +264,7 @@ class AttendeesPage {
 		$guests_sql = "SELECT COALESCE(SUM(a.quantity), 0) FROM {$attendees_table} a
 			LEFT JOIN {$occurrences_table} o ON a.occurrence_id = o.id
 			LEFT JOIN {$events_table} e ON o.event_id = e.id
+			{$order_join}
 			WHERE {$where_clause}";
 		if ( ! empty( $params ) ) {
 			$guests_sql = $this->db->prepare( $guests_sql, $params );
@@ -274,6 +287,7 @@ class AttendeesPage {
 			LEFT JOIN {$occurrences_table} o ON a.occurrence_id = o.id
 			LEFT JOIN {$events_table} e ON o.event_id = e.id
 			LEFT JOIN {$ticket_types_table} tt ON a.ticket_type_id = tt.id
+			{$order_join}
 			WHERE {$where_clause}
 			ORDER BY {$order_clause}
 			LIMIT %d OFFSET %d";

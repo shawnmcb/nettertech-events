@@ -92,7 +92,7 @@ if ( $nettertech_events_is_sold_out ) {
 	$nettertech_events_card_classes[] = 'nte-event-card--sold-out';
 }
 ?>
-<article class="<?php echo esc_attr( implode( ' ', $nettertech_events_card_classes ) ); ?>">
+<article class="<?php echo esc_attr( implode( ' ', $nettertech_events_card_classes ) ); ?>" data-event-id="<?php echo esc_attr( (string) (int) $context->occurrence->id ); ?>">
 	<a href="<?php echo esc_url( $nettertech_events_permalink ); ?>" class="nte-event-card__link">
 		<?php if ( $context->get( 'show_image', true ) ) : ?>
 			<?php if ( $nettertech_events_card_image_id ) : ?>
@@ -196,23 +196,12 @@ if ( $nettertech_events_is_sold_out ) {
 					} else {
 						$nettertech_events_card_ticket_types = array();
 					}
-					if ( ! empty( $nettertech_events_card_ticket_types ) ) :
-						$nettertech_events_card_prices = array_map( fn( $nettertech_events_tt ) => $nettertech_events_tt->price, $nettertech_events_card_ticket_types );
-						$nettertech_events_card_min    = min( $nettertech_events_card_prices );
-						$nettertech_events_card_max    = max( $nettertech_events_card_prices );
-						if ( $nettertech_events_card_max <= 0 ) :
-							$nettertech_events_card_price_display = __( 'Free', 'nettertech-events' );
-						elseif ( $nettertech_events_card_min <= 0 ) :
-							/* translators: %s: maximum ticket price. */
-							$nettertech_events_card_price_display = sprintf( __( 'Free – %s', 'nettertech-events' ), wp_strip_all_tags( wc_price( $nettertech_events_card_max ) ) );
-						elseif ( abs( $nettertech_events_card_min - $nettertech_events_card_max ) < 0.01 ) :
-							$nettertech_events_card_price_display = wp_strip_all_tags( wc_price( $nettertech_events_card_min ) );
-						else :
-							/* translators: 1: minimum ticket price, 2: maximum ticket price. */
-							$nettertech_events_card_price_display = sprintf( __( '%1$s – %2$s', 'nettertech-events' ), wp_strip_all_tags( wc_price( $nettertech_events_card_min ) ), wp_strip_all_tags( wc_price( $nettertech_events_card_max ) ) );
-						endif;
+					// One source for the price string across PHP cards, the single-event page,
+					// and the REST payload the AJAX-paged grid renders from (NTE-215).
+					$nettertech_events_card_price = \NetterTechEvents\Frontend\OccurrenceAvailabilityPresenter::price_range( $nettertech_events_card_ticket_types );
+					if ( '' !== $nettertech_events_card_price['label'] ) :
 						?>
-						<p class="nte-event-card__price"><?php echo esc_html( $nettertech_events_card_price_display ); ?></p>
+						<p class="nte-event-card__price"><?php echo esc_html( $nettertech_events_card_price['label'] ); ?></p>
 					<?php endif; ?>
 				<?php endif; ?>
 

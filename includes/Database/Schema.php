@@ -56,7 +56,7 @@ class Schema {
 	 *
 	 * @var string
 	 */
-	public const DB_VERSION = '3.17.0';
+	public const DB_VERSION = '3.18.0';
 
 	/**
 	 * Table prefix for plugin tables.
@@ -236,6 +236,7 @@ class Schema {
 			'3.15.0' => 'migrate_to_3_15_0',
 			'3.16.0' => 'migrate_to_3_16_0',
 			'3.17.0' => 'migrate_to_3_17_0',
+			'3.18.0' => 'migrate_to_3_18_0',
 		);
 	}
 
@@ -1207,6 +1208,29 @@ class Schema {
 			 WHERE origin_start_datetime IS NULL"
 		);
 		// phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter
+	}
+
+	/**
+	 * Migration to v3.18.0: per-event waitlist override (NTE-214).
+	 *
+	 * Adds events.waitlist_enabled tinyint(1) DEFAULT NULL — NULL means "use the
+	 * site default", so existing events keep today's behaviour. dbDelta in
+	 * create_tables() adds the column from the table definition; this guard
+	 * covers installs where dbDelta declines to alter (idempotent).
+	 *
+	 * @return void
+	 */
+	private static function migrate_to_3_18_0(): void {
+		global $wpdb;
+
+		$events_table = self::table( 'events' );
+
+		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Table name cannot be parameterized; custom table schema migration.
+		$column_exists = $wpdb->get_results( "SHOW COLUMNS FROM {$events_table} LIKE 'waitlist_enabled'" );
+		if ( empty( $column_exists ) ) {
+			$wpdb->query( "ALTER TABLE {$events_table} ADD COLUMN waitlist_enabled tinyint(1) DEFAULT NULL AFTER reminders_enabled" );
+		}
+		// phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, PluginCheck.Security.DirectDB.UnescapedDBParameter
 	}
 
 	/**

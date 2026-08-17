@@ -231,6 +231,12 @@ class EventListShortcode {
 			data-layout="<?php echo esc_attr( $atts['layout'] ); ?>"
 			data-columns="<?php echo esc_attr( (string) (int) $atts['columns'] ); ?>"
 			data-past="<?php echo esc_attr( $atts['past'] ? 'true' : 'false' ); ?>"
+			data-show-image="<?php echo esc_attr( $atts['show_image'] ? 'true' : 'false' ); ?>"
+			data-show-date="<?php echo esc_attr( $atts['show_date'] ? 'true' : 'false' ); ?>"
+			data-show-time="<?php echo esc_attr( $atts['show_time'] ? 'true' : 'false' ); ?>"
+			data-show-venue="<?php echo esc_attr( $atts['show_venue'] ? 'true' : 'false' ); ?>"
+			data-show-price="<?php echo esc_attr( $atts['show_price'] ? 'true' : 'false' ); ?>"
+			data-show-excerpt="<?php echo esc_attr( $atts['show_excerpt'] ? 'true' : 'false' ); ?>"
 		>
 			<?php if ( $atts['show_filters'] ) : ?>
 				<?php echo wp_kses( $this->render_filters( $atts, $instance_id ), ShortcodeOutput::get_allowlist() ); ?>

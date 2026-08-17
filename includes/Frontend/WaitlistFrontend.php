@@ -16,6 +16,7 @@ defined( 'ABSPATH' ) || exit;
 use NetterTechEvents\Frontend\Shortcodes\ShortcodeOutput;
 use NetterTechEvents\Models\Occurrence;
 use NetterTechEvents\Models\TicketType;
+use NetterTechEvents\Services\WaitlistAvailabilityResolver;
 use NetterTechEvents\TemplateLoader\Templates;
 
 /**
@@ -31,6 +32,16 @@ class WaitlistFrontend {
 	 * @var bool
 	 */
 	private bool $assets_enqueued = false;
+
+	/**
+	 * Constructor.
+	 *
+	 * @param WaitlistAvailabilityResolver|null $resolver Availability resolver (NTE-214). Null keeps the
+	 *                                                    legacy always-on-unless-filtered behaviour for
+	 *                                                    callers that construct this class directly.
+	 */
+	public function __construct( private readonly ?WaitlistAvailabilityResolver $resolver = null ) {
+	}
 
 	/**
 	 * Initialize frontend hooks.
@@ -87,14 +98,12 @@ class WaitlistFrontend {
 	 * @return void
 	 */
 	public function render_waitlist_panel( TicketType $ticket_type, Occurrence $occurrence ): void {
-		/**
-		 * Filters whether the waitlist feature is available.
-		 *
-		 * @since 1.0.2
-		 *
-		 * @param bool $has_waitlist Whether waitlist is enabled. Default true in Base.
-		 */
-		if ( ! apply_filters( 'nettertech_events_has_waitlist', true ) ) {
+		// Event override → site default → extension filter (NTE-214). Without a
+		// resolver, fall back to the historical always-on filter.
+		$has_waitlist = null !== $this->resolver
+			? $this->resolver->is_enabled_for_occurrence( $occurrence )
+			: (bool) apply_filters( 'nettertech_events_has_waitlist', true, $occurrence );
+		if ( ! $has_waitlist ) {
 			return;
 		}
 

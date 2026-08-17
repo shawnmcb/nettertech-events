@@ -98,4 +98,99 @@ final class OccurrenceAvailabilityPresenter {
 
 		return $this->is_sold_out( $this->ticket_type_repo->get_on_sale_for_occurrence( $occurrence_id ) );
 	}
+
+	/**
+	 * Price range of a set of on-sale ticket types, with the display label.
+	 *
+	 * The single source of the card price string (NTE-215): the PHP card
+	 * template, the single-event page, and the REST occurrence payload (which
+	 * the AJAX-paged grid renders from) all call this, so the same occurrence
+	 * can never show two different prices. Formatting goes through wc_price()
+	 * when WooCommerce is active and falls back to number_format_i18n() so a
+	 * ticketless install cannot fatal (NTE-193 class).
+	 *
+	 * @since 1.4.4
+	 *
+	 * @param array<object> $on_sale_ticket_types The occurrence's on-sale ticket types (TicketType or any object exposing `price`).
+	 * @return array{min: float|null, max: float|null, is_free: bool, label: string}
+	 *         Empty label (and null bounds) when nothing is on sale.
+	 */
+	public static function price_range( array $on_sale_ticket_types ): array {
+		$prices = array();
+		foreach ( $on_sale_ticket_types as $ticket_type ) {
+			// Duck-typed on `price` (not instanceof TicketType): callers may pass
+			// lightweight rows, and the label needs no capacity lookup.
+			if ( is_object( $ticket_type ) && isset( $ticket_type->price ) && is_numeric( $ticket_type->price ) ) {
+				$prices[] = (float) $ticket_type->price;
+			}
+		}
+
+		if ( empty( $prices ) ) {
+			return array(
+				'min'     => null,
+				'max'     => null,
+				'is_free' => false,
+				'label'   => '',
+			);
+		}
+
+		$min = min( $prices );
+		$max = max( $prices );
+
+		if ( $max <= 0 ) {
+			$label = __( 'Free', 'nettertech-events' );
+		} elseif ( $min <= 0 ) {
+			/* translators: %s: maximum ticket price. */
+			$label = sprintf( __( 'Free – %s', 'nettertech-events' ), self::format_price( $max ) );
+		} elseif ( abs( $min - $max ) < 0.01 ) {
+			$label = self::format_price( $min );
+		} else {
+			/* translators: 1: minimum ticket price, 2: maximum ticket price. */
+			$label = sprintf( __( '%1$s – %2$s', 'nettertech-events' ), self::format_price( $min ), self::format_price( $max ) );
+		}
+
+		return array(
+			'min'     => $min,
+			'max'     => $max,
+			'is_free' => $max <= 0,
+			'label'   => $label,
+		);
+	}
+
+	/**
+	 * Price range for an occurrence, resolving its on-sale ticket types.
+	 *
+	 * Convenience path for direct callers without a prefetched map; listing
+	 * controllers should prefetch via get_on_sale_for_occurrences() and call
+	 * price_range() to avoid per-card queries.
+	 *
+	 * @api Extension entry point (theme/plugin card overrides); no base
+	 *      caller, so static analysis cannot see its consumers.
+	 *
+	 * @since 1.4.4
+	 *
+	 * @param int $occurrence_id Occurrence ID.
+	 * @return array{min: float|null, max: float|null, is_free: bool, label: string}
+	 */
+	public function occurrence_price_range( int $occurrence_id ): array {
+		if ( $occurrence_id <= 0 ) {
+			return self::price_range( array() );
+		}
+
+		return self::price_range( $this->ticket_type_repo->get_on_sale_for_occurrence( $occurrence_id ) );
+	}
+
+	/**
+	 * Format a price as plain text in the store currency.
+	 *
+	 * @param float $amount Amount.
+	 * @return string Plain-text price (no markup).
+	 */
+	private static function format_price( float $amount ): string {
+		if ( function_exists( 'wc_price' ) ) {
+			return html_entity_decode( strip_tags( wc_price( $amount ) ), ENT_QUOTES, 'UTF-8' ); // phpcs:ignore WordPress.WP.AlternativeFunctions.strip_tags_strip_tags -- wc_price() markup only; no script/style content, and unit tests run without WP loaded.
+		}
+
+		return number_format_i18n( $amount, 2 );
+	}
 }

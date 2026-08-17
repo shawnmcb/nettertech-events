@@ -17,6 +17,7 @@ use NetterTechEvents\Contracts\OccurrenceRepositoryInterface;
 use NetterTechEvents\Exceptions\ValidationException;
 use NetterTechEvents\Contracts\WaitlistServiceInterface;
 use NetterTechEvents\Services\RateLimitService;
+use NetterTechEvents\Services\WaitlistAvailabilityResolver;
 use WP_REST_Controller;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -75,19 +76,29 @@ class WaitlistRestController extends WP_REST_Controller {
 	/**
 	 * Constructor.
 	 *
-	 * @param WaitlistServiceInterface      $service            Waitlist service.
-	 * @param OccurrenceRepositoryInterface $occurrence_repo    Occurrence repository.
-	 * @param RateLimitService              $rate_limit_service Rate limit service.
+	 * @param WaitlistServiceInterface          $service            Waitlist service.
+	 * @param OccurrenceRepositoryInterface     $occurrence_repo    Occurrence repository.
+	 * @param RateLimitService                  $rate_limit_service Rate limit service.
+	 * @param WaitlistAvailabilityResolver|null $resolver       Availability resolver (NTE-214); null = accept joins as before.
 	 */
 	public function __construct(
 		WaitlistServiceInterface $service,
 		OccurrenceRepositoryInterface $occurrence_repo,
-		RateLimitService $rate_limit_service
+		RateLimitService $rate_limit_service,
+		?WaitlistAvailabilityResolver $resolver = null
 	) {
 		$this->service            = $service;
 		$this->occurrence_repo    = $occurrence_repo;
 		$this->rate_limit_service = $rate_limit_service;
+		$this->resolver           = $resolver;
 	}
+
+	/**
+	 * Waitlist availability resolver (NTE-214); null = accept joins as before.
+	 *
+	 * @var WaitlistAvailabilityResolver|null
+	 */
+	private ?WaitlistAvailabilityResolver $resolver;
 
 	/**
 	 * Register routes.
@@ -215,6 +226,17 @@ class WaitlistRestController extends WP_REST_Controller {
 					'message' => __( 'Event not found.', 'nettertech-events' ),
 				),
 				404
+			);
+		}
+
+		// A disabled waitlist must reject direct joins, not just hide the form (NTE-214).
+		if ( null !== $this->resolver && ! $this->resolver->is_enabled_for_occurrence( $occurrence ) ) {
+			return new WP_REST_Response(
+				array(
+					'code'    => 'waitlist_disabled',
+					'message' => __( 'The waitlist is not available for this event.', 'nettertech-events' ),
+				),
+				403
 			);
 		}
 

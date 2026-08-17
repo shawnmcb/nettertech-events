@@ -55,6 +55,7 @@ class EventsTable implements TableDefinitionInterface {
             recurrence_end_date date DEFAULT NULL,
             layout_config text DEFAULT NULL,
             reminders_enabled tinyint(1) DEFAULT NULL,
+            waitlist_enabled tinyint(1) DEFAULT NULL,
             notification_emails text DEFAULT NULL,
             custom_fields JSON DEFAULT NULL,
             is_virtual tinyint(1) DEFAULT NULL,

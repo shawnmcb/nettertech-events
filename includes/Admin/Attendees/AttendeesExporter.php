@@ -77,6 +77,7 @@ class AttendeesExporter {
 		'Email',
 		'Event',
 		'Date/Time',
+		'Ticket Type',
 		'Quantity',
 		'Status',
 		'Checked In',
@@ -112,7 +113,7 @@ class AttendeesExporter {
 		// phpcs:disable WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- Dynamic placeholders for IN clause.
 		$items = $this->db->get_results(
 			$this->db->prepare(
-				"SELECT a.*, o.start_datetime, o.end_datetime, e.title as event_title
+				"SELECT a.*, o.start_datetime, o.end_datetime, e.title as event_title, tt.name as ticket_type_name
 				FROM {$attendees_table} a
 				LEFT JOIN {$occurrences_table} o ON a.occurrence_id = o.id
 				LEFT JOIN {$events_table} e ON o.event_id = e.id
@@ -176,9 +177,17 @@ class AttendeesExporter {
 			$params[] = $like;
 		}
 
-		if ( ! empty( $status_filter ) ) {
+		// Mirror the list page's order-outcome rule (NTE-212) so "Export All"
+		// exports what the operator sees.
+		$order_status = new AttendeeOrderStatusFilter( $this->db );
+		$order_join   = $order_status->join_clause( 'a' );
+		if ( AttendeeOrderStatusFilter::FILTER_FAILED_ORDER === $status_filter ) {
+			$where[] = $order_status->only_unpaid_predicate( 'a' );
+		} elseif ( ! empty( $status_filter ) ) {
 			$where[]  = 'a.status = %s';
 			$params[] = $status_filter;
+		} else {
+			$where[] = $order_status->exclude_unpaid_predicate( 'a' );
 		}
 
 		if ( 'yes' === $placeholder_filter ) {
@@ -197,11 +206,12 @@ class AttendeesExporter {
 		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- Export query.
 		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQL.NotPrepared -- Table names from Schema class are safe.
 		// phpcs:disable WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- Conditional prepare.
-		$sql = "SELECT a.*, o.start_datetime, o.end_datetime, e.title as event_title
+		$sql = "SELECT a.*, o.start_datetime, o.end_datetime, e.title as event_title, tt.name as ticket_type_name
 			FROM {$attendees_table} a
 			LEFT JOIN {$occurrences_table} o ON a.occurrence_id = o.id
 			LEFT JOIN {$events_table} e ON o.event_id = e.id
 			LEFT JOIN {$ticket_types_table} tt ON a.ticket_type_id = tt.id
+			{$order_join}
 			WHERE {$where_clause}
 			ORDER BY {$order_clause}";
 
@@ -391,6 +401,7 @@ class AttendeesExporter {
 			$item['email'] ?? '',
 			$item['event_title'] ?? 'Unknown Event',
 			$datetime,
+			$item['ticket_type_name'] ?? '',
 			(string) $quantity,
 			ucfirst( $item['status'] ?? 'confirmed' ),
 			$checked_in,

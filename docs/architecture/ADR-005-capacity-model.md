@@ -10,8 +10,8 @@
 > The carve-out arithmetic recorded here — `shared_pool = occurrence.capacity - SUM(fixed capacities)`
 > — treats tiers as separate allotments carved out of the room. Venues do not sell rooms that way. A
 > tier capped at the house size means "this tier may sell the whole room", not "this tier reserves the
-> whole room", so summing per-tier availability reports the room several times over. On CJAC's
-> 250-seat hall it reported **638 seats available**.
+> whole room", so summing per-tier availability reports the room several times over. On one
+> production venue's 250-seat hall it reported **638 seats available**.
 >
 > Tiers on an occurrence share **one house**, sold once. See [ADR-019](ADR-019-house-capacity-model.md)
 > for the model now in force, and ticket NTE-144 for the failure that forced the change.

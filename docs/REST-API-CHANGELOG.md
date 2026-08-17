@@ -112,6 +112,11 @@ The full cross-plugin endpoint inventory with auth/rate-limit/PII metadata is ma
 
 ## Changelog
 
+### v1.0.1 (plugin release 1.4.4)
+
+- `GET /occurrences`, `GET /events/upcoming`, `GET /events/{id}`: `tickets` gains `price_label` (string, additive) — the display-ready price range computed by the same presenter the PHP templates use; empty when nothing is on sale.
+- `tickets.min_price` / `tickets.max_price` now derive from **on-sale** ticket types only (previously every type regardless of status/sale window). `tickets.types` still lists every type. Consumers wanting a display string should prefer `price_label`.
+
 ### v1.0.0 (plugin release 1.0.0)
 
 - Initial API release: 20 routes across 7 controllers plus the SecurityHeaders CSP-report endpoint.

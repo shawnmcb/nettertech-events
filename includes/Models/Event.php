@@ -147,6 +147,14 @@ class Event {
 	public ?bool $reminders_enabled = null;
 
 	/**
+	 * Per-event waitlist override (NTE-214).
+	 * Null = use site default, true = force on, false = force off.
+	 *
+	 * @var bool|null
+	 */
+	public ?bool $waitlist_enabled = null;
+
+	/**
 	 * Per-event notification recipient emails (comma-separated).
 	 *
 	 * These addresses receive ticket purchase notifications in addition
@@ -299,6 +307,7 @@ class Event {
 		$event->recurrence_rule              = $row->recurrence_rule ?? null;
 		$event->recurrence_end_date          = $row->recurrence_end_date ?? null;
 		$event->reminders_enabled            = isset( $row->reminders_enabled ) ? (bool) $row->reminders_enabled : null;
+		$event->waitlist_enabled             = isset( $row->waitlist_enabled ) ? (bool) $row->waitlist_enabled : null;
 		$event->notification_emails          = $row->notification_emails ?? null;
 		$event->is_virtual                   = isset( $row->is_virtual ) ? (bool) $row->is_virtual : null;
 		$event->virtual_url                  = $row->virtual_url ?? null;
@@ -344,6 +353,7 @@ class Event {
 			'is_virtual'                   => $this->is_virtual,
 			'virtual_url'                  => $this->virtual_url,
 			'reminders_enabled'            => $this->reminders_enabled,
+			'waitlist_enabled'             => $this->waitlist_enabled,
 			'notification_emails'          => $this->notification_emails,
 			'collect_individual_attendees' => $this->collect_individual_attendees,
 			'qr_logo_mode'                 => $this->qr_logo_mode,
@@ -380,6 +390,7 @@ class Event {
 			'%d', // Is virtual.
 			'%s', // Virtual URL.
 			'%d', // Reminders enabled.
+			'%d', // Waitlist enabled.
 			'%s', // Notification emails.
 			'%d', // Collect individual attendees.
 			'%s', // QR logo mode.

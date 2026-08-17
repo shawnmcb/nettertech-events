@@ -213,6 +213,23 @@ WHERE a.id IS NULL;
 
 ---
 
+### Purchases view counts tickets from failed orders
+
+**Symptom:** The Attendees / Purchases view lists seats (status "Voided") whose order failed, or on sites upgraded from a version before 1.4.0 the summary counts and capacity still include tickets from orders that never paid.
+
+**Explanation:** Since 1.4.0 a failed or cancelled order voids its attendees automatically and the default Purchases view hides seats voided by an unpaid order (refund-voided seats stay listed; the **Failed orders** status filter shows the hidden ones). Attendees created by orders that failed *before* 1.4.0 are not touched retroactively.
+
+**Fix (one-time, WP-CLI):**
+
+```bash
+# Preview — prints counts and a sample, writes nothing.
+wp nettertech-events reconcile-order-status
+
+# Apply — voids those attendees through the same path a live status change uses
+# (tickets cancelled, capacity released, sold counts and product stock resynced).
+wp nettertech-events reconcile-order-status --execute
+```
+
 ## Getting Help
 
 1. Check the PHP error log (`wp-content/debug.log` if `WP_DEBUG_LOG` is enabled)

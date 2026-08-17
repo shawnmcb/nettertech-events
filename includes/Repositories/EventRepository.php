@@ -350,8 +350,8 @@ class EventRepository implements EventRepositoryInterface {
 		if ( $is_new ) {
 			// Set created_at explicitly in UTC (NTE-131) rather than relying on the
 			// MySQL `created_at DEFAULT CURRENT_TIMESTAMP`, which MySQL writes in the
-			// DB session timezone and is therefore environment-dependent (oz dev stores
-			// site-local, Flywheel prod stores UTC). Storing UTC here makes the admin
+			// DB session timezone and is therefore environment-dependent (a local dev DB may store
+			// site-local while a managed host stores UTC). Storing UTC here makes the admin
 			// "Created" display portable: callers render it with get_date_from_gmt().
 			$data['created_at'] = gmdate( 'Y-m-d H:i:s' );
 			$formats[]          = '%s';

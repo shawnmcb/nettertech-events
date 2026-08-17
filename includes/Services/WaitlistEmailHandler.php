@@ -17,9 +17,12 @@ namespace NetterTechEvents\Services;
 defined( 'ABSPATH' ) || exit;
 
 use NetterTechEvents\Contracts\EmailTemplateRendererInterface;
+use NetterTechEvents\Contracts\EventRepositoryInterface;
 use NetterTechEvents\Contracts\OccurrenceRepositoryInterface;
 use NetterTechEvents\Contracts\WaitlistRepositoryInterface;
 use NetterTechEvents\Core\Hooks;
+use NetterTechEvents\Models\Event;
+use NetterTechEvents\Models\Occurrence;
 use NetterTechEvents\Models\WaitlistEntry;
 use NetterTechEvents\Utilities\DebugLogger;
 
@@ -62,22 +65,34 @@ class WaitlistEmailHandler {
 	private EmailConfig $email_config;
 
 	/**
+	 * Event repository, used to resolve the parent Event of an occurrence.
+	 *
+	 * @var EventRepositoryInterface|null
+	 */
+	private ?EventRepositoryInterface $event_repo;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param WaitlistRepositoryInterface    $waitlist_repo   Waitlist repository.
 	 * @param OccurrenceRepositoryInterface  $occurrence_repo Occurrence repository.
 	 * @param EmailTemplateRendererInterface $renderer        Email template renderer.
 	 * @param EmailConfig                    $email_config    Email configuration (settings).
+	 * @param EventRepositoryInterface|null  $event_repo      Event repository (NTE-210: resolves the
+	 *                                                        events-table row; `Occurrence->event_id`
+	 *                                                        is NOT a WP post ID).
 	 */
 	public function __construct(
 		WaitlistRepositoryInterface $waitlist_repo,
 		OccurrenceRepositoryInterface $occurrence_repo,
 		EmailTemplateRendererInterface $renderer,
-		EmailConfig $email_config
+		EmailConfig $email_config,
+		?EventRepositoryInterface $event_repo = null
 	) {
 		$this->waitlist_repo   = $waitlist_repo;
 		$this->occurrence_repo = $occurrence_repo;
 		$this->renderer        = $renderer;
+		$this->event_repo      = $event_repo;
 		$this->email_config    = $email_config;
 	}
 
@@ -127,15 +142,15 @@ class WaitlistEmailHandler {
 			return false;
 		}
 
-		$event_name = get_the_title( $occurrence->event_id );
-		if ( empty( $event_name ) ) {
-			$event_name = __( 'Event', 'nettertech-events' );
-		}
+		// NTE-210: `event_id` is the custom events-table row id, not a WP post ID —
+		// `get_the_title( $occurrence->event_id )` returned an unrelated post's title.
+		$event      = $this->resolve_event( $occurrence );
+		$event_name = null !== $event && '' !== $event->title ? $event->title : __( 'Event', 'nettertech-events' );
 
 		$booking_url = add_query_arg(
 			'waitlist_token',
 			(string) $entry->id,
-			get_permalink( $occurrence->event_id )
+			$this->resolve_booking_url( $occurrence, $event )
 		);
 
 		$subject = sprintf(
@@ -204,5 +219,44 @@ class WaitlistEmailHandler {
 		do_action( 'nettertech_events_waitlist_notification_sent', $entry, $occurrence_id, $sent );
 
 		return $sent;
+	}
+	/**
+	 * Resolve the parent Event of an occurrence from the events table.
+	 *
+	 * Prefers the occurrence's own lazy-loader (set when the repository was
+	 * built with an event repository), then the injected event repository.
+	 * Never consults wp_posts by `event_id` (NTE-210).
+	 *
+	 * @param Occurrence $occurrence The occurrence.
+	 * @return Event|null Resolved event, or null when unavailable.
+	 */
+	private function resolve_event( Occurrence $occurrence ): ?Event {
+		$event = $occurrence->get_event();
+		if ( null === $event && null !== $this->event_repo && $occurrence->event_id > 0 ) {
+			$event = $this->event_repo->find( $occurrence->event_id );
+			if ( null !== $event ) {
+				$occurrence->set_event( $event );
+			}
+		}
+		return $event;
+	}
+
+	/**
+	 * Resolve the page the promoted customer should land on to buy.
+	 *
+	 * Occurrence URL first (event page for single-date events, dated URL for
+	 * multi-date ones); the event permalink as a fallback; the site root when
+	 * the event cannot be resolved at all.
+	 *
+	 * @param Occurrence $occurrence The occurrence.
+	 * @param Event|null $event      The resolved event, if any.
+	 * @return string Absolute URL.
+	 */
+	private function resolve_booking_url( Occurrence $occurrence, ?Event $event ): string {
+		if ( null === $event ) {
+			return home_url( '/' );
+		}
+		$url = $occurrence->get_url();
+		return '' !== $url ? $url : $event->get_permalink();
 	}
 }

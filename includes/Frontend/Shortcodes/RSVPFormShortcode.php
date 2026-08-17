@@ -18,6 +18,7 @@ use NetterTechEvents\Repositories\AttendeeRepository;
 use NetterTechEvents\Repositories\OccurrenceRepository;
 use NetterTechEvents\Repositories\TicketTypeRepository;
 use NetterTechEvents\Services\RateLimitService;
+use NetterTechEvents\Services\WaitlistAvailabilityResolver;
 
 /**
  * RSVP form shortcode for free event registration.
@@ -67,24 +68,48 @@ class RSVPFormShortcode {
 	/**
 	 * Constructor.
 	 *
-	 * @param OccurrenceRepository        $occurrence_repo     Occurrence repository.
-	 * @param TicketTypeRepository        $ticket_type_repo    Ticket type repository.
-	 * @param AttendeeRepository          $attendee_repo       Attendee repository.
-	 * @param CapacityCalculatorInterface $capacity_calculator Capacity calculator.
-	 * @param RateLimitService            $rate_limit_service  Rate limit service.
+	 * @param OccurrenceRepository              $occurrence_repo     Occurrence repository.
+	 * @param TicketTypeRepository              $ticket_type_repo    Ticket type repository.
+	 * @param AttendeeRepository                $attendee_repo       Attendee repository.
+	 * @param CapacityCalculatorInterface       $capacity_calculator Capacity calculator.
+	 * @param RateLimitService                  $rate_limit_service  Rate limit service.
+	 * @param WaitlistAvailabilityResolver|null $waitlist_resolver Availability resolver (NTE-214); null = legacy filter-only gate.
 	 */
 	public function __construct(
 		OccurrenceRepository $occurrence_repo,
 		TicketTypeRepository $ticket_type_repo,
 		AttendeeRepository $attendee_repo,
 		CapacityCalculatorInterface $capacity_calculator,
-		RateLimitService $rate_limit_service
+		RateLimitService $rate_limit_service,
+		?WaitlistAvailabilityResolver $waitlist_resolver = null
 	) {
 		$this->occurrence_repo     = $occurrence_repo;
 		$this->ticket_type_repo    = $ticket_type_repo;
 		$this->attendee_repo       = $attendee_repo;
 		$this->capacity_calculator = $capacity_calculator;
 		$this->rate_limit_service  = $rate_limit_service;
+		$this->waitlist_resolver   = $waitlist_resolver;
+	}
+
+	/**
+	 * Waitlist availability resolver (NTE-214); null = legacy filter-only gate.
+	 *
+	 * @var WaitlistAvailabilityResolver|null
+	 */
+	private ?WaitlistAvailabilityResolver $waitlist_resolver;
+
+	/**
+	 * Whether the waitlist is available for an occurrence.
+	 *
+	 * @param \NetterTechEvents\Models\Occurrence|null $occurrence Occurrence (null = unknown → filter default).
+	 * @return bool
+	 */
+	private function has_waitlist( ?\NetterTechEvents\Models\Occurrence $occurrence ): bool {
+		if ( null !== $this->waitlist_resolver && null !== $occurrence ) {
+			return $this->waitlist_resolver->is_enabled_for_occurrence( $occurrence );
+		}
+
+		return (bool) apply_filters( 'nettertech_events_has_waitlist', true, $occurrence );
 	}
 
 	/**
@@ -179,7 +204,7 @@ class RSVPFormShortcode {
 					. '</div>';
 
 				// Render the waitlist panel for sold-out RSVP events.
-				$has_waitlist = (bool) apply_filters( 'nettertech_events_has_waitlist', true );
+				$has_waitlist = $this->has_waitlist( $occurrence );
 				if ( $has_waitlist && $occurrence ) {
 					ob_start();
 					/**
@@ -444,8 +469,11 @@ class RSVPFormShortcode {
 	 * @param int $occurrence_id Occurrence ID.
 	 * @return array{type: string, text: string}
 	 */
-	private function build_full_message( int $occurrence_id ): array { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found -- Reserved for waitlist integration.
-		$has_waitlist = (bool) apply_filters( 'nettertech_events_has_waitlist', true );
+	private function build_full_message( int $occurrence_id ): array {
+		// Only load the occurrence when a resolver can use it (legacy filter-only
+		// gate needs none).
+		$occurrence   = ( null !== $this->waitlist_resolver && $occurrence_id > 0 ) ? $this->occurrence_repo->find_with_event( $occurrence_id ) : null;
+		$has_waitlist = $this->has_waitlist( $occurrence );
 
 		if ( $has_waitlist ) {
 			$text = __( 'This event is full. You may join the waitlist to be notified if a spot opens up.', 'nettertech-events' );

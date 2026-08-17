@@ -596,6 +596,7 @@ class OccurrenceSaveHandler {
 		$new->collect_individual_attendees = $source->collect_individual_attendees;
 		$new->layout_config                = $source->layout_config;
 		$new->reminders_enabled            = $source->reminders_enabled;
+		$new->waitlist_enabled             = $source->waitlist_enabled;
 		$new->notification_emails          = $source->notification_emails;
 		$new->qr_logo_mode                 = $source->qr_logo_mode;
 		$new->qr_logo_attachment_id        = $source->qr_logo_attachment_id;

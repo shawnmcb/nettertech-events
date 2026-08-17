@@ -28,6 +28,19 @@
             this.currentFilters = {};
             this.isAjax = element.dataset.ajax === 'true';
             this.isPast = element.dataset.past === 'true';
+            // Card part toggles mirror the shortcode's show_* attributes so a
+            // JS-rendered page shows the same parts as the PHP-rendered first
+            // page (NTE-215). Absent attribute = the PHP default.
+            const flag = (name, fallback) => (element.dataset[name] === undefined ? fallback : element.dataset[name] === 'true');
+            this.show = {
+                image: flag('showImage', true),
+                date: flag('showDate', true),
+                time: flag('showTime', true),
+                venue: flag('showVenue', true),
+                price: flag('showPrice', true),
+                excerpt: flag('showExcerpt', false)
+            };
+
 
             this.init();
         }
@@ -224,51 +237,99 @@
             const currentYear = new Date().getFullYear();
             const eventYear = startDate.getFullYear();
             const showYear = eventYear !== currentYear;
+            const strings = window.nettertechEvents?.strings || {};
 
             const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
                                'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-            const imageHtml = event.image
-                ? `<a href="${this.escapeHtml(permalink)}" class="nte-event-card__image-link">
-                     <div class="nte-event-card__image">
-                       <img src="${this.escapeHtml(event.image.url)}"
-                            alt="${this.escapeHtml(event.image.alt || event.title || '')}"
-                            class="nte-event-card__img" />
-                     </div>
-                   </a>`
-                : `<a href="${this.escapeHtml(permalink)}" class="nte-event-card__image-link">
-                     <div class="nte-event-card__image nte-event-card__image--placeholder">
-                       <span class="nte-event-card__placeholder-icon" aria-hidden="true"></span>
-                     </div>
-                   </a>`;
+            let imageHtml = '';
+            if (this.show.image) {
+                imageHtml = event.image
+                    ? `<a href="${this.escapeHtml(permalink)}" class="nte-event-card__image-link">
+                         <div class="nte-event-card__image">
+                           <img src="${this.escapeHtml(event.image.url)}"
+                                alt="${this.escapeHtml(event.image.alt || event.title || '')}"
+                                class="nte-event-card__img" />
+                         </div>
+                       </a>`
+                    : `<a href="${this.escapeHtml(permalink)}" class="nte-event-card__image-link">
+                         <div class="nte-event-card__image nte-event-card__image--placeholder">
+                           <span class="nte-event-card__placeholder-icon" aria-hidden="true"></span>
+                         </div>
+                       </a>`;
+            }
 
             const yearHtml = showYear
                 ? `<span class="nte-event-card__date-year">${eventYear}</span>`
                 : '';
 
-            const venueHtml = event.venue_name
+            const dateHtml = this.show.date
+                ? `<div class="nte-event-card__date">
+                       <span class="nte-event-card__date-month">${monthNames[startDate.getMonth()]}</span>
+                       <span class="nte-event-card__date-day">${startDate.getDate()}</span>
+                       ${yearHtml}
+                   </div>`
+                : '';
+
+            const timeHtml = this.show.time
+                ? `<p class="nte-event-card__time">${occurrence.formatted?.time || ''}</p>`
+                : '';
+
+            // Cancelled / completed status — same rule as the PHP card: cancelled
+            // wins, past comes from the grid mode (an upcoming grid never shows past
+            // occurrences; a past grid shows only past ones). Active cards leave the
+            // slot to extensions listening on nte-grid:rendered.
+            let statusHtml = '';
+            if (occurrence.status === 'cancelled') {
+                statusHtml = `<p class="nte-event-card__status nte-event-card__status--cancelled">${this.escapeHtml(strings.cancelled || 'Cancelled')}</p>`;
+            } else if (this.isPast) {
+                statusHtml = `<p class="nte-event-card__status nte-event-card__status--past">${this.escapeHtml(strings.completed || 'Completed')}</p>`;
+            }
+
+            const venueHtml = this.show.venue && event.venue_name
                 ? `<p class="nte-event-card__venue">${this.escapeHtml(event.venue_name)}</p>`
+                : '';
+
+            // Price: the server computes the label (currency, i18n, on-sale rules)
+            // in the same presenter the PHP card uses, so page 1 and page 2 agree.
+            const priceLabel = occurrence.tickets?.price_label || '';
+            const priceHtml = this.show.price && priceLabel
+                ? `<p class="nte-event-card__price">${this.escapeHtml(priceLabel)}</p>`
+                : '';
+
+            const excerptHtml = this.show.excerpt && event.excerpt
+                ? `<p class="nte-event-card__excerpt">${this.escapeHtml(this.trimWords(event.excerpt, 20))}</p>`
                 : '';
 
             return `
                 <article class="nte-event-card" data-event-id="${occurrence.id}">
                     ${imageHtml}
                     <div class="nte-event-card__content">
-                        <div class="nte-event-card__date">
-                            <span class="nte-event-card__date-month">${monthNames[startDate.getMonth()]}</span>
-                            <span class="nte-event-card__date-day">${startDate.getDate()}</span>
-                            ${yearHtml}
-                        </div>
+                        ${dateHtml}
                         <div class="nte-event-card__details">
                             <h3 class="nte-event-card__title">
                                 <a href="${this.escapeHtml(permalink)}">${this.escapeHtml(event.title || 'Untitled Event')}</a>
                             </h3>
-                            <p class="nte-event-card__time">${occurrence.formatted?.time || ''}</p>
+                            ${timeHtml}
+                            ${statusHtml}
                             ${venueHtml}
+                            ${priceHtml}
+                            ${excerptHtml}
                         </div>
                     </div>
                 </article>
             `;
+        }
+
+        /**
+         * Word-trim to match wp_trim_words() (word count only; no HTML).
+         */
+        trimWords(text, count) {
+            const words = String(text || '').replace(/<[^>]*>/g, '').trim().split(/\s+/);
+            if (words.length <= count) {
+                return words.join(' ');
+            }
+            return words.slice(0, count).join(' ') + '…';
         }
 
         renderEmpty() {

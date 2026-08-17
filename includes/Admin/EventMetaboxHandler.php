@@ -299,6 +299,19 @@ class EventMetaboxHandler {
 	}
 
 	/**
+	 * Render the per-event waitlist override box (NTE-214).
+	 *
+	 * Thin facade over {@see EventMetaboxContentRenderer::render_waitlist_settings_box()}.
+	 *
+	 * @since 1.4.4
+	 *
+	 * @return void
+	 */
+	public function render_waitlist_settings_box(): void {
+		$this->content_renderer()->render_waitlist_settings_box();
+	}
+
+	/**
 	 * Render the revisions metabox.
 	 *
 	 * Shows revision history for existing events. Skips new events.

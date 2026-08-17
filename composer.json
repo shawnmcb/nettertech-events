@@ -38,6 +38,7 @@
 	},
 	"scripts": {
 		"phpcs": "phpcs",
+		"check:public-text": "bash scripts/check-public-text.sh",
 		"phpcbf": "phpcbf",
 		"test": "phpunit --no-coverage",
 		"test:unit": "phpunit --testsuite=Unit --no-coverage",
@@ -48,10 +49,12 @@
 		"test:wiring": "phpunit --group wiring --no-coverage",
 		"test:structural": "phpunit --group structural --no-coverage",
 		"check": [
+			"@check:public-text",
 			"@phpcs",
 			"@test"
 		],
 		"quality": [
+			"@check:public-text",
 			"@phpcs",
 			"@phpstan",
 			"@phpmd",
@@ -61,6 +64,7 @@
 		"infection:full": "php -d memory_limit=512M vendor/bin/infection --threads=4",
 		"deps:audit": "composer audit --format=plain",
 		"push": [
+			"@check:public-text",
 			"@phpcs",
 			"@phpstan",
 			"@deps:audit",

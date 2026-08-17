@@ -507,7 +507,7 @@ class TicketsMetabox {
 					<?php
 					printf(
 						/* translators: %s: occurrence date */
-						esc_html__( 'Tickets specific to %s only.', 'nettertech-events' ),
+						esc_html__( 'Tickets specific to %s only. For tickets on every date, use the Templates tab.', 'nettertech-events' ),
 						esc_html( $this->occurrence->get_formatted_date() )
 					);
 					?>

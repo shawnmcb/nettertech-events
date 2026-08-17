@@ -712,6 +712,49 @@ jQuery(document).ready(function($) {
 	 *
 	 * @return void
 	 */
+	public function render_waitlist_settings_box(): void {
+		$settings     = get_option( 'nettertech_events_settings', array() );
+		$site_default = ! is_array( $settings ) || ! array_key_exists( 'enable_waitlist', $settings ) || ! empty( $settings['enable_waitlist'] );
+		$current      = $this->event->waitlist_enabled;
+		$value        = null === $current ? '' : ( $current ? '1' : '0' );
+		$default_word = $site_default ? __( 'On', 'nettertech-events' ) : __( 'Off', 'nettertech-events' );
+		?>
+		<div class="postbox" id="nte-waitlist-settings-postbox">
+			<div class="postbox-header">
+				<h2><?php esc_html_e( 'Waitlist', 'nettertech-events' ); ?></h2>
+			</div>
+			<div class="inside">
+				<p>
+					<label for="nte-waitlist-enabled"><?php esc_html_e( 'When a ticket type or RSVP sells out', 'nettertech-events' ); ?></label>
+				</p>
+				<p>
+					<select name="waitlist_enabled" id="nte-waitlist-enabled" class="widefat">
+						<option value=""<?php selected( $value, '' ); ?>>
+							<?php
+							printf(
+								/* translators: %s: the site default, "On" or "Off" */
+								esc_html__( 'Use site default (%s)', 'nettertech-events' ),
+								esc_html( $default_word )
+							);
+							?>
+						</option>
+						<option value="1"<?php selected( $value, '1' ); ?>><?php esc_html_e( 'On — offer a waitlist for this event', 'nettertech-events' ); ?></option>
+						<option value="0"<?php selected( $value, '0' ); ?>><?php esc_html_e( 'Off — no waitlist for this event', 'nettertech-events' ); ?></option>
+					</select>
+				</p>
+				<p class="description">
+					<?php esc_html_e( 'The site default is set under Events → Settings → Ticketing. Choosing On or Off here overrides it for this event only.', 'nettertech-events' ); ?>
+				</p>
+			</div>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Render the reminder emails settings box.
+	 *
+	 * @return void
+	 */
 	public function render_reminder_settings_box(): void {
 		$email_settings = get_option( 'nettertech_events_email_settings', array() );
 		$site_default   = (bool) ( $email_settings['enable_reminders'] ?? true );

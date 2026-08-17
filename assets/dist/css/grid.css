@@ -368,7 +368,7 @@
 /* Trigger styling matches the .nte-filters__reset button states so the two
  * controls share a consistent button treatment across hover / focus / active.
  * Selector specificity (0,2,1) intentionally matches the Reset rules so the
- * CJAC theme's generic button overrides don't win the cascade.
+ * a theme's generic button overrides don't win the cascade.
  */
 .nte-filters .nte-multiselect__trigger {
 	display: flex;

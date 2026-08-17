@@ -284,7 +284,8 @@ class CoreServiceProvider implements ServiceProviderInterface {
 				$c->get( WaitlistRepositoryInterface::class ),
 				$c->get( OccurrenceRepositoryInterface::class ),
 				$c->get( EmailTemplateRendererInterface::class ),
-				$c->get( EmailConfig::class )
+				$c->get( EmailConfig::class ),
+				$c->get( EventRepositoryInterface::class )
 			)
 		);
 	}
@@ -415,6 +416,14 @@ class CoreServiceProvider implements ServiceProviderInterface {
 		$container->singleton(
 			CalendarLinkService::class,
 			fn() => new CalendarLinkService()
+		);
+
+		// NTE-214: one rule for "is the waitlist on for this occurrence".
+		$container->singleton(
+			\NetterTechEvents\Services\WaitlistAvailabilityResolver::class,
+			fn( Container $c ) => new \NetterTechEvents\Services\WaitlistAvailabilityResolver(
+				$c->get( \NetterTechEvents\Contracts\EventRepositoryInterface::class )
+			)
 		);
 
 		// Interface alias for Pro extensibility.

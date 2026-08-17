@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace NetterTechEvents\Admin\Attendees\Presenters;
 
+use NetterTechEvents\Admin\Attendees\AttendeeOrderStatusFilter;
 defined( 'ABSPATH' ) || exit;
 
 /**
@@ -101,11 +102,14 @@ final class AttendeesFiltersPresenter {
 	 */
 	public function status_options(): array {
 		$choices = array(
-			'confirmed' => __( 'Confirmed', 'nettertech-events' ),
-			'pending'   => __( 'Pending', 'nettertech-events' ),
-			'cancelled' => __( 'Cancelled', 'nettertech-events' ),
-			'refunded'  => __( 'Refunded', 'nettertech-events' ),
-			'voided'    => __( 'Voided', 'nettertech-events' ),
+			'confirmed'                                    => __( 'Confirmed', 'nettertech-events' ),
+			'pending'                                      => __( 'Pending', 'nettertech-events' ),
+			'cancelled'                                    => __( 'Cancelled', 'nettertech-events' ),
+			'refunded'                                     => __( 'Refunded', 'nettertech-events' ),
+			'voided'                                       => __( 'Voided', 'nettertech-events' ),
+			// Seats voided because the order never paid — hidden from the
+			// default view (NTE-212), reachable here.
+			AttendeeOrderStatusFilter::FILTER_FAILED_ORDER => __( 'Failed orders', 'nettertech-events' ),
 		);
 
 		$out = array();

@@ -21,6 +21,7 @@ use NetterTechEvents\Admin\Settings\QRSettingsSection;
 use NetterTechEvents\Admin\Settings\SettingsSaveHandler;
 use NetterTechEvents\Admin\Settings\SettingsSectionInterface;
 use NetterTechEvents\Admin\Settings\ThemeColorsSettingsSection;
+use NetterTechEvents\Admin\Settings\WaitlistSettingsSection;
 use NetterTechEvents\Admin\SettingsSanitizer;
 use NetterTechEvents\Core\Hooks;
 use NetterTechEvents\Services\EmailConfig;
@@ -145,6 +146,7 @@ class SettingsPage {
 
 						case 'ticketing':
 							$this->render_tickets_capacity_section( $settings );
+							( new WaitlistSettingsSection() )->render( $settings );
 							( new DonationsSettingsSection() )->render( $settings );
 							$this->render_checkin_section( $settings );
 							break;
@@ -333,6 +335,7 @@ class SettingsPage {
 				new ArchiveSettingsSection(),
 			),
 			'ticketing' => array(
+				new WaitlistSettingsSection(),
 				new DonationsSettingsSection(),
 			),
 			'qr_codes'  => array(

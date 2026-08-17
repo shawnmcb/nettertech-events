@@ -91,7 +91,7 @@ echo count( $ids ) . " prior E2E artifacts cleaned\n";
 E2E_LOG=$(mktemp /tmp/nte-e2e.XXXXXX)
 # Scope notes:
 # - fresh-install-matrix flows ("Flow N:") assert a base-only fresh install
-#   and run in the release protocol on a fresh test site, not here — oz
+#   and run in the release protocol on a fresh test site, not here — the dev site
 #   carries the full suite, so those assertions legitimately fail on it.
 # - chromium, single worker: matches scripts/nte-submission-gate.sh. The
 #   multi-browser matrix shares one WP database across parallel projects and

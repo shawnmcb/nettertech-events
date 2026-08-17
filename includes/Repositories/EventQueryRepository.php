@@ -31,7 +31,7 @@ class EventQueryRepository implements EventQueryRepositoryInterface {
 	 *
 	 * @var string
 	 */
-	private const LIST_COLUMNS = 'id, post_id, title, slug, featured_image_id, status, event_type, series_id, venue_name, recurrence_rule, recurrence_end_date, reminders_enabled, created_at, updated_at';
+	private const LIST_COLUMNS = 'id, post_id, title, slug, featured_image_id, status, event_type, series_id, venue_name, recurrence_rule, recurrence_end_date, reminders_enabled, waitlist_enabled, created_at, updated_at';
 
 	/**
 	 * WordPress database instance.

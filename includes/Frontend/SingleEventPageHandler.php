@@ -173,31 +173,7 @@ class SingleEventPageHandler {
 			return '';
 		}
 
-		$prices = array_map( fn( $tt ) => $tt->price, $ticket_types );
-		$min    = min( $prices );
-		$max    = max( $prices );
-
-		if ( $max <= 0 ) {
-			return __( 'Free', 'nettertech-events' );
-		}
-
-		if ( $min <= 0 ) {
-			return sprintf(
-				/* translators: %s: formatted price */
-				__( 'Free – %s', 'nettertech-events' ),
-				wc_price( $max )
-			);
-		}
-
-		if ( abs( $min - $max ) < 0.01 ) {
-			return wc_price( $min );
-		}
-
-		return sprintf(
-			/* translators: 1: minimum price, 2: maximum price */
-			__( '%1$s – %2$s', 'nettertech-events' ),
-			wc_price( $min ),
-			wc_price( $max )
-		);
+		// Shared with event cards and the REST payload (NTE-215).
+		return OccurrenceAvailabilityPresenter::price_range( $ticket_types )['label'];
 	}
 }

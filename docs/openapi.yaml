@@ -283,6 +283,7 @@ paths:
                     low_stock: false
                     min_price: 15.00
                     max_price: 35.00
+                    price_label: "$15.00 – $35.00"
                     total_left: 45
                     types: []
         '429':
@@ -1758,10 +1759,14 @@ components:
               type: number
               format: float
               nullable: true
+              description: Lowest price among on-sale ticket types (1.4.4+; previously all types)
             max_price:
               type: number
               format: float
               nullable: true
+            price_label:
+              type: string
+              description: Display-ready price range for on-sale ticket types (store currency, localized), identical to the string event cards render. Empty when nothing is on sale. Added in plugin 1.4.4.
             total_left:
               type: integer
               nullable: true

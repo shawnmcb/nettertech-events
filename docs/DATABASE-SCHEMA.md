@@ -114,6 +114,7 @@ Core event entity. Contains title, description, venue info, recurrence rules, an
 | `recurrence_end_date` | `date` | NULL | Recurrence end boundary |
 | `layout_config` | `text` | NULL | Seating layout JSON |
 | `reminders_enabled` | `tinyint(1)` | NULL | Email reminders on/off |
+| `waitlist_enabled` | `tinyint(1)` | NULL | Per-event waitlist override: NULL = site default, 1/0 = on/off (1.4.4) |
 | `notification_emails` | `text` | NULL | JSON-encoded list of notification addresses |
 | `custom_fields` | `JSON` | NULL | Arbitrary event metadata |
 | `is_virtual` | `tinyint(1)` | NULL | Virtual-event flag |

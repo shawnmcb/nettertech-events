@@ -3,7 +3,7 @@ Contributors: shawnmcburnie
 Tags: events, calendar, tickets, recurring events, rsvp
 Requires at least: 6.5
 Tested up to: 7.0
-Stable tag: 1.4.3
+Stable tag: 1.4.4
 Requires PHP: 8.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -143,6 +143,15 @@ NetterTech Events uses its own custom tables and a dedicated URL namespace (`/ev
 10. Mobile single event page with ticket type selector and add-to-cart
 
 == Changelog ==
+
+= 1.4.4 =
+* Fixed: the "A spot is available" waitlist email could name a different (past) event and link to the wrong page. The event name and booking link now come from the event itself.
+* Fixed: the Event QR Code box did not remember a custom logo after saving.
+* Added: waitlist on/off — a site-wide default under Settings → Ticketing plus a per-event override (Use site default / On / Off) in the event editor. When off, the join form is hidden and join requests are refused.
+* Fixed: event cards lost their price (and status/excerpt) on every listing page after the first and after using filters; the same price now shows on every page, the series page, and the single-event page.
+* Fixed: the Purchases view no longer lists or counts seats from orders that never paid; refund-voided seats stay visible and a "Failed orders" filter shows the hidden ones. New WP-CLI command `wp nettertech-events reconcile-order-status` cleans up attendees left behind by earlier failed orders.
+* Added: a "Ticket Type" column in the Attendees CSV export.
+* Changed: release notes and documentation reworded for a general audience.
 
 = 1.4.3 =
 * Fixed: on a single event with extra dates added by hand, the "Upcoming Dates" cards linked back to the page they were on, so visitors could never reach a specific date's page or its ticket form. Date cards, calendar entries, and related links now go to the chosen date whenever an event has more than one date.

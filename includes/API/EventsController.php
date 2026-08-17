@@ -15,6 +15,7 @@ use NetterTechEvents\Contracts\CapacityServiceInterface;
 use NetterTechEvents\Contracts\OccurrenceRepositoryInterface;
 use NetterTechEvents\Contracts\TicketTypeRepositoryInterface;
 use NetterTechEvents\Core\Hooks;
+use NetterTechEvents\Frontend\OccurrenceAvailabilityPresenter;
 use NetterTechEvents\Services\RateLimitService;
 use NetterTechEvents\Utilities\ImageHelper;
 use WP_REST_Controller;
@@ -307,13 +308,14 @@ class EventsController extends WP_REST_Controller {
 		$data['tickets'] = null !== $occurrence->id
 			? $this->get_ticket_availability( $occurrence->id )
 			: array(
-				'available'  => false,
-				'sold_out'   => false,
-				'low_stock'  => false,
-				'min_price'  => null,
-				'max_price'  => null,
-				'total_left' => null,
-				'types'      => array(),
+				'available'   => false,
+				'sold_out'    => false,
+				'low_stock'   => false,
+				'min_price'   => null,
+				'max_price'   => null,
+				'price_label' => '',
+				'total_left'  => null,
+				'types'       => array(),
 			);
 
 		return $data;
@@ -330,18 +332,27 @@ class EventsController extends WP_REST_Controller {
 
 		if ( empty( $ticket_types ) ) {
 			return array(
-				'available'  => false,
-				'sold_out'   => false,
-				'low_stock'  => false,
-				'min_price'  => null,
-				'max_price'  => null,
-				'total_left' => null,
-				'types'      => array(),
+				'available'   => false,
+				'sold_out'    => false,
+				'low_stock'   => false,
+				'min_price'   => null,
+				'max_price'   => null,
+				'price_label' => '',
+				'total_left'  => null,
+				'types'       => array(),
 			);
 		}
 
-		$min_price     = null;
-		$max_price     = null;
+		// Price range comes from the on-sale types only, through the same presenter
+		// the PHP card and single-event page use, so the AJAX-paged grid renders the
+		// identical string (NTE-215). The `types` list below still enumerates every
+		// type for consumers that inspect them.
+		$price_range = OccurrenceAvailabilityPresenter::price_range(
+			$this->ticket_type_repo->get_on_sale_for_occurrence( $occurrence_id )
+		);
+		$min_price   = $price_range['min'];
+		$max_price   = $price_range['max'];
+
 		$all_sold_out  = true;
 		$any_low_stock = false;
 		$types_data    = array();
@@ -350,14 +361,6 @@ class EventsController extends WP_REST_Controller {
 			$ticket_type_id = $ticket_type->id;
 			if ( null === $ticket_type_id ) {
 				continue;
-			}
-
-			// Track price range.
-			if ( null === $min_price || $ticket_type->price < $min_price ) {
-				$min_price = $ticket_type->price;
-			}
-			if ( null === $max_price || $ticket_type->price > $max_price ) {
-				$max_price = $ticket_type->price;
 			}
 
 			// Get capacity summary.
@@ -390,13 +393,14 @@ class EventsController extends WP_REST_Controller {
 		$total_left          = $occurrence_capacity['total_available'];
 
 		return array(
-			'available'  => ! $all_sold_out,
-			'sold_out'   => $all_sold_out,
-			'low_stock'  => $any_low_stock && ! $all_sold_out,
-			'min_price'  => $min_price,
-			'max_price'  => $max_price,
-			'total_left' => $total_left,
-			'types'      => $types_data,
+			'available'   => ! $all_sold_out,
+			'sold_out'    => $all_sold_out,
+			'low_stock'   => $any_low_stock && ! $all_sold_out,
+			'min_price'   => $min_price,
+			'max_price'   => $max_price,
+			'price_label' => $price_range['label'],
+			'total_left'  => $total_left,
+			'types'       => $types_data,
 		);
 	}
 

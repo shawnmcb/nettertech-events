@@ -1,6 +1,0 @@
-# Gitleaks false positive fingerprints for NTE base plugin
-# Add fingerprints here for specific false positives that can't be
-# handled by the global config allowlist.
-#
-# Format: file:rule-id:line-number
-# Get fingerprints from: gitleaks detect --verbose

@@ -94,6 +94,7 @@ security: upgrade token entropy to 48 bytes
 
 ### Documentation
 - [ ] CHANGELOG.md updated
+- [ ] Public-text gate green (`composer check:public-text`): CHANGELOG/readme/docs/code comments name no internal dev site, client site, local host, or developer path — the reader only knows the plugin as installed on their WordPress (NTE-216)
 - [ ] readme.txt changelog synced
 - [ ] Version numbers updated
 

@@ -105,6 +105,10 @@ final class SettingsSanitizer {
 			'max'     => 50,
 		),
 		// Donation settings.
+		'enable_waitlist'                    => array(
+			'type'    => 'bool',
+			'default' => true,
+		),
 		'enable_donations'                   => array(
 			'type'    => 'bool',
 			'default' => false,

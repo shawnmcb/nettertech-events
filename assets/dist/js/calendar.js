@@ -567,10 +567,13 @@
                 const timeText = endTime ? `${startTime} – ${endTime}` : startTime;
 
                 let ticketsHtml = '';
-                if (tickets.min_price !== undefined && tickets.min_price !== null) {
-                    const priceText = tickets.min_price === tickets.max_price
+                if (tickets.price_label || (tickets.min_price !== undefined && tickets.min_price !== null)) {
+                    // Prefer the server-formatted label (store currency, i18n, on-sale
+                    // rules — the same string the event cards show, NTE-215); the
+                    // hand-built fallback only serves payloads from older servers.
+                    const priceText = tickets.price_label || (tickets.min_price === tickets.max_price
                         ? `$${tickets.min_price}`
-                        : `$${tickets.min_price} – $${tickets.max_price}`;
+                        : `$${tickets.min_price} – $${tickets.max_price}`);
 
                     let availClass = '';
                     let availText = this.strings.available || 'Tickets available';

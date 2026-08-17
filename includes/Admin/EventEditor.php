@@ -323,6 +323,7 @@ class EventEditor {
 							<?php $this->metabox_handler->render_notification_recipients_box(); ?>
 							<?php $this->metabox_handler->render_custom_fields_box(); ?>
 						<?php $this->metabox_handler->render_reminder_settings_box(); ?>
+						<?php $this->metabox_handler->render_waitlist_settings_box(); ?>
 						<?php $this->metabox_handler->render_revisions_box(); ?>
 						<?php $this->metabox_handler->render_virtual_settings_box(); ?>
 					</div>

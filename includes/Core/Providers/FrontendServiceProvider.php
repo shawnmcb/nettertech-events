@@ -122,7 +122,8 @@ class FrontendServiceProvider implements ServiceProviderInterface {
 					$ticket_type_repo,
 					$attendee_repo,
 					$c->get( CapacityCalculatorInterface::class ),
-					$c->get( RateLimitService::class )
+					$c->get( RateLimitService::class ),
+					$c->get( \NetterTechEvents\Services\WaitlistAvailabilityResolver::class )
 				);
 			}
 		);

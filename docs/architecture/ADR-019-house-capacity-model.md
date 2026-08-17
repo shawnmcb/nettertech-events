@@ -19,8 +19,7 @@ The model does not survive contact with how venues actually sell tickets. A room
 tiers are ways of describing the same seats, not separate allotments carved out of them. Two failures
 made this concrete:
 
-1. **The Attendees screen reported 638 seats available in a 250-seat hall** (CJAC, "Celtic Junction
-   Presents Beoga"). Three tiers — Standing, Seated, Youth — each carried the hall's 250 capacity,
+1. **The Attendees screen reported 638 seats available in a 250-seat hall** (a real production event). Three tiers — Standing, Seated, Youth — each carried the hall's 250 capacity,
    because from the operator's point of view each tier *can* sell the whole room. Summing
    `capacity - issued` per tier reported the room two and a half times over.
 
@@ -49,7 +48,7 @@ own_remaining(tier) = tier.capacity - tier.issued   for FIXED
 The house is **never the sum** of tier capacities. Each occurrence is its own house; event-scoped
 tiers collapse to one.
 
-Under this model the CJAC case is correct and unremarkable: three tiers each capped at 250 in a
+Under this model that production case is correct and unremarkable: three tiers each capped at 250 in a
 250-seat hall with 112 issued each report 138 available, and the house has 138 left — not 638.
 
 The rule has exactly one home: `NetterTechEvents\Services\Capacity\HouseRule`. Every consumer —
@@ -87,7 +86,7 @@ it. **Never read `capacity` without first checking `capacity_type`.**
   `get_shared_capacity_summary()`, `validate_fixed_allocations()`,
   `invalidate_shared_capacity_cache()`). They had no correct caller once the house rule landed.
   `validate_fixed_allocations()` in particular enforced the *wrong* invariant — it would have rejected
-  the legitimate CJAC configuration as over-allocated.
+  the legitimate production configuration as over-allocated.
 
 ## Related
 

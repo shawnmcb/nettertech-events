@@ -8,9 +8,9 @@
 
 ## Context
 
-The plugin enqueues admin and frontend CSS/JS through `wp_enqueue_style`/`wp_enqueue_script` with the `NETTERTECH_EVENTS_VERSION` constant as the `?ver=X` query parameter. Browsers (and CDNs like Cloudflare in front of CJAC) cache asset URLs by the full URL string, including the query argument. When `NETTERTECH_EVENTS_VERSION` stays constant across multiple `/dist` rebuilds within the same release, the URL `…/ticket-form-assets.css?ver=1.0.2` is identical between iterations — users continue to see the previously-cached file even after a fresh zip is deployed.
+The plugin enqueues admin and frontend CSS/JS through `wp_enqueue_style`/`wp_enqueue_script` with the `NETTERTECH_EVENTS_VERSION` constant as the `?ver=X` query parameter. Browsers (and CDNs such as Cloudflare) cache asset URLs by the full URL string, including the query argument. When `NETTERTECH_EVENTS_VERSION` stays constant across multiple `/dist` rebuilds within the same release, the URL `…/ticket-form-assets.css?ver=1.0.2` is identical between iterations — users continue to see the previously-cached file even after a fresh zip is deployed.
 
-This bit during the CJAC TEC→NTE migration session (2026-05-24): a CSS fix (`grid-template-columns: 1fr 1fr` → `repeat(auto-fit, minmax(160px, 1fr))`) shipped in the dist zip but the deployed page still computed `218px 218px` because the browser served cached CSS keyed on the unchanged `?ver=1.0.2`.
+This bit during a production migration: a CSS fix (`grid-template-columns: 1fr 1fr` → `repeat(auto-fit, minmax(160px, 1fr))`) shipped in the dist zip but the deployed page still computed `218px 218px` because the browser served cached CSS keyed on the unchanged `?ver=1.0.2`.
 
 Standard mitigations:
 

@@ -218,6 +218,25 @@ class TicketTypeQueryRepository implements TicketTypeQueryRepositoryInterface {
 			}
 		}
 
+		// Same rule as for_occurrence(): when an occurrence has its own rows they
+		// supersede event-level templates. Without this the batch (listing) path
+		// and the single (series page / single event) path could disagree on the
+		// price range for the same occurrence (NTE-215).
+		foreach ( $grouped as $oid => $tickets ) {
+			$has_occurrence_rows = false;
+			foreach ( $tickets as $ticket ) {
+				if ( null !== $ticket->occurrence_id ) {
+					$has_occurrence_rows = true;
+					break;
+				}
+			}
+			if ( $has_occurrence_rows ) {
+				$grouped[ $oid ] = array_values(
+					array_filter( $tickets, fn( TicketType $ticket ) => null !== $ticket->occurrence_id )
+				);
+			}
+		}
+
 		return $grouped;
 	}
 

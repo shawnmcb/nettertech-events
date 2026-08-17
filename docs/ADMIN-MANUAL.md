@@ -294,6 +294,16 @@ Configure default behavior for ticket sales.
 
 **Low stock display:** When available tickets fall below the threshold, event listings show "Only X left!" to create urgency.
 
+### Waitlist
+
+Control whether visitors can join a waitlist when a ticket type or RSVP sells out.
+
+| Setting | Description | Default |
+|---------|-------------|---------|
+| Enable Waitlist | Site-wide default. When on, sold-out ticket types and full RSVP events show a "Join the waitlist" form and accept sign-ups. | On |
+
+**Per-event override:** every event's editor has a **Waitlist** box (below Reminder Emails) with three choices — *Use site default (On/Off)*, *On — offer a waitlist for this event*, *Off — no waitlist for this event*. The box always shows what the current site default is, and switching back to *Use site default* returns the event to inheriting. When the waitlist is off for an event, the join form is hidden **and** direct join requests are refused.
+
 ### Donations
 
 Add optional donation prompts during WooCommerce checkout.

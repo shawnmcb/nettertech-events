@@ -249,7 +249,7 @@ class TicketFormRenderer {
 					 * An extension that renders its own price-schedule UI (chained sales on a
 					 * tier) returns true to suppress the plain-window guidance below. Without
 					 * it, operators hand-build one ticket per price window — parallel tiers
-					 * that don't inherit capacity and all sell at once (NTE-157, CJAC 2546).
+					 * that don't inherit capacity and all sell at once (NTE-157).
 					 *
 					 * @since 1.1.2
 					 *

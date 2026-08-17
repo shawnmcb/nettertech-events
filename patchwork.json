@@ -1,3 +1,0 @@
-{
-    "redefinable-internals": ["file_exists", "function_exists", "setcookie", "error_log", "header", "fopen", "fputcsv", "fclose"]
-}

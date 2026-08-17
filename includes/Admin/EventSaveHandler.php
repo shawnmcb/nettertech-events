@@ -354,6 +354,13 @@ class EventSaveHandler {
 			$event->reminders_enabled = ! empty( $post['reminders_enabled'] );
 		}
 
+		// Waitlist (NTE-214): tri-state select — '' inherits the site default (NULL),
+		// '1'/'0' force on/off. Only touched when the field was rendered.
+		if ( isset( $post['waitlist_enabled'] ) ) {
+			$waitlist_value          = (string) $post['waitlist_enabled'];
+			$event->waitlist_enabled = '' === $waitlist_value ? null : ( '1' === $waitlist_value );
+		}
+
 		// Notification recipients (per-event).
 		$event->notification_emails = self::sanitize_notification_emails(
 			sanitize_textarea_field( $post['notification_emails'] ?? '' )

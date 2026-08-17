@@ -64,6 +64,13 @@ class Plugin {
 	private Container $container;
 
 	/**
+	 * WooCommerce integration (kept for CLI wiring; null until init_integrations()).
+	 *
+	 * @var \NetterTechEvents\Integrations\WooCommerce\WooCommerceIntegration|null
+	 */
+	private ?\NetterTechEvents\Integrations\WooCommerce\WooCommerceIntegration $wc_integration = null;
+
+	/**
 	 * Whether the plugin has been initialized.
 	 *
 	 * @var bool
@@ -599,7 +606,8 @@ class Plugin {
 				$this->container->get( \NetterTechEvents\Core\NetterTechEventsSettings::class ),
 				5,
 				60
-			)
+			),
+			$this->container->get( \NetterTechEvents\Services\WaitlistAvailabilityResolver::class )
 		);
 		$waitlist_controller->register_routes();
 	}
@@ -637,6 +645,7 @@ class Plugin {
 			$this->container->get( RateLimitService::class )
 		);
 		$wc_integration->init();
+		$this->wc_integration = $wc_integration;
 
 		// Yoast SEO integration (schema, sitemap, breadcrumbs, custom variables).
 		$yoast_integration = new \NetterTechEvents\Integrations\Yoast\YoastIntegration();
@@ -844,7 +853,9 @@ class Plugin {
 	 * @return void
 	 */
 	private function init_waitlist_frontend(): void {
-		$frontend = new \NetterTechEvents\Frontend\WaitlistFrontend();
+		$frontend = new \NetterTechEvents\Frontend\WaitlistFrontend(
+			$this->container->get( \NetterTechEvents\Services\WaitlistAvailabilityResolver::class )
+		);
 		$frontend->init();
 	}
 
@@ -928,6 +939,14 @@ class Plugin {
 			'nettertech-events normalize-created-at',
 			\NetterTechEvents\Cli\NormalizeCreatedAtCommand::class
 		);
+
+		// NTE-212: void attendees left confirmed by orders that never paid.
+		if ( null !== $this->wc_integration ) {
+			\WP_CLI::add_command(
+				'nettertech-events reconcile-order-status',
+				new \NetterTechEvents\Cli\ReconcileOrderStatusCommand( $this->wc_integration->get_order_handler() )
+			);
+		}
 	}
 
 	/**

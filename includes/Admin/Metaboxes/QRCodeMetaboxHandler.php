@@ -90,9 +90,12 @@ class QRCodeMetaboxHandler {
 			$site_logo_url = ImageHelper::get_attachment_image_url( (int) $site_logo_id, 'thumbnail' ) ?? '';
 		}
 
-		// Get saved event QR logo settings.
-		$event_logo_mode = get_post_meta( $this->event->id, '_nettertech_events_qr_logo_mode', true );
-		$event_logo_id   = absint( get_post_meta( $this->event->id, '_nettertech_events_qr_logo_id', true ) );
+		// Get saved event QR logo settings. These live on the events-table row
+		// (`qr_logo_mode` / `qr_logo_attachment_id`, migrated off post meta) —
+		// `Event->id` is not a WP post ID, so post meta by that id reads nothing
+		// or an unrelated post's meta (NTE-210 sweep).
+		$event_logo_mode = (string) ( $this->event->qr_logo_mode ?? '' );
+		$event_logo_id   = absint( $this->event->qr_logo_attachment_id ?? 0 );
 		$event_logo_url  = '';
 		if ( 'custom' === $event_logo_mode && $event_logo_id > 0 ) {
 			$event_logo_url = ImageHelper::get_attachment_image_url( $event_logo_id, 'thumbnail' ) ?? '';

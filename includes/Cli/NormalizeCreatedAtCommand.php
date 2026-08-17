@@ -19,9 +19,9 @@ use NetterTechEvents\Database\Schema;
  * CURRENT_TIMESTAMP`. Historically the column was filled by MySQL using the DB
  * session timezone, which is environment-dependent:
  *
- *   - oz dev MySQL runs `session_tz = SYSTEM`, so CURRENT_TIMESTAMP wrote
+ *   - a dev MySQL that runs `session_tz = SYSTEM`, so CURRENT_TIMESTAMP wrote
  *     SITE-LOCAL (Central) values.
- *   - celticjunction.org (Flywheel) runs the DB session in UTC, so existing
+ *   - a managed host that runs the DB session in UTC, so existing
  *     values are already UTC.
  *
  * The NTE-131 write-path fix now sets `created_at` explicitly with
@@ -33,7 +33,7 @@ use NetterTechEvents\Database\Schema;
  * UTC by comparing `NOW()` (session tz) with `UTC_TIMESTAMP()`. If the offset is
  * zero (UTC environment, e.g. prod) it makes NO changes — those rows are already
  * UTC and must not be shifted. Only environments whose MySQL stores local
- * (e.g. oz) are converted.
+ * (e.g. a local dev site) are converted.
  *
  * Safety:
  *   - `--dry-run` is the DEFAULT. A shift only happens with explicit `--execute`.
@@ -43,7 +43,7 @@ use NetterTechEvents\Database\Schema;
  *     once the write-path fix is live, new UTC rows are indistinguishable by
  *     value from old local rows).
  *   - `updated_at` is preserved at its existing value (it is not surfaced in the
- *     admin and continues to be written local by MySQL ON UPDATE, so it is
+ *     admin and continues to be written in local time by MySQL ON UPDATE, so it is
  *     intentionally left un-normalized; the update merely avoids the automatic
  *     ON UPDATE bump).
  *

@@ -651,6 +651,8 @@ class Assets {
 				'available' => __( 'Available', 'nettertech-events' ),
 				'limited'   => __( 'Limited Availability', 'nettertech-events' ),
 				'free'      => __( 'Free', 'nettertech-events' ),
+				'cancelled' => __( 'Cancelled', 'nettertech-events' ),
+				'completed' => __( 'Completed', 'nettertech-events' ),
 			),
 		);
 

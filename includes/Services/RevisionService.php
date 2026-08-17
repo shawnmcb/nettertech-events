@@ -50,6 +50,7 @@ class RevisionService {
 		'is_virtual',
 		'virtual_url',
 		'reminders_enabled',
+		'waitlist_enabled',
 	);
 
 	/**
@@ -75,6 +76,7 @@ class RevisionService {
 		'is_virtual'          => 'Virtual Event',
 		'virtual_url'         => 'Virtual URL',
 		'reminders_enabled'   => 'Reminders Enabled',
+		'waitlist_enabled'    => 'Waitlist Enabled',
 		'post_id'             => 'Post ID',
 	);
 
