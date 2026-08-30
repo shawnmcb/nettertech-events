@@ -354,12 +354,14 @@
 	transform: scale(0.97);
 }
 
-/* Loading state */
+/* Loading state.
+   `.nte-loading` is a *state* class the list/grid scripts toggle on the whole
+   `.nte-event-list` container (filters + grid + pagination) while a page or
+   filter request is in flight. It must not change the container's layout —
+   an earlier `display: flex` here turned the stacked container into a row
+   for the duration of every request. The visible loading treatment
+   (dimmed grid + overlay spinner) lives in grid.css. */
 .nte-loading {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	padding: var(--nte-spacing-xl);
 	color: var(--nte-color-text-muted);
 }
 

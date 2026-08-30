@@ -20,6 +20,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+/**
+ * PHPStan reads only standalone assertions, not the header var-list
+ * (audit GAP-029 rollout).
+ *
+ * @var \NetterTechEvents\TemplateLoader\TemplateContext $context
+ */
+
 $nettertech_events_panel_id = 'nte-waitlist-panel-' . $context->get( 'occurrence_id', 0 );
 $nettertech_events_name_id  = 'nte-waitlist-name-' . $context->get( 'occurrence_id', 0 );
 $nettertech_events_email_id = 'nte-waitlist-email-' . $context->get( 'occurrence_id', 0 );

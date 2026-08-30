@@ -211,7 +211,7 @@ class OccurrenceHorizonExtender {
 		// as concluded — even if the recurrence rule lacks an explicit UNTIL.
 		// Prevents migrated stale series from sprouting phantom future
 		// occurrences just because their RRULE is unbounded.
-		$now = new \DateTimeImmutable();
+		$now = $this->site_now();
 		if ( $latest_date < $now ) {
 			return 'dormant';
 		}
@@ -294,7 +294,7 @@ class OccurrenceHorizonExtender {
 			return 'error';
 		}
 
-		$now    = new \DateTimeImmutable();
+		$now    = $this->site_now();
 		$end    = $now->modify( '+1 hour' );
 		$result = $this->recurrence_service->generate_occurrences(
 			$event,
@@ -350,7 +350,22 @@ class OccurrenceHorizonExtender {
 		 */
 		$days = (int) apply_filters( 'nettertech_events_horizon_extension_threshold', $days );
 
-		return ( new \DateTimeImmutable() )->modify( "+{$days} days" );
+		return $this->site_now()->modify( "+{$days} days" );
+	}
+
+	/**
+	 * The site's wall-clock "now", in the same naive form as occurrence datetimes.
+	 *
+	 * Occurrence `start_datetime` strings are site-local and parsed without a
+	 * zone; WordPress pins PHP's default zone to UTC, so a bare
+	 * `new DateTimeImmutable()` compares against them offset by the site's UTC
+	 * offset (NTE-182 mechanism #3). Building "now" from current_time() keeps
+	 * both sides in the same frame.
+	 *
+	 * @return \DateTimeImmutable
+	 */
+	private function site_now(): \DateTimeImmutable {
+		return new \DateTimeImmutable( current_time( 'mysql' ) );
 	}
 
 	/**

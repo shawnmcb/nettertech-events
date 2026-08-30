@@ -3,7 +3,7 @@ Contributors: shawnmcburnie
 Tags: events, calendar, tickets, recurring events, rsvp
 Requires at least: 6.5
 Tested up to: 7.0
-Stable tag: 1.4.4
+Stable tag: 1.4.6
 Requires PHP: 8.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -143,6 +143,17 @@ NetterTech Events uses its own custom tables and a dedicated URL namespace (`/ev
 10. Mobile single event page with ticket type selector and add-to-cart
 
 == Changelog ==
+
+= 1.4.6 =
+* Fixed: ticket product titles could grow by a repeated "event - date -" prefix on every import or re-sync when a product was adopted from another ticketing plugin; sync now composes titles from the bare tier name and never renames an adopted product. A `products normalize-titles` WP-CLI command repairs titles that already grew.
+* Fixed: the ticket QR scan-result page could never render (it referenced a class that does not exist); it now works with the Pro check-in feature and degrades cleanly without it.
+* Fixed: the event-filters bar could crash when a listing did not supply categories.
+* Fixed: an internal wiring gap could silently detach an occurrence from its parent event, forcing screens onto fallback text. The link is now always wired in.
+
+= 1.4.5 =
+* Added: the RSVP form now asks for accessibility requirements (optional), using the same field and wording as the ticket checkout. On the Attendees screen, attendees who told you about a need show an "Accessibility notes" badge (open it to read the note), an Accessibility filter narrows the list, and both CSV exports gain an "Accessibility Notes" column. This is sensitive information: it never appears in emails or the activity log, and it is cleared automatically 30 days after the event ends (adjustable by filter).
+* Fixed: the RSVP form's own styles were never applied on event pages, so it took whatever the theme did with a bare form.
+* Fixed: paging or filtering the events list briefly moved the filter bar beside the greyed-out cards instead of keeping it above them.
 
 = 1.4.4 =
 * Fixed: the "A spot is available" waitlist email could name a different (past) event and link to the wrong page. The event name and booking link now come from the event itself.
@@ -471,6 +482,7 @@ NetterTech Events collects and stores the following data in your WordPress datab
 = Data Collected =
 
 * **Attendee Records**: Name, email address, and ticket details when users purchase tickets or submit RSVPs
+* **Accessibility Requirements**: An optional free-text field on the checkout and RSVP forms, used only to arrange accommodations for that event; kept out of emails and logs, and cleared automatically 30 days after the event ends (filterable)
 * **Check-in Data**: Timestamps when attendees are checked in at events
 * **Event Data**: Event details, occurrences, and ticket configurations created by administrators
 

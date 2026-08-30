@@ -237,13 +237,20 @@ class RecurrenceService {
 		// original anchor also carries the original time-of-day, so the
 		// "11:18 pm carousel" wall-clock bug the old window logic guarded
 		// against cannot recur.
+		//
+		// The boundary is the site's wall-clock "now", not UTC: occurrence slots
+		// are naive site-local strings, and WordPress pins PHP's default zone to
+		// UTC, so a bare `new DateTimeImmutable()` runs ahead of the slots by the
+		// site's UTC offset. West of Greenwich that skipped every slot in the next
+		// few hours right after delete_future_unattended_occurrences() (which
+		// reasons in UTC correctly) had removed it — the NTE-182 cron-path loss.
 		$occurrences = $this->generator->generate(
 			$event,
 			$start_date,
 			$end_date,
 			$rule,
 			null,
-			new \DateTimeImmutable()
+			new \DateTimeImmutable( current_time( 'mysql' ) )
 		);
 
 		$result['generated'] = count( $occurrences );

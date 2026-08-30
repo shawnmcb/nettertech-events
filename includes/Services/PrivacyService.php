@@ -15,6 +15,7 @@ namespace NetterTechEvents\Services;
 
 defined( 'ABSPATH' ) || exit;
 
+use NetterTechEvents\Database\Queries\Timeline;
 use NetterTechEvents\Database\Schema;
 
 /**
@@ -631,6 +632,40 @@ class PrivacyService {
 			WHERE created_at < DATE_SUB(NOW(), INTERVAL %d DAY)
 			AND (ip_address IS NOT NULL OR user_agent IS NOT NULL)",
 			$days_to_keep
+		);
+		if ( null === $sql ) {
+			return 0;
+		}
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared -- Scheduled retention cleanup; query prepared above.
+		return (int) $this->db->query( $sql );
+	}
+
+	/**
+	 * Clear accessibility notes on attendees whose occurrence ended long enough ago.
+	 *
+	 * Accessibility needs are special-category data collected for one purpose —
+	 * arranging accommodations at the event. Once the event is over (plus a
+	 * grace window for follow-up), the purpose is spent and the text is set to
+	 * NULL. The attendee record itself stays. Compares the occurrence's stored
+	 * UTC end instant (Timeline) — never the site wall-clock — and leaves
+	 * unstamped rows alone, as every other "is it over" query does.
+	 *
+	 * @param int $days_after_end Days to keep notes after the occurrence ends (default: 30).
+	 * @return int Number of attendee rows cleared.
+	 */
+	public function purge_aged_accessibility_notes( int $days_after_end = 30 ): int {
+		$attendees   = Schema::table( 'attendees' );
+		$occurrences = Schema::table( 'occurrences' );
+		$cutoff      = gmdate( 'Y-m-d H:i:s', time() - ( max( 0, $days_after_end ) * DAY_IN_SECONDS ) );
+
+		$sql = $this->db->prepare(
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table names from Schema; predicate is a Timeline literal.
+			"UPDATE {$attendees} a
+			INNER JOIN {$occurrences} o ON o.id = a.occurrence_id
+			SET a.accessibility_notes = NULL
+			WHERE " . Timeline::ended() . ' AND a.accessibility_notes IS NOT NULL',
+			$cutoff
 		);
 		if ( null === $sql ) {
 			return 0;

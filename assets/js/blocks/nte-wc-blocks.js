@@ -250,6 +250,25 @@
 	// =========================================================================
 
 	/**
+	 * Read the accessibility-notes field definition localized by
+	 * BlockIntegration::get_script_data() (`nettertech-events_data`).
+	 *
+	 * @return {Object|null} { inputName, label, placeholder, purpose, maxLength } or null.
+	 */
+	function getAccessibilityNotesSettings() {
+		var wcSettings = window.wc && window.wc.wcSettings;
+		if ( ! wcSettings || typeof wcSettings.getSetting !== 'function' ) {
+			return null;
+		}
+		var data = wcSettings.getSetting( NAMESPACE + '_data', {} ) || {};
+		var field = data.accessibilityNotes;
+		if ( ! field || ! field.inputName || ! field.label ) {
+			return null;
+		}
+		return field;
+	}
+
+	/**
 	 * Accessibility notes component for Block checkout.
 	 *
 	 * Renders a textarea in the ExperimentalOrderMeta slot — the Block
@@ -274,21 +293,33 @@
 			return null;
 		}
 
+		// Strings, limit and input name come from the server-side field
+		// definition (BlockIntegration::get_script_data) so this textarea reads
+		// exactly like the classic-checkout and RSVP ones. No payload, no field:
+		// a silently different wording is worse than a missing optional field.
+		var field = getAccessibilityNotesSettings();
+		if ( ! field ) {
+			return null;
+		}
+
+		var textareaId = 'nte-wc-blocks-accessibility-notes';
+		var purposeId = textareaId + '-purpose';
+
 		return createElement(
 			'div',
 			{ className: 'nte-accessibility-notes-field nte-wc-blocks-field' },
 			createElement(
-				'h3',
-				{ className: 'nte-wc-blocks-field__heading' },
-				__( 'Accessibility Requirements', 'nettertech-events' )
+				'label',
+				{ className: 'nte-wc-blocks-field__heading', htmlFor: textareaId },
+				field.label
 			),
 			createElement( 'textarea', {
+				id: textareaId,
 				className: 'nte-wc-blocks-field__textarea',
-				name: 'nettertech_events_accessibility_notes',
-				placeholder: __(
-					'Please let us know about any accessibility needs or accommodations we can provide (wheelchair access, ASL interpreter, etc.)',
-					'nettertech-events'
-				),
+				name: field.inputName,
+				placeholder: field.placeholder,
+				maxLength: field.maxLength,
+				'aria-describedby': purposeId,
 				rows: 3,
 				onChange: function ( event ) {
 					// Store in extension data for server-side persistence.
@@ -301,7 +332,12 @@
 						} );
 					}
 				},
-			} )
+			} ),
+			createElement(
+				'p',
+				{ className: 'nte-wc-blocks-field__purpose', id: purposeId },
+				field.purpose
+			)
 		);
 	};
 

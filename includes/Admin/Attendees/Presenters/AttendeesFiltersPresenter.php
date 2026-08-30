@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace NetterTechEvents\Admin\Attendees\Presenters;
 
+use NetterTechEvents\Admin\Attendees\AccessibilityNotesFilter;
 use NetterTechEvents\Admin\Attendees\AttendeeOrderStatusFilter;
 defined( 'ABSPATH' ) || exit;
 
@@ -34,6 +35,7 @@ final class AttendeesFiltersPresenter {
 	 * @param array<\NetterTechEvents\Models\Occurrence> $occurrences        Available occurrences for filter dropdown.
 	 * @param string                                     $page_slug          The admin page slug ('<menu>-attendees').
 	 * @param string                                     $clear_url          Absolute URL that clears all filters.
+	 * @param string                                     $access_filter      Current "has accessibility notes" filter ('yes'/'no'/'').
 	 */
 	public function __construct(
 		private readonly int $occurrence_id,
@@ -43,7 +45,8 @@ final class AttendeesFiltersPresenter {
 		private readonly string $placeholder_filter,
 		private readonly array $occurrences,
 		private readonly string $page_slug,
-		private readonly string $clear_url
+		private readonly string $clear_url,
+		private readonly string $access_filter = ''
 	) {}
 
 	/**
@@ -146,6 +149,28 @@ final class AttendeesFiltersPresenter {
 	}
 
 	/**
+	 * Return "has accessibility notes" filter options (NTE-217).
+	 *
+	 * @return list<array{value: string, label: string, selected: bool}>
+	 */
+	public function accessibility_options(): array {
+		$choices = array(
+			AccessibilityNotesFilter::FILTER_HAS_NOTES => __( 'Has accessibility notes', 'nettertech-events' ),
+			AccessibilityNotesFilter::FILTER_NO_NOTES  => __( 'No accessibility notes', 'nettertech-events' ),
+		);
+
+		$out = array();
+		foreach ( $choices as $value => $label ) {
+			$out[] = array(
+				'value'    => $value,
+				'label'    => $label,
+				'selected' => $value === $this->access_filter,
+			);
+		}
+		return $out;
+	}
+
+	/**
 	 * Whether any filter is currently active (drives Clear button visibility).
 	 *
 	 * @return bool
@@ -155,7 +180,8 @@ final class AttendeesFiltersPresenter {
 			|| $this->event_id > 0
 			|| '' !== $this->search
 			|| '' !== $this->status_filter
-			|| '' !== $this->placeholder_filter;
+			|| '' !== $this->placeholder_filter
+			|| '' !== $this->access_filter;
 	}
 
 	/**
@@ -221,6 +247,33 @@ final class AttendeesFiltersPresenter {
 	 */
 	public function all_attendees_label(): string {
 		return __( 'All Attendees', 'nettertech-events' );
+	}
+
+	/**
+	 * "Accessibility" filter label.
+	 *
+	 * @return string
+	 */
+	public function accessibility_label(): string {
+		return __( 'Accessibility', 'nettertech-events' );
+	}
+
+	/**
+	 * "Any" option label for the accessibility filter.
+	 *
+	 * @return string
+	 */
+	public function any_accessibility_label(): string {
+		return __( 'Any', 'nettertech-events' );
+	}
+
+	/**
+	 * Request parameter name for the accessibility filter.
+	 *
+	 * @return string
+	 */
+	public function accessibility_param(): string {
+		return AccessibilityNotesFilter::PARAM;
 	}
 
 	/**

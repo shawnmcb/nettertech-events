@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Identifiers such as `NTE-123` reference NetterTech's internal issue tracker and are included for traceability only.
 
+## [1.4.6]
+
+### Added
+
+- **`wp nettertech-events products normalize-titles [--execute] [--report=<file>]`** — a one-off repair for sites whose ticket product titles and tier names grew by repeated "{event} - {date} - " prefixes (see the fix below). Dry-run by default; `--report` writes the full scan as CSV. (NTE-235)
+
+### Fixed
+
+- **Ticket product titles could grow on every import or re-sync.** Product sync composed the title as "{event} - {date} - {tier}" from the tier name on every run, while the migrator adopted a product's title back as its tier name — so each cycle stacked one more prefix onto both, until names overran the 255-character column. Sync now composes from the bare tier name (a name that already carries the prefix is reduced first), never renames a product the migrator adopted (`_nettertech_events_adopted`), and records the bare tier name on the product (`_nettertech_events_tier_name`) so importers read the tier instead of the composed title. (NTE-235)
+- **Automatic schedule extension could drop an occurrence later the same day.** The nightly job that extends recurring series compared occurrence times against UTC while the times themselves are in the site's timezone, so on sites west of Greenwich an occurrence within the next few hours could be removed and not regenerated, and a series whose next date was later today could be mistaken for concluded. Both comparisons now use the site's clock.
+- **The ticket QR scan-result page could never render.** The template referenced a class that does not exist, so scanning a ticket QR code met an error page instead of the result view. It now uses the correct service when the Pro check-in feature is present and cleanly omits the check-in link when it is not.
+- **The event-filters bar could crash when a listing did not supply categories.** The template constructed its category lookup incorrectly for that path; it now uses the plugin's service registry.
+- **Occurrence-to-event lookups now always resolve internally.** A wiring gap meant an occurrence loaded through the plugin's standard repository could silently lose its link to the parent event, forcing downstream displays onto fallbacks. The link is now wired in directly and covered by a regression test.
+
+### Changed
+
+- Development quality gates were hardened so a failed mutation-testing run can no longer be reported as a pass (no user-facing impact).
+
+## [1.4.5]
+
+### Added
+
+- **Accessibility needs are collected on RSVP and surfaced in the Attendees list and exports.** Ticket purchases already asked for accessibility requirements at checkout; free RSVPs did not, and the base Attendees screen neither showed nor exported what had been collected. The RSVP form now has the same optional "Accessibility Requirements" field, and all three capture surfaces (classic checkout, block checkout, RSVP) share one definition — identical wording, a 1,000-character limit, the same sanitizing, and a purpose statement under the field ("Used only to arrange accommodations for this event."). On the Attendees screen, attendees who told you about a need show a compact **Accessibility notes** badge under their name; open it to read the note. A new **Accessibility** filter (Any / Has accessibility notes / No accessibility notes) narrows the list, and both **Export Selected** and **Export All** now include an "Accessibility Notes" column after "Notes". Because this is sensitive personal data, it is kept out of every email and activity-log entry, and the daily privacy job now clears notes 30 days after the event ends (`nettertech_events_accessibility_notes_retention_days` filter). The plugin's suggested privacy-policy text and the block checkout's field styling were updated to match.
+
+### Fixed
+
+- **Events list flipped to a side-by-side layout while a page or filter loaded.** Paging or filtering the events list (card view) briefly moved the filter bar to the left of the greyed-out cards, then snapped back when the results arrived. A generic "loading" style rule was setting `display: flex` on the whole list container for the duration of the request; the rule no longer touches layout, so the list stays stacked (filters above, cards below) while loading.
+- **RSVP form styles were never applied on event pages.** The form's small stylesheet was attached to the main stylesheet at render time — after that stylesheet had already been printed in the page head — so the rules were silently dropped and the form fell back to whatever the theme did with a bare form. The styles now ride their own handle and print with the page's late styles, so labels, spacing, the placeholder colour and the new accessibility field render as designed.
+
 ## [1.4.4]
 
 ### Added

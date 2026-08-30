@@ -37,6 +37,11 @@ defined( 'ABSPATH' ) || exit;
  * "Proxy handling" setting (auto / direct / proxied).
  *
  * @since 1.1.2
+ *
+ * @api Consumed cross-plugin: nettertech-events-seating delegates its
+ *      rate-limiter client-IP resolution here (GAP-013 fix, 2026-08-22).
+ *      Treat the constructor and resolve()/effective_mode() as a public
+ *      contract — coordinate satellite updates before changing them.
  */
 final class ClientIpResolver {
 

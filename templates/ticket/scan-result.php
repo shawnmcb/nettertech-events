@@ -18,7 +18,6 @@ declare(strict_types=1);
 defined( 'ABSPATH' ) || exit;
 
 use NetterTechEvents\Frontend\Router;
-use NetterTechEvents\Services\CheckInTokenService;
 
 // Get ticket data from Router.
 $nettertech_events_ticket_data = Router::get_current_ticket_data();
@@ -111,9 +110,16 @@ if ( $nettertech_events_is_ticket_cancelled ) {
 // Auto check-in flag from URL. This is a read-only optional behavior hint, no nonce needed.
 $nettertech_events_auto_checkin = '1' === \NetterTechEvents\Admin\AdminRequest::get_text( 'auto' );
 
-// Get the public check-in page URL for this occurrence.
-$nettertech_events_checkin_token_service = \NetterTechEvents\nettertech_events_container()->get( CheckInTokenService::class );
-$nettertech_events_checkin_page_url      = $nettertech_events_checkin_token_service->get_public_url( $nettertech_events_occurrence_id );
+// Get the public check-in page URL for this occurrence. The token service
+// lives in Pro (the base class this template previously imported never
+// existed — the container get() could only throw; audit GAP-029 catch).
+// Base degrades: no Pro, no check-in link.
+$nettertech_events_checkin_page_url = '';
+if ( class_exists( \NetterTechEventsPro\Pro\CheckIn\Services\CheckInTokenService::class ) ) {
+	$nettertech_events_checkin_page_url = (string) \NetterTechEvents\nettertech_events_container()
+		->get( \NetterTechEventsPro\Pro\CheckIn\Services\CheckInTokenService::class )
+		->get_public_url( $nettertech_events_occurrence_id );
+}
 
 wp_enqueue_style(
 	'nettertech-events-ticket-scan-result',

@@ -20,6 +20,13 @@ declare(strict_types=1);
 
 defined( 'ABSPATH' ) || exit;
 
+/**
+ * PHPStan reads only standalone assertions, not the header var-list
+ * (audit GAP-029 rollout).
+ *
+ * @var \NetterTechEvents\TemplateLoader\TemplateContext $context
+ */
+
 $nettertech_events_empty_state_context = $context->get( 'context', 'list' );
 
 // Determine the default message based on context.

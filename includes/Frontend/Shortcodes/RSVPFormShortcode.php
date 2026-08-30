@@ -13,6 +13,7 @@ defined( 'ABSPATH' ) || exit;
 
 use NetterTechEvents\Contracts\CapacityCalculatorInterface;
 use NetterTechEvents\Core\Hooks;
+use NetterTechEvents\Frontend\AccessibilityNotesField;
 use NetterTechEvents\Models\Attendee;
 use NetterTechEvents\Repositories\AttendeeRepository;
 use NetterTechEvents\Repositories\OccurrenceRepository;
@@ -120,6 +121,19 @@ class RSVPFormShortcode {
 	private static bool $styles_enqueued = false;
 
 	/**
+	 * Style handle the RSVP CSS is attached to.
+	 *
+	 * A dedicated, src-less handle rather than the base stylesheet: the
+	 * shortcode renders inside the content, after the head styles have already
+	 * been printed, and inline CSS added to an already-printed handle is
+	 * silently dropped. A fresh handle enqueued mid-page is printed with the
+	 * late styles in the footer, so the rules actually reach the page.
+	 *
+	 * @var string
+	 */
+	public const STYLE_HANDLE = 'nettertech-events-rsvp';
+
+	/**
 	 * Enqueue RSVP form inline styles once per page load.
 	 *
 	 * @return void
@@ -136,8 +150,12 @@ class RSVPFormShortcode {
 			.nte-rsvp-form .screen-reader-text { border: 0; clip: rect(1px, 1px, 1px, 1px); clip-path: inset(50%); height: 1px; margin: -1px; overflow: hidden; padding: 0; position: absolute; width: 1px; word-wrap: normal !important; }
 			.nte-rsvp-field label { display: block; margin-bottom: 5px; font-weight: 500; }
 			.nte-rsvp-field .required { color: #c00; }
-			.nte-rsvp-field input, .nte-rsvp-field select { width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; }
-			.nte-rsvp-field input:focus, .nte-rsvp-field select:focus { border-color: #2271b1; outline: none; box-shadow: 0 0 0 1px #2271b1; }
+			.nte-rsvp-field input, .nte-rsvp-field select, .nte-rsvp-field textarea { width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; }
+			.nte-rsvp-field input:focus, .nte-rsvp-field select:focus, .nte-rsvp-field textarea:focus { border-color: #2271b1; outline: none; box-shadow: 0 0 0 1px #2271b1; }
+			.nte-rsvp-field textarea { min-height: 4.5em; resize: vertical; font: inherit; }
+			.nte-rsvp-field textarea::placeholder { color: #6b6b6b; opacity: 1; }
+			.nte-rsvp-form .nte-rsvp-purpose { margin: 4px 0 0; font-size: 0.9em; line-height: 1.4; color: #50575e; }
+			.nte-rsvp-field .nte-rsvp-optional { font-weight: 400; color: #50575e; }
 			.nte-rsvp-button { border: none; cursor: pointer; }
 			.nte-rsvp-message { padding: 15px; border-radius: 4px; margin-bottom: 20px; }
 			.nte-rsvp-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
@@ -145,7 +163,9 @@ class RSVPFormShortcode {
 			.nte-rsvp-closed { color: #666; font-style: italic; }
 		';
 
-		wp_add_inline_style( 'nettertech-events-base', $css );
+		wp_register_style( self::STYLE_HANDLE, false, array( 'nettertech-events-base' ), NETTERTECH_EVENTS_VERSION );
+		wp_enqueue_style( self::STYLE_HANDLE );
+		wp_add_inline_style( self::STYLE_HANDLE, $css );
 	}
 
 	/**
@@ -236,6 +256,14 @@ class RSVPFormShortcode {
 			$user_name    = $current_user->display_name;
 		}
 
+		// Re-fill the accessibility field after a validation error so the visitor
+		// does not retype it (the nonce/POST have already been checked by then).
+		$accessibility_value = '';
+		if ( $message && 'error' === $message['type'] ) {
+			// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Redisplay of the visitor's own submitted value only (no state change); sanitized here and escaped on output.
+			$accessibility_value = AccessibilityNotesField::sanitize( wp_unslash( $_POST[ AccessibilityNotesField::input_name() ] ?? '' ) ) ?? '';
+		}
+
 		ob_start();
 		?>
 		<div class="nte-rsvp-form-wrapper">
@@ -287,6 +315,25 @@ class RSVPFormShortcode {
 					<?php else : ?>
 						<input type="hidden" name="nettertech_events_rsvp_quantity" value="1">
 					<?php endif; ?>
+
+					<?php
+					// Accessibility needs — the same field the ticket checkout collects,
+					// so free and paid attendees end up in the same column with the same
+					// wording and the same purpose statement (NTE-217).
+					?>
+					<div class="nte-rsvp-field nte-rsvp-field--accessibility">
+						<label for="nte-rsvp-accessibility-notes">
+							<?php echo esc_html( AccessibilityNotesField::label() ); ?>
+							<span class="nte-rsvp-optional">(<?php esc_html_e( 'optional', 'nettertech-events' ); ?>)</span>
+						</label>
+						<textarea id="nte-rsvp-accessibility-notes"
+								name="<?php echo esc_attr( AccessibilityNotesField::input_name() ); ?>"
+								rows="3"
+								maxlength="<?php echo esc_attr( (string) AccessibilityNotesField::MAX_LENGTH ); ?>"
+								placeholder="<?php echo esc_attr( AccessibilityNotesField::placeholder() ); ?>"
+								aria-describedby="nte-rsvp-accessibility-notes-purpose"><?php echo esc_textarea( $accessibility_value ); ?></textarea>
+						<p class="nte-rsvp-purpose" id="nte-rsvp-accessibility-notes-purpose"><?php echo esc_html( AccessibilityNotesField::purpose_text() ); ?></p>
+					</div>
 
 					<div class="nte-rsvp-submit">
 						<button type="submit" name="nettertech_events_rsvp_submit" class="nte-rsvp-button wp-element-button">
@@ -343,6 +390,9 @@ class RSVPFormShortcode {
 		$name     = sanitize_text_field( wp_unslash( $_POST['nettertech_events_rsvp_name'] ?? '' ) );
 		$email    = sanitize_email( wp_unslash( $_POST['nettertech_events_rsvp_email'] ?? '' ) );
 		$quantity = absint( $_POST['nettertech_events_rsvp_quantity'] ?? 1 );
+		// Optional; null when blank so the list badge / filter / retention job
+		// can test for "has notes" without an empty-string special case.
+		$accessibility_notes = AccessibilityNotesField::sanitize( wp_unslash( $_POST[ AccessibilityNotesField::input_name() ] ?? '' ) );
 
 		if ( empty( $name ) ) {
 			return array(
@@ -383,6 +433,11 @@ class RSVPFormShortcode {
 		$attendee->email         = $email;
 		$attendee->quantity      = $quantity;
 		$attendee->status        = 'confirmed';
+		// Same column the ticket checkout writes (attendees.accessibility_notes).
+		// Deliberately NOT added to $form_data below: that array is handed to
+		// the `nettertech_events_rsvp_submitted` action, whose listeners send
+		// email and write the activity log — special-category data stays out.
+		$attendee->accessibility_notes = $accessibility_notes;
 
 		try {
 			$this->attendee_repo->save( $attendee );

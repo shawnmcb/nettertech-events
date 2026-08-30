@@ -149,17 +149,25 @@ class ProductManager {
 			? $full_occurrence->get_event()->title
 			: __( 'Event', 'nettertech-events' );
 
-		// Build product title.
+		// Build the product title from the bare tier name. A name that already
+		// carries this occurrence's "{event} - {date} - " prefix (a migrated
+		// product whose composed title was adopted as the tier name, NTE-235) is
+		// reduced to the bare tier first, so the prefix is never stacked.
+		$title_prefix  = self::occurrence_title_prefix( $event_title, $occurrence->get_formatted_date() );
+		$tier_name     = self::strip_title_prefix( $ticket_type->name, $title_prefix );
 		$product_title = sprintf(
 			/* translators: 1: event title, 2: date, 3: ticket type name */
 			__( '%1$s - %2$s - %3$s', 'nettertech-events' ),
 			$event_title,
 			$occurrence->get_formatted_date(),
-			$ticket_type->name
+			$tier_name
 		);
 
-		// Set product properties.
-		$product->set_name( $product_title );
+		// Set product properties. A product the migrator adopted keeps the name
+		// the site gave it (NTE-235): sync never renames an adopted product.
+		if ( '1' !== (string) $product->get_meta( MetaKeys::ADOPTED, true ) ) {
+			$product->set_name( $product_title );
+		}
 		$product->set_status( 'active' === $ticket_type->status ? 'publish' : 'draft' );
 		$product->set_catalog_visibility( 'hidden' );
 		$product->set_price( (string) $ticket_type->price );
@@ -200,6 +208,7 @@ class ProductManager {
 		$product->update_meta_data( self::META_OCCURRENCE_ID, (string) $occurrence->id );
 		$product->update_meta_data( self::META_TICKET_TYPE_ID, (string) $ticket_type->id );
 		$product->update_meta_data( '_nettertech_events_is_event_ticket', 'yes' );
+		$product->update_meta_data( MetaKeys::TIER_NAME, $tier_name );
 
 		$event_id = $full_occurrence ? (int) $full_occurrence->event_id : 0;
 		if ( $event_id > 0 ) {
@@ -727,14 +736,19 @@ class ProductManager {
 		$event       = $event_repo->find( (int) $ticket_type->event_id );
 		$event_title = $event ? $event->title : __( 'Event', 'nettertech-events' );
 
-		$product->set_name(
-			sprintf(
-				/* translators: 1: event title, 2: ticket type name */
-				__( '%1$s - Series Pass - %2$s', 'nettertech-events' ),
-				$event_title,
-				$ticket_type->name
-			)
-		);
+		// Same NTE-235 rules as sync_product(): compose from the bare tier name,
+		// and never rename a product the migrator adopted.
+		$tier_name = self::strip_title_prefix( $ticket_type->name, self::series_pass_title_prefix( $event_title ) );
+		if ( '1' !== (string) $product->get_meta( MetaKeys::ADOPTED, true ) ) {
+			$product->set_name(
+				sprintf(
+					/* translators: 1: event title, 2: ticket type name */
+					__( '%1$s - Series Pass - %2$s', 'nettertech-events' ),
+					$event_title,
+					$tier_name
+				)
+			);
+		}
 		$product->set_status( 'active' === $ticket_type->status ? 'publish' : 'draft' );
 		$product->set_catalog_visibility( 'hidden' );
 		$product->set_price( (string) $ticket_type->price );
@@ -762,6 +776,7 @@ class ProductManager {
 		$product->update_meta_data( '_nettertech_events_is_event_ticket', 'yes' );
 		$product->update_meta_data( MetaKeys::EVENT_ID, (string) $ticket_type->event_id );
 		$product->update_meta_data( MetaKeys::IS_SERIES_PASS, 'yes' );
+		$product->update_meta_data( MetaKeys::TIER_NAME, $tier_name );
 
 		if ( '' === (string) $product->get_sku() ) {
 			$sku = $this->resolve_sku( $admin_sku, $ticket_type, $event ? (string) $event->slug : '', $product->get_id() );
@@ -867,6 +882,65 @@ class ProductManager {
 		}
 
 		return $synced;
+	}
+
+	/**
+	 * The "{event} - {date} - " prefix sync_product() puts in front of the tier
+	 * name for an occurrence ticket product (NTE-235). Single source for the
+	 * title-repair command and for the migrator's prefix recognition.
+	 *
+	 * @param string $event_title    Event title.
+	 * @param string $formatted_date Occurrence date as Occurrence::get_formatted_date().
+	 * @return string
+	 */
+	public static function occurrence_title_prefix( string $event_title, string $formatted_date ): string {
+		return sprintf(
+			/* translators: 1: event title, 2: date, 3: ticket type name */
+			__( '%1$s - %2$s - %3$s', 'nettertech-events' ),
+			$event_title,
+			$formatted_date,
+			''
+		);
+	}
+
+	/**
+	 * The "{event} - Series Pass - " prefix sync_event_product() puts in front
+	 * of the tier name for a series-pass product (NTE-235).
+	 *
+	 * @param string $event_title Event title.
+	 * @return string
+	 */
+	public static function series_pass_title_prefix( string $event_title ): string {
+		return sprintf(
+			/* translators: 1: event title, 2: ticket type name */
+			__( '%1$s - Series Pass - %2$s', 'nettertech-events' ),
+			$event_title,
+			''
+		);
+	}
+
+	/**
+	 * Strip every leading copy of a composed-title prefix from a tier name.
+	 *
+	 * "Show - Jan 1, 2027 - Show - Jan 1, 2027 - GA" with the prefix
+	 * "Show - Jan 1, 2027 - " yields "GA". A name that consists of nothing but
+	 * the prefix is returned unchanged rather than emptied.
+	 *
+	 * @param string $name   Tier name, possibly carrying stacked prefixes.
+	 * @param string $prefix The prefix to strip (empty strips nothing).
+	 * @return string
+	 */
+	public static function strip_title_prefix( string $name, string $prefix ): string {
+		if ( '' === $prefix ) {
+			return $name;
+		}
+
+		$bare = $name;
+		while ( '' !== $bare && str_starts_with( $bare, $prefix ) ) {
+			$bare = substr( $bare, strlen( $prefix ) );
+		}
+
+		return '' === $bare ? $name : $bare;
 	}
 
 	/**

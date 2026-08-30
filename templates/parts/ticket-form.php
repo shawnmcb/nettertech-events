@@ -45,6 +45,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+/**
+ * PHPStan reads only standalone assertions, not the header var-list
+ * (audit GAP-029 rollout).
+ *
+ * @var \NetterTechEvents\TemplateLoader\TemplateContext $context
+ */
+
 ?>
 <form class="nte-ticket-form"
 		id="<?php echo esc_attr( $context->get( 'form_id', '' ) ); ?>"

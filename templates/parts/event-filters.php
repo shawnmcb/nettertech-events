@@ -28,6 +28,13 @@ declare(strict_types=1);
 
 defined( 'ABSPATH' ) || exit;
 
+/**
+ * PHPStan reads only standalone assertions, not the header var-list
+ * (audit GAP-029 rollout).
+ *
+ * @var \NetterTechEvents\TemplateLoader\TemplateContext $context
+ */
+
 $nettertech_events_instance_id = $context->get( 'instance_id', null );
 
 // Ensure required variables are set.
@@ -40,7 +47,10 @@ $nettertech_events_target_id = $context->get( 'target_id', $nettertech_events_in
 // Load categories if not provided.
 $nettertech_events_categories = $context->get( 'categories', null );
 if ( null === $nettertech_events_categories ) {
-	$nettertech_events_categories = ( new \NetterTechEvents\Repositories\CategoryRepository() )->get_all(
+	// Registry accessor: the bare `new CategoryRepository()` here passed 0 of
+	// 1 required ctor args — a fatal whenever a caller omitted categories
+	// (audit GAP-029 catch).
+	$nettertech_events_categories = \NetterTechEvents\Core\ServiceRegistry::category_repository()->get_all(
 		array(
 			'orderby' => 'name',
 			'order'   => 'ASC',

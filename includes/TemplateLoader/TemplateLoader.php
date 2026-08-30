@@ -65,7 +65,7 @@ final class TemplateLoader implements TemplateLoaderInterface {
 		'parts/event-filters.php'            => array( 'instance_id', 'target_id', 'show_search', 'show_category', 'categories' ),
 		'parts/empty-state.php'              => array( 'message', 'context' ),
 		// Email templates.
-		'emails/customer-confirmation.php'   => array( 'order', 'tickets', 'grouped_tickets', 'venue_logo', 'show_qr_codes', 'cancellation_policy', 'site_name', 'site_url' ),
+		'emails/customer-confirmation.php'   => array( 'order', 'tickets', 'grouped_tickets', 'heading', 'venue_logo', 'show_qr_codes', 'cancellation_policy', 'site_name', 'site_url' ),
 		'emails/venue-notification.php'      => array( 'order', 'tickets', 'grouped_tickets', 'total_revenue', 'buyer_name', 'buyer_email', 'site_name' ),
 		'emails/rsvp-confirmation.php'       => array( 'ticket', 'occurrence', 'event', 'attendee_name', 'venue_logo', 'show_qr_codes', 'cancellation_policy', 'site_name', 'site_url' ),
 		'emails/rsvp-venue-notification.php' => array( 'ticket', 'occurrence', 'event', 'attendee_name', 'attendee_email', 'site_name' ),

@@ -77,7 +77,7 @@ From ADR-008 (accepted 2025-01-20):
 | `woocommerce_product_data_panels` | action | WC | `WooCommerceIntegration::render_product_data_panel` | Render occurrence/ticket type info in product editor | NTE -> WC (UI) |
 | `woocommerce_after_order_notes` | action | WC | `AccessibilityNotesHandler::render_field` (priority 10) | Render accessibility requirements textarea on checkout | NTE -> WC (checkout UI) |
 | `woocommerce_after_order_notes` | action | WC | `DonationHandler::render_donation_field` (priority 20) | Render donation options (round-up, presets, custom) on checkout | NTE -> WC (checkout UI) |
-| `woocommerce_checkout_update_order_meta` | action | WC | `AccessibilityNotesHandler::save_notes` (priority 10) | Save `_nte_accessibility_notes` to order meta | WC -> NTE -> WC (order meta) |
+| `woocommerce_checkout_update_order_meta` | action | WC | `AccessibilityNotesHandler::save_notes` (priority 10) | Save `_nettertech_events_accessibility_notes` to order meta | WC -> NTE -> WC (order meta) |
 | `woocommerce_checkout_update_order_meta` | action | WC | `DonationHandler::save_donation_meta` (priority 20) | Save `_nte_donation_amount` and `_nte_donation_type` to order meta | WC -> NTE -> WC (order meta) |
 | `woocommerce_cart_calculate_fees` | action | WC | `DonationHandler::calculate_donation_fee` | Add donation as non-taxable cart fee | NTE -> WC (fee) |
 | `woocommerce_admin_order_data_after_billing_address` | action | WC | `AccessibilityNotesHandler::display_admin` (priority 10) | Show accessibility notes in admin order view | WC -> NTE (read) -> WC (UI) |
@@ -314,7 +314,7 @@ From ADR-008 (accepted 2025-01-20):
 
 **NTE owns:**
 - Field rendering: textarea on classic checkout (via `woocommerce_after_order_notes`)
-- Field saving: sanitize and store `_nte_accessibility_notes` on order meta (classic checkout via `$_POST`, Block checkout via WC session)
+- Field saving: sanitize (via the shared `Frontend\AccessibilityNotesField`, which also owns the label/placeholder/purpose text and 1,000-char limit for the classic, block and RSVP surfaces) and store `_nettertech_events_accessibility_notes` on order meta (classic checkout via WC checkout API, Block checkout via WC session)
 - Admin display: yellow-bordered panel in order view
 
 **WC owns:**
@@ -325,7 +325,7 @@ From ADR-008 (accepted 2025-01-20):
 - NTE -> WC: checkout field HTML, order meta
 - WC -> NTE: `$_POST` data on classic checkout
 
-**Block checkout path:** accessibility notes go through Store API update callback -> WC session (`nte_accessibility_notes`) -> order meta on `woocommerce_store_api_checkout_update_order_from_request`.
+**Block checkout path:** accessibility notes go through Store API update callback -> WC session (`nettertech_events_accessibility_notes`) -> order meta on `woocommerce_store_api_checkout_update_order_from_request`.
 
 ## Satellite Plugin Extensions
 

@@ -66,6 +66,21 @@ final class MetaKeys {
 	 */
 	public const IS_SERIES_PASS = '_nettertech_events_is_series_pass';
 
+	/**
+	 * Meta key marking a WooCommerce product the migrator adopted from another
+	 * ticketing system (NTE-235). Value is '1'. Product sync never renames an
+	 * adopted product: the site keeps the name it gave the product.
+	 */
+	public const ADOPTED = '_nettertech_events_adopted';
+
+	/**
+	 * Meta key carrying the bare tier name (`ticket_types.name`) behind a ticket
+	 * product's composed title (NTE-235). Written on every sync so an importer
+	 * that adopts the product can read the tier name instead of parsing the
+	 * "{event} - {date} - {tier}" title back into a name.
+	 */
+	public const TIER_NAME = '_nettertech_events_tier_name';
+
 	// =========================================================================
 	// WooCommerce Order Meta
 	// =================================================_========================

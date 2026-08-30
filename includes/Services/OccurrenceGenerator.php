@@ -85,8 +85,10 @@ class OccurrenceGenerator {
 		// Set horizon.
 		if ( null === $horizon ) {
 			$horizon_days = $this->get_horizon_days();
-			$modified     = ( new \DateTimeImmutable() )->modify( "+{$horizon_days} days" );
-			$horizon      = false !== $modified ? $modified : new \DateTimeImmutable( "+{$horizon_days} days" );
+			// Site wall-clock, to match the naive site-local dates being generated.
+			$site_now = new \DateTimeImmutable( current_time( 'mysql' ) );
+			$modified = $site_now->modify( "+{$horizon_days} days" );
+			$horizon  = false !== $modified ? $modified : $site_now;
 		}
 
 		// Generate dates based on frequency.

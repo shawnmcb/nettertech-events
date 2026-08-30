@@ -98,41 +98,63 @@ class EmailTemplateRenderer implements EmailTemplateRendererInterface {
 	 * @return string
 	 */
 	public function get_customer_email_subject( \WC_Order $order, array $tickets ): string {
-		$ticket_count = count( $tickets );
-		$event_title  = '';
+		if ( empty( $tickets ) ) {
+			return __( 'Your Ticket Confirmation', 'nettertech-events' );
+		}
 
-		// Get first event title for subject.
-		if ( ! empty( $tickets ) ) {
-			$occurrence = $this->occurrence_repo->find( $tickets[0]->occurrence_id );
-			if ( $occurrence ) {
-				$event = $this->event_repo->find( $occurrence->event_id );
-				if ( $event ) {
-					$event_title = $event->title;
-				}
+		// Subject and heading say the same thing so the inbox line matches what
+		// the buyer sees on opening.
+		return sanitize_text_field( $this->get_customer_email_heading( $order, $tickets ) );
+	}
+
+	/**
+	 * Build the confirmation heading: "Your ticket to {Event}" / "Your tickets to
+	 * {Event}" (real plural forms via _n()), or an order-scoped fallback when the
+	 * order spans more than one event.
+	 *
+	 * @since 1.4.6
+	 *
+	 * @param \WC_Order                        $order   Order.
+	 * @param Ticket[]                         $tickets Tickets.
+	 * @param array<int, array<string, mixed>> $grouped Optional pre-grouped tickets (from
+	 *                                                  group_tickets_by_event()) to avoid re-querying.
+	 * @return string Unescaped heading text.
+	 */
+	public function get_customer_email_heading( \WC_Order $order, array $tickets, array $grouped = array() ): string {
+		$count = count( $tickets );
+		if ( 0 === $count ) {
+			return __( 'Your Ticket Confirmation', 'nettertech-events' );
+		}
+
+		if ( empty( $grouped ) ) {
+			$grouped = $this->group_tickets_by_event( $tickets );
+		}
+
+		$event_titles = array();
+		foreach ( $grouped as $group ) {
+			if ( ! empty( $group['event'] ) && '' !== (string) $group['event']->title ) {
+				$event_titles[ (int) $group['event']->id ] = (string) $group['event']->title;
 			}
 		}
 
-		if ( $ticket_count > 1 ) {
-			return sanitize_text_field(
-				sprintf(
-					/* translators: %d: number of tickets */
-					__( 'Your %d Tickets - Order Confirmation', 'nettertech-events' ),
-					$ticket_count
-				)
+		if ( 1 === count( $event_titles ) ) {
+			return sprintf(
+				/* translators: %s: event title */
+				_n( 'Your ticket to %s', 'Your tickets to %s', $count, 'nettertech-events' ),
+				reset( $event_titles )
 			);
 		}
 
-		if ( $event_title ) {
-			return sanitize_text_field(
-				sprintf(
-					/* translators: %s: event title */
-					__( 'Your Ticket for %s', 'nettertech-events' ),
-					$event_title
-				)
+		if ( count( $event_titles ) > 1 ) {
+			return sprintf(
+				/* translators: %s: order number */
+				__( 'Your tickets — Order #%s', 'nettertech-events' ),
+				$order->get_order_number()
 			);
 		}
 
-		return __( 'Your Ticket Confirmation', 'nettertech-events' );
+		// Event could not be resolved: keep the count honest without naming anything.
+		return _n( 'Your ticket is confirmed', 'Your tickets are confirmed', $count, 'nettertech-events' );
 	}
 
 	/**
@@ -177,6 +199,7 @@ class EmailTemplateRenderer implements EmailTemplateRendererInterface {
 			'order'               => $order,
 			'tickets'             => $tickets,
 			'grouped_tickets'     => $grouped,
+			'heading'             => $this->get_customer_email_heading( $order, $tickets, $grouped ),
 			'venue_logo'          => $settings['venue_logo'] ?? '',
 			'show_qr_codes'       => $settings['show_qr_codes'] ?? true,
 			'cancellation_policy' => $settings['cancellation_policy'] ?? '',

@@ -34,7 +34,6 @@ interface WaitlistServiceInterface {
 	 * @param string      $email          Email address.
 	 * @param string      $name           Name.
 	 * @param string|null $phone          Phone number (optional).
-	 * @param int|null    $ticket_type_id Ticket type ID (optional).
 	 * @return WaitlistEntry The created entry.
 	 * @throws ValidationException If already on waitlist.
 	 */
@@ -42,8 +41,7 @@ interface WaitlistServiceInterface {
 		int $occurrence_id,
 		string $email,
 		string $name,
-		?string $phone = null,
-		?int $ticket_type_id = null
+		?string $phone = null
 	): WaitlistEntry;
 
 	/**

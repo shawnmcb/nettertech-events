@@ -2,14 +2,14 @@
 # This file is distributed under the GPL v2 or later.
 msgid ""
 msgstr ""
-"Project-Id-Version: NetterTech Events 1.4.4\n"
+"Project-Id-Version: NetterTech Events 1.4.6\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/nettertech-events\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-08-16T23:39:14+00:00\n"
+"POT-Creation-Date: 2026-08-29T22:23:05+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: nettertech-events\n"
@@ -48,7 +48,7 @@ msgid "https://nettertech.com/"
 msgstr ""
 
 #: includes/Admin/ActivityLogPage.php:55
-#: includes/Admin/AttendeesPage.php:130
+#: includes/Admin/AttendeesPage.php:134
 msgid "You do not have permission to view this page."
 msgstr ""
 
@@ -68,7 +68,7 @@ msgstr ""
 
 #: includes/Admin/ActivityLogPage.php:160
 #: includes/Admin/ActivityLogPage.php:224
-#: includes/Services/PrivacyService.php:191
+#: includes/Services/PrivacyService.php:192
 msgid "Action"
 msgstr ""
 
@@ -77,7 +77,7 @@ msgid "All Actions"
 msgstr ""
 
 #: includes/Admin/ActivityLogPage.php:172
-#: includes/Services/PrivacyService.php:195
+#: includes/Services/PrivacyService.php:196
 msgid "Object Type"
 msgstr ""
 
@@ -95,7 +95,7 @@ msgid "To"
 msgstr ""
 
 #: includes/Admin/ActivityLogPage.php:196
-#: includes/Admin/Attendees/Presenters/AttendeesFiltersPresenter.php:232
+#: includes/Admin/Attendees/Presenters/AttendeesFiltersPresenter.php:285
 msgid "Search"
 msgstr ""
 
@@ -104,20 +104,20 @@ msgid "Search object name..."
 msgstr ""
 
 #: includes/Admin/ActivityLogPage.php:203
-#: includes/Admin/Attendees/Presenters/AttendeesFiltersPresenter.php:250
+#: includes/Admin/Attendees/Presenters/AttendeesFiltersPresenter.php:303
 #: includes/Admin/ListTables/EventsListTable.php:915
 msgid "Filter"
 msgstr ""
 
 #: includes/Admin/ActivityLogPage.php:204
 #: includes/Frontend/Shortcodes/EventListShortcode.php:384
-#: templates/parts/event-filters.php:154
+#: templates/parts/event-filters.php:164
 msgid "Reset"
 msgstr ""
 
 #: includes/Admin/ActivityLogPage.php:222
 #: includes/Integrations/WooCommerce/CartPresenter.php:97
-#: templates/parts/regulars-table.php:50
+#: templates/parts/regulars-table.php:57
 #: assets/js/blocks/nte-wc-blocks.js:86
 msgid "Time"
 msgstr ""
@@ -143,7 +143,7 @@ msgid "Description"
 msgstr ""
 
 #: includes/Admin/ActivityLogPage.php:227
-#: includes/Services/PrivacyService.php:206
+#: includes/Services/PrivacyService.php:207
 msgid "IP Address"
 msgstr ""
 
@@ -157,7 +157,7 @@ msgstr[1] ""
 
 #: includes/Admin/AdminMenu.php:226
 #: includes/Admin/AdminMenuRegistrar.php:139
-#: includes/Admin/AttendeesPage.php:399
+#: includes/Admin/AttendeesPage.php:414
 #: includes/Admin/EventEditor.php:172
 msgid "Edit Event"
 msgstr ""
@@ -280,7 +280,7 @@ msgid "Not visible to the public. Use drafts to prepare events before publishing
 msgstr ""
 
 #: includes/Admin/AdminMenu.php:301
-#: includes/Admin/Attendees/Presenters/AttendeesFiltersPresenter.php:107
+#: includes/Admin/Attendees/Presenters/AttendeesFiltersPresenter.php:110
 #: includes/Admin/ListTables/EventsListTable.php:392
 #: includes/Admin/ListTables/EventsListTable.php:691
 #: includes/Admin/ListTables/EventsListTable.php:904
@@ -293,9 +293,9 @@ msgstr ""
 #: includes/Enums/OccurrenceStatus.php:36
 #: includes/Enums/TicketStatus.php:43
 #: templates/admin/occurrence-edit.php:124
-#: templates/parts/event-card.php:162
-#: templates/parts/more-dates.php:70
-#: templates/parts/single-event-header.php:35
+#: templates/parts/event-card.php:169
+#: templates/parts/more-dates.php:77
+#: templates/parts/single-event-header.php:42
 msgid "Cancelled"
 msgstr ""
 
@@ -329,7 +329,7 @@ msgstr ""
 
 #: includes/Admin/AdminMenuRegistrar.php:66
 #: includes/Admin/AdminMenuRegistrar.php:67
-#: includes/Admin/Attendees/Presenters/AttendeesFiltersPresenter.php:187
+#: includes/Admin/Attendees/Presenters/AttendeesFiltersPresenter.php:213
 #: includes/Core/BlockPatterns.php:89
 msgid "All Events"
 msgstr ""
@@ -367,7 +367,7 @@ msgstr ""
 
 #: includes/Admin/AdminMenuRegistrar.php:123
 #: includes/Admin/AdminMenuRegistrar.php:124
-#: includes/Admin/AttendeesPage.php:655
+#: includes/Admin/AttendeesPage.php:671
 msgid "Attendees"
 msgstr ""
 
@@ -430,7 +430,7 @@ msgid "Could not update check-in status."
 msgstr ""
 
 #: includes/Admin/Ajax/AttendeeCheckInAjaxHandler.php:182
-#: includes/Admin/AttendeesPage.php:1003
+#: includes/Admin/AttendeesPage.php:1022
 #: includes/Integrations/BeaverBuilder/BeaverBuilderIntegration.php:100
 #: includes/Integrations/BeaverBuilder/BeaverBuilderIntegration.php:132
 #: includes/Integrations/BeaverBuilder/BeaverBuilderIntegration.php:141
@@ -454,7 +454,7 @@ msgid "Yes"
 msgstr ""
 
 #: includes/Admin/Ajax/AttendeeCheckInAjaxHandler.php:189
-#: includes/Admin/AttendeesPage.php:1009
+#: includes/Admin/AttendeesPage.php:1028
 #: includes/Integrations/BeaverBuilder/BeaverBuilderIntegration.php:101
 #: includes/Integrations/BeaverBuilder/BeaverBuilderIntegration.php:133
 #: includes/Integrations/BeaverBuilder/BeaverBuilderIntegration.php:142
@@ -489,20 +489,20 @@ msgstr ""
 #: includes/API/EventsAdminController.php:417
 #: includes/API/ICalController.php:220
 #: includes/API/WaitlistRestController.php:226
-#: includes/Frontend/Shortcodes/RSVPFormShortcode.php:183
+#: includes/Frontend/Shortcodes/RSVPFormShortcode.php:203
 msgid "Event not found."
 msgstr ""
 
-#: includes/Admin/Attendees/AttendeesBulkActions.php:132
+#: includes/Admin/Attendees/AttendeesBulkActions.php:138
 msgid "No attendees selected."
 msgstr ""
 
-#: includes/Admin/Attendees/AttendeesBulkActions.php:165
+#: includes/Admin/Attendees/AttendeesBulkActions.php:171
 msgid "Emailing attendees requires WooCommerce."
 msgstr ""
 
 #. translators: %d: number of confirmation emails sent.
-#: includes/Admin/Attendees/AttendeesBulkActions.php:216
+#: includes/Admin/Attendees/AttendeesBulkActions.php:222
 #, php-format
 msgid "%d confirmation email re-sent."
 msgid_plural "%d confirmation emails re-sent."
@@ -510,7 +510,7 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %d: number of orders that could not be emailed.
-#: includes/Admin/Attendees/AttendeesBulkActions.php:223
+#: includes/Admin/Attendees/AttendeesBulkActions.php:229
 #, php-format
 msgid "%d order could not be emailed."
 msgid_plural "%d orders could not be emailed."
@@ -518,18 +518,18 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %d: number of attendees without an order.
-#: includes/Admin/Attendees/AttendeesBulkActions.php:231
+#: includes/Admin/Attendees/AttendeesBulkActions.php:237
 #, php-format
 msgid "%d attendee has no order and was skipped."
 msgid_plural "%d attendees have no order and were skipped."
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/Admin/Attendees/AttendeesBulkActions.php:247
+#: includes/Admin/Attendees/AttendeesBulkActions.php:254
 msgid "You do not have permission to perform this action."
 msgstr ""
 
-#: includes/Admin/Attendees/AttendeesBulkActions.php:271
+#: includes/Admin/Attendees/AttendeesBulkActions.php:278
 #: includes/Admin/CategoryPage.php:115
 #: includes/Admin/CategoryPage.php:126
 #: includes/Admin/EventActionHandler.php:100
@@ -537,7 +537,7 @@ msgstr ""
 #: includes/Admin/EventSaveHandler.php:200
 #: includes/Admin/OccurrenceSaveHandler.php:190
 #: includes/Admin/OccurrenceSaveHandler.php:253
-#: includes/Frontend/Shortcodes/RSVPFormShortcode.php:329
+#: includes/Frontend/Shortcodes/RSVPFormShortcode.php:376
 msgid "Your session has expired. Please reload the page and try again."
 msgstr ""
 
@@ -545,181 +545,199 @@ msgstr ""
 msgid "Unknown ticket"
 msgstr ""
 
-#: includes/Admin/Attendees/Presenters/AttendeesFiltersPresenter.php:88
-#: includes/Admin/Attendees/Presenters/AttendeesFiltersPresenter.php:178
-#: includes/Admin/AttendeesPage.php:863
-#: includes/Admin/AttendeesPage.php:1038
+#: includes/Admin/Attendees/Presenters/AttendeesFiltersPresenter.php:91
+#: includes/Admin/Attendees/Presenters/AttendeesFiltersPresenter.php:204
+#: includes/Admin/AttendeesPage.php:882
+#: includes/Admin/AttendeesPage.php:1058
 #: includes/Admin/ListTables/EventsListTable.php:169
 #: includes/Frontend/Shortcodes/CalendarShortcode.php:421
 #: includes/Frontend/Shortcodes/CalendarShortcode.php:503
 #: includes/Frontend/Shortcodes/CalendarShortcode.php:562
 #: includes/Integrations/WooCommerce/ProductManager.php:150
-#: includes/Integrations/WooCommerce/ProductManager.php:728
+#: includes/Integrations/WooCommerce/ProductManager.php:737
 #: includes/Services/WaitlistEmailHandler.php:148
-#: templates/emails/customer-confirmation.php:92
-#: templates/emails/rsvp-confirmation.php:98
-#: templates/emails/rsvp-venue-notification.php:113
-#: templates/emails/venue-notification.php:134
-#: templates/parts/regulars-table.php:45
+#: templates/emails/customer-confirmation.php:116
+#: templates/emails/rsvp-confirmation.php:115
+#: templates/emails/rsvp-venue-notification.php:120
+#: templates/emails/venue-notification.php:141
+#: templates/parts/regulars-table.php:52
 msgid "Event"
 msgstr ""
 
-#: includes/Admin/Attendees/Presenters/AttendeesFiltersPresenter.php:105
+#: includes/Admin/Attendees/Presenters/AttendeesFiltersPresenter.php:108
 #: includes/Enums/AttendeeStatus.php:37
 #: includes/Enums/TicketStatus.php:41
 msgid "Confirmed"
 msgstr ""
 
-#: includes/Admin/Attendees/Presenters/AttendeesFiltersPresenter.php:106
+#: includes/Admin/Attendees/Presenters/AttendeesFiltersPresenter.php:109
 #: includes/Enums/AttendeeStatus.php:36
 #: includes/Enums/TicketStatus.php:40
 msgid "Pending"
 msgstr ""
 
-#: includes/Admin/Attendees/Presenters/AttendeesFiltersPresenter.php:108
+#: includes/Admin/Attendees/Presenters/AttendeesFiltersPresenter.php:111
 #: includes/Enums/AttendeeStatus.php:39
 msgid "Refunded"
 msgstr ""
 
-#: includes/Admin/Attendees/Presenters/AttendeesFiltersPresenter.php:109
+#: includes/Admin/Attendees/Presenters/AttendeesFiltersPresenter.php:112
 #: includes/Enums/AttendeeStatus.php:40
 msgid "Voided"
 msgstr ""
 
-#: includes/Admin/Attendees/Presenters/AttendeesFiltersPresenter.php:112
+#: includes/Admin/Attendees/Presenters/AttendeesFiltersPresenter.php:115
 msgid "Failed orders"
 msgstr ""
 
-#: includes/Admin/Attendees/Presenters/AttendeesFiltersPresenter.php:133
+#: includes/Admin/Attendees/Presenters/AttendeesFiltersPresenter.php:136
 msgid "Real Data Only"
 msgstr ""
 
-#: includes/Admin/Attendees/Presenters/AttendeesFiltersPresenter.php:134
+#: includes/Admin/Attendees/Presenters/AttendeesFiltersPresenter.php:137
 msgid "Placeholder Data"
 msgstr ""
 
-#: includes/Admin/Attendees/Presenters/AttendeesFiltersPresenter.php:196
-#: includes/Admin/AttendeesPage.php:867
-#: includes/Admin/AttendeesPage.php:1068
-#: includes/Admin/AttendeesPage.php:1269
+#: includes/Admin/Attendees/Presenters/AttendeesFiltersPresenter.php:158
+msgid "Has accessibility notes"
+msgstr ""
+
+#: includes/Admin/Attendees/Presenters/AttendeesFiltersPresenter.php:159
+msgid "No accessibility notes"
+msgstr ""
+
+#: includes/Admin/Attendees/Presenters/AttendeesFiltersPresenter.php:222
+#: includes/Admin/AttendeesPage.php:886
+#: includes/Admin/AttendeesPage.php:1088
+#: includes/Admin/AttendeesPage.php:1318
 #: includes/Admin/ListTables/EventsListTable.php:174
 #: includes/Admin/ListTables/EventsListTable.php:388
 #: includes/Admin/ListTables/SpacesListTable.php:64
 #: includes/Admin/SpacesPage.php:301
-#: includes/Services/PrivacyService.php:335
+#: includes/Services/PrivacyService.php:336
 #: templates/admin/occurrence-edit.php:119
 msgid "Status"
 msgstr ""
 
-#: includes/Admin/Attendees/Presenters/AttendeesFiltersPresenter.php:205
+#: includes/Admin/Attendees/Presenters/AttendeesFiltersPresenter.php:231
 #: includes/Admin/ListTables/EventsListTable.php:901
 msgid "All Statuses"
 msgstr ""
 
-#: includes/Admin/Attendees/Presenters/AttendeesFiltersPresenter.php:214
+#: includes/Admin/Attendees/Presenters/AttendeesFiltersPresenter.php:240
 msgid "Data Quality"
 msgstr ""
 
-#: includes/Admin/Attendees/Presenters/AttendeesFiltersPresenter.php:223
+#: includes/Admin/Attendees/Presenters/AttendeesFiltersPresenter.php:249
 msgid "All Attendees"
 msgstr ""
 
-#: includes/Admin/Attendees/Presenters/AttendeesFiltersPresenter.php:241
+#: includes/Admin/Attendees/Presenters/AttendeesFiltersPresenter.php:258
+#: includes/Admin/SpacesPage.php:415
+#: templates/single-space.php:141
+msgid "Accessibility"
+msgstr ""
+
+#: includes/Admin/Attendees/Presenters/AttendeesFiltersPresenter.php:267
+msgid "Any"
+msgstr ""
+
+#: includes/Admin/Attendees/Presenters/AttendeesFiltersPresenter.php:294
 msgid "Name or email..."
 msgstr ""
 
-#: includes/Admin/Attendees/Presenters/AttendeesFiltersPresenter.php:259
+#: includes/Admin/Attendees/Presenters/AttendeesFiltersPresenter.php:312
 #: includes/Admin/ListTables/EventsListTable.php:917
 msgid "Clear"
 msgstr ""
 
 #. translators: %d: number of attendees deleted
-#: includes/Admin/AttendeesPage.php:146
+#: includes/Admin/AttendeesPage.php:150
 #, php-format
 msgid "%d attendee deleted."
 msgid_plural "%d attendees deleted."
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/Admin/AttendeesPage.php:382
-#: templates/emails/rsvp-venue-notification.php:107
-#: templates/emails/venue-notification.php:126
+#: includes/Admin/AttendeesPage.php:397
+#: templates/emails/rsvp-venue-notification.php:114
+#: templates/emails/venue-notification.php:133
 msgid "Event Details"
 msgstr ""
 
-#: includes/Admin/AttendeesPage.php:386
-#: includes/Admin/AttendeesPage.php:1292
+#: includes/Admin/AttendeesPage.php:401
+#: includes/Admin/AttendeesPage.php:1341
 #: includes/Admin/ListTables/EventsListTable.php:171
 #: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:442
 #: includes/Enums/FieldType.php:49
 #: includes/Integrations/WooCommerce/CartPresenter.php:92
-#: includes/Services/PrivacyService.php:199
+#: includes/Services/PrivacyService.php:200
 #: assets/js/blocks/nte-wc-blocks.js:78
 msgid "Date"
 msgstr ""
 
-#: includes/Admin/AttendeesPage.php:392
+#: includes/Admin/AttendeesPage.php:407
 #: includes/Admin/ListTables/EventsListTable.php:397
 #: includes/Admin/Metaboxes/Presenters/VenueBoxPresenter.php:63
 #: includes/Integrations/WooCommerce/CartPresenter.php:103
 #: includes/Integrations/WooCommerce/CartPresenter.php:159
-#: templates/parts/regulars-table.php:47
+#: templates/parts/regulars-table.php:54
 #: assets/js/blocks/nte-wc-blocks.js:94
 msgid "Venue"
 msgstr ""
 
-#: includes/Admin/AttendeesPage.php:402
+#: includes/Admin/AttendeesPage.php:417
 #: includes/Admin/Metaboxes/EventMetaboxContentRenderer.php:190
 msgid "View Event"
 msgstr ""
 
-#: includes/Admin/AttendeesPage.php:425
+#: includes/Admin/AttendeesPage.php:440
 msgid "Tickets & Attendance"
 msgstr ""
 
-#: includes/Admin/AttendeesPage.php:429
+#: includes/Admin/AttendeesPage.php:444
 #: includes/Integrations/WooCommerce/CartPresenter.php:147
 #: templates/ticket/public-ticket.php:112
 msgid "Ticket"
 msgstr ""
 
-#: includes/Admin/AttendeesPage.php:430
+#: includes/Admin/AttendeesPage.php:445
 msgid "Issued"
 msgstr ""
 
-#: includes/Admin/AttendeesPage.php:431
+#: includes/Admin/AttendeesPage.php:446
 msgid "Checked in"
 msgstr ""
 
-#: includes/Admin/AttendeesPage.php:433
+#: includes/Admin/AttendeesPage.php:448
 msgid "Net revenue"
 msgstr ""
 
-#: includes/Admin/AttendeesPage.php:453
+#: includes/Admin/AttendeesPage.php:468
 msgctxt "no revenue recorded"
 msgid "—"
 msgstr ""
 
-#: includes/Admin/AttendeesPage.php:461
+#: includes/Admin/AttendeesPage.php:476
 msgid "Total"
 msgstr ""
 
 #. translators: 1: checked-in guest count, 2: percentage.
-#: includes/Admin/AttendeesPage.php:470
+#: includes/Admin/AttendeesPage.php:485
 #, php-format
 msgid "%1$d (%2$d%%)"
 msgstr ""
 
-#: includes/Admin/AttendeesPage.php:489
+#: includes/Admin/AttendeesPage.php:504
 msgid "Tickets"
 msgstr ""
 
-#: includes/Admin/AttendeesPage.php:501
+#: includes/Admin/AttendeesPage.php:516
 msgid "Voided: seats from orders that were cancelled, refunded, or failed. Not included in issued counts."
 msgstr ""
 
 #. translators: %d: number of guests issued a ticket.
-#: includes/Admin/AttendeesPage.php:541
+#: includes/Admin/AttendeesPage.php:556
 #, php-format
 msgid "%d issued"
 msgid_plural "%d issued"
@@ -727,7 +745,7 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %d: number of gate scans across the pass's dates.
-#: includes/Admin/AttendeesPage.php:559
+#: includes/Admin/AttendeesPage.php:574
 #, php-format
 msgid "%d scan"
 msgid_plural "%d scans"
@@ -735,45 +753,45 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: 1: gross amount, 2: refunded amount, 3: net amount.
-#: includes/Admin/AttendeesPage.php:578
+#: includes/Admin/AttendeesPage.php:593
 #, php-format
 msgid "Gross %1$s − refunds %2$s = net %3$s"
 msgstr ""
 
-#: includes/Admin/AttendeesPage.php:597
+#: includes/Admin/AttendeesPage.php:612
 msgid "unlimited"
 msgstr ""
 
 #. translators: %d: guests the house can still seat. The asterisk refers to the footnote below the table.
-#: includes/Admin/AttendeesPage.php:603
+#: includes/Admin/AttendeesPage.php:618
 #, php-format
 msgid "%d available*"
 msgstr ""
 
 #. translators: %d: guests available.
-#: includes/Admin/AttendeesPage.php:610
+#: includes/Admin/AttendeesPage.php:625
 #, php-format
 msgid "%d available"
 msgstr ""
 
 #. translators: %d: total capacity of the room (the "house").
-#: includes/Admin/AttendeesPage.php:628
+#: includes/Admin/AttendeesPage.php:643
 #, php-format
 msgid "* house capacity (%d), counted once"
 msgstr ""
 
 #. translators: %s: event title
-#: includes/Admin/AttendeesPage.php:663
+#: includes/Admin/AttendeesPage.php:679
 #, php-format
 msgid "Purchases for: %s"
 msgstr ""
 
-#: includes/Admin/AttendeesPage.php:664
+#: includes/Admin/AttendeesPage.php:680
 msgid "(event)"
 msgstr ""
 
 #. translators: %d: number of purchase records in the list.
-#: includes/Admin/AttendeesPage.php:679
+#: includes/Admin/AttendeesPage.php:695
 #, php-format
 msgid "%d purchase record"
 msgid_plural "%d purchase records"
@@ -781,25 +799,25 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: 1: purchase-record count phrase, 2: ticket count phrase.
-#: includes/Admin/AttendeesPage.php:689
+#: includes/Admin/AttendeesPage.php:705
 #, php-format
 msgid "Showing %1$s (%2$s)."
 msgstr ""
 
-#: includes/Admin/AttendeesPage.php:700
+#: includes/Admin/AttendeesPage.php:716
 msgid "No attendees found."
 msgstr ""
 
-#: includes/Admin/AttendeesPage.php:768
+#: includes/Admin/AttendeesPage.php:785
 msgid "Select bulk action"
 msgstr ""
 
-#: includes/Admin/AttendeesPage.php:771
+#: includes/Admin/AttendeesPage.php:788
 msgid "Bulk Actions"
 msgstr ""
 
-#: includes/Admin/AttendeesPage.php:772
-#: includes/Admin/AttendeesPage.php:1234
+#: includes/Admin/AttendeesPage.php:789
+#: includes/Admin/AttendeesPage.php:1283
 #: includes/Admin/CategoryPage.php:292
 #: includes/Admin/ListTables/EventsListTable.php:216
 #: includes/Admin/ListTables/EventsListTable.php:512
@@ -811,156 +829,160 @@ msgstr ""
 msgid "Delete"
 msgstr ""
 
-#: includes/Admin/AttendeesPage.php:773
+#: includes/Admin/AttendeesPage.php:790
 msgid "Export Selected"
 msgstr ""
 
-#: includes/Admin/AttendeesPage.php:775
+#: includes/Admin/AttendeesPage.php:792
 msgid "Re-send Confirmation Email"
 msgstr ""
 
-#: includes/Admin/AttendeesPage.php:778
+#: includes/Admin/AttendeesPage.php:795
 #: includes/Admin/ListTables/EventsListTable.php:451
 msgid "Apply"
 msgstr ""
 
 #. translators: %d: number of purchase records matching the current filters.
-#: includes/Admin/AttendeesPage.php:792
+#: includes/Admin/AttendeesPage.php:809
 #, php-format
 msgid "Export All (%d record)"
 msgid_plural "Export All (%d records)"
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/Admin/AttendeesPage.php:798
+#: includes/Admin/AttendeesPage.php:815
 msgid "+ Add Attendee"
 msgstr ""
 
-#: includes/Admin/AttendeesPage.php:809
+#: includes/Admin/AttendeesPage.php:826
 msgid "Selection covers only the rows on this page. To export every record matching the current filters, use the Export All button instead."
 msgstr ""
 
-#: includes/Admin/AttendeesPage.php:862
-#: includes/Admin/AttendeesPage.php:1033
-#: includes/Admin/AttendeesPage.php:1265
-#: includes/Admin/AttendeesPage.php:1319
+#: includes/Admin/AttendeesPage.php:881
+#: includes/Admin/AttendeesPage.php:1053
+#: includes/Admin/AttendeesPage.php:1314
+#: includes/Admin/AttendeesPage.php:1368
 #: includes/Admin/ListTables/OrganizerListTable.php:70
 #: includes/Admin/OrganizerPage.php:260
 #: includes/Admin/Settings/EmailSettingsSection.php:58
 #: includes/Enums/FieldType.php:46
-#: includes/Frontend/Shortcodes/RSVPFormShortcode.php:266
+#: includes/Frontend/Shortcodes/RSVPFormShortcode.php:294
 #: includes/Integrations/WooCommerce/PerAttendeeCheckoutHandler.php:338
 #: includes/Services/ExportService.php:106
-#: includes/Services/PrivacyService.php:94
-#: includes/Services/PrivacyService.php:268
-#: includes/Services/PrivacyService.php:331
-#: templates/parts/waitlist-panel.php:54
+#: includes/Services/PrivacyService.php:95
+#: includes/Services/PrivacyService.php:269
+#: includes/Services/PrivacyService.php:332
+#: templates/parts/waitlist-panel.php:61
 msgid "Email"
 msgstr ""
 
-#: includes/Admin/AttendeesPage.php:864
-#: includes/Admin/AttendeesPage.php:1059
-#: includes/Admin/AttendeesPage.php:1308
+#: includes/Admin/AttendeesPage.php:883
+#: includes/Admin/AttendeesPage.php:1079
+#: includes/Admin/AttendeesPage.php:1357
 msgid "Ticket type"
 msgstr ""
 
-#: includes/Admin/AttendeesPage.php:865
-#: includes/Admin/AttendeesPage.php:1062
+#: includes/Admin/AttendeesPage.php:884
+#: includes/Admin/AttendeesPage.php:1082
 msgid "Date/Time"
 msgstr ""
 
-#: includes/Admin/AttendeesPage.php:866
-#: includes/Admin/AttendeesPage.php:1065
+#: includes/Admin/AttendeesPage.php:885
+#: includes/Admin/AttendeesPage.php:1085
 msgid "Qty"
 msgstr ""
 
-#: includes/Admin/AttendeesPage.php:868
-#: includes/Admin/AttendeesPage.php:1073
+#: includes/Admin/AttendeesPage.php:887
+#: includes/Admin/AttendeesPage.php:1093
 #: includes/Enums/TicketStatus.php:42
 #: includes/Services/ExportService.php:108
 #: templates/ticket/public-ticket.php:100
-#: templates/ticket/scan-result.php:147
+#: templates/ticket/scan-result.php:153
 msgid "Checked In"
 msgstr ""
 
-#: includes/Admin/AttendeesPage.php:924
-#: includes/Admin/AttendeesPage.php:1016
-#: includes/Admin/AttendeesPage.php:1261
-#: includes/Admin/AttendeesPage.php:1315
+#: includes/Admin/AttendeesPage.php:943
+#: includes/Admin/AttendeesPage.php:1035
+#: includes/Admin/AttendeesPage.php:1310
+#: includes/Admin/AttendeesPage.php:1364
 #: includes/Admin/CategoryPage.php:248
 #: includes/Admin/CategoryPage.php:398
 #: includes/Admin/ListTables/OrganizerListTable.php:69
 #: includes/Admin/ListTables/SpacesListTable.php:62
 #: includes/Admin/OrganizerPage.php:241
 #: includes/Admin/SpacesPage.php:263
-#: includes/Frontend/Shortcodes/RSVPFormShortcode.php:256
+#: includes/Frontend/Shortcodes/RSVPFormShortcode.php:284
 #: includes/Services/ExportService.php:105
-#: includes/Services/PrivacyService.php:90
-#: includes/Services/PrivacyService.php:264
-#: includes/Services/PrivacyService.php:327
-#: templates/parts/waitlist-panel.php:43
+#: includes/Services/PrivacyService.php:91
+#: includes/Services/PrivacyService.php:265
+#: includes/Services/PrivacyService.php:328
+#: templates/parts/waitlist-panel.php:50
 msgid "Name"
 msgstr ""
 
-#: includes/Admin/AttendeesPage.php:933
+#: includes/Admin/AttendeesPage.php:952
 msgid "Alphabetize by first name"
 msgstr ""
 
-#: includes/Admin/AttendeesPage.php:934
+#: includes/Admin/AttendeesPage.php:953
 #: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:875
 msgid "First"
 msgstr ""
 
-#: includes/Admin/AttendeesPage.php:938
+#: includes/Admin/AttendeesPage.php:957
 msgid "Alphabetize by last name"
 msgstr ""
 
-#: includes/Admin/AttendeesPage.php:939
+#: includes/Admin/AttendeesPage.php:958
 #: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:879
 msgid "Last"
 msgstr ""
 
-#: includes/Admin/AttendeesPage.php:1030
+#: includes/Admin/AttendeesPage.php:1050
 msgid "Show more details"
 msgstr ""
 
-#: includes/Admin/AttendeesPage.php:1039
+#: includes/Admin/AttendeesPage.php:1059
 #: includes/Services/ExportService.php:238
 msgid "Unknown Event"
 msgstr ""
 
 #. translators: %d: WooCommerce order ID
-#: includes/Admin/AttendeesPage.php:1046
+#: includes/Admin/AttendeesPage.php:1066
 #, php-format
 msgid "Order #%d"
 msgstr ""
 
-#: includes/Admin/AttendeesPage.php:1133
+#: includes/Admin/AttendeesPage.php:1146
+msgid "Accessibility notes"
+msgstr ""
+
+#: includes/Admin/AttendeesPage.php:1182
 #: includes/Core/Assets.php:567
 msgid "Undo"
 msgstr ""
 
-#: includes/Admin/AttendeesPage.php:1134
+#: includes/Admin/AttendeesPage.php:1183
 #: includes/Core/Assets.php:566
-#: templates/ticket/scan-result.php:195
+#: templates/ticket/scan-result.php:201
 msgid "Check In"
 msgstr ""
 
 #. translators: %s: attendee name.
-#: includes/Admin/AttendeesPage.php:1138
+#: includes/Admin/AttendeesPage.php:1187
 #: includes/Core/Assets.php:571
 #, php-format
 msgid "Undo check-in for %s"
 msgstr ""
 
 #. translators: %s: attendee name.
-#: includes/Admin/AttendeesPage.php:1141
+#: includes/Admin/AttendeesPage.php:1190
 #: includes/Core/Assets.php:569
 #, php-format
 msgid "Check in %s"
 msgstr ""
 
-#: includes/Admin/AttendeesPage.php:1216
+#: includes/Admin/AttendeesPage.php:1265
 #: includes/Admin/CategoryPage.php:287
 #: includes/Admin/ListTables/EventsListTable.php:496
 #: includes/Admin/ListTables/OrganizerListTable.php:178
@@ -970,27 +992,27 @@ msgstr ""
 msgid "Edit"
 msgstr ""
 
-#: includes/Admin/AttendeesPage.php:1225
+#: includes/Admin/AttendeesPage.php:1274
 #: includes/Core/Assets.php:593
 msgid "Re-send Email"
 msgstr ""
 
-#: includes/Admin/AttendeesPage.php:1233
+#: includes/Admin/AttendeesPage.php:1282
 msgid "Are you sure you want to delete this attendee?"
 msgstr ""
 
-#: includes/Admin/AttendeesPage.php:1258
+#: includes/Admin/AttendeesPage.php:1307
 msgid "Edit Attendee"
 msgstr ""
 
-#: includes/Admin/AttendeesPage.php:1277
-#: includes/Admin/AttendeesPage.php:1323
+#: includes/Admin/AttendeesPage.php:1326
+#: includes/Admin/AttendeesPage.php:1372
 #: includes/Services/ExportService.php:107
 msgid "Quantity"
 msgstr ""
 
-#: includes/Admin/AttendeesPage.php:1282
-#: includes/Admin/AttendeesPage.php:1328
+#: includes/Admin/AttendeesPage.php:1331
+#: includes/Admin/AttendeesPage.php:1377
 #: includes/Admin/ListTables/EventsListTable.php:219
 #: includes/Admin/ListTables/EventsListTable.php:406
 #: includes/Admin/ListTables/EventsListTable.php:454
@@ -999,26 +1021,26 @@ msgstr ""
 msgid "Cancel"
 msgstr ""
 
-#: includes/Admin/AttendeesPage.php:1283
+#: includes/Admin/AttendeesPage.php:1332
 #: templates/admin/occurrence-edit.php:246
 msgid "Save Changes"
 msgstr ""
 
-#: includes/Admin/AttendeesPage.php:1290
-#: includes/Admin/AttendeesPage.php:1329
+#: includes/Admin/AttendeesPage.php:1339
+#: includes/Admin/AttendeesPage.php:1378
 msgid "Add Attendee"
 msgstr ""
 
-#: includes/Admin/AttendeesPage.php:1294
+#: includes/Admin/AttendeesPage.php:1343
 msgid "Select a date…"
 msgstr ""
 
-#: includes/Admin/AttendeesPage.php:1311
+#: includes/Admin/AttendeesPage.php:1360
 msgid "(none — free registration)"
 msgstr ""
 
 #. translators: %d: total items
-#: includes/Admin/AttendeesPage.php:1429
+#: includes/Admin/AttendeesPage.php:1482
 #, php-format
 msgid "%d item"
 msgid_plural "%d items"
@@ -1548,7 +1570,7 @@ msgstr ""
 #: includes/Admin/ListTables/EventsListTable.php:869
 #: includes/Core/Assets.php:649
 #: includes/Frontend/Shortcodes/EventListShortcode.php:689
-#: templates/parts/empty-state.php:36
+#: templates/parts/empty-state.php:43
 msgid "No events found."
 msgstr ""
 
@@ -1577,9 +1599,9 @@ msgstr ""
 #: includes/Admin/OrganizerPage.php:269
 #: includes/Enums/FieldType.php:47
 #: includes/Integrations/WooCommerce/PerAttendeeCheckoutHandler.php:350
-#: includes/Services/PrivacyService.php:101
-#: includes/Services/PrivacyService.php:275
-#: includes/Services/PrivacyService.php:346
+#: includes/Services/PrivacyService.php:102
+#: includes/Services/PrivacyService.php:276
+#: includes/Services/PrivacyService.php:347
 msgid "Phone"
 msgstr ""
 
@@ -1776,7 +1798,7 @@ msgstr ""
 #: includes/Admin/QRGenerator/Presenters/QRColorPalettePresenter.php:85
 #: includes/Admin/Settings/QRSettingsSection.php:210
 #: includes/Admin/Settings/QRSettingsSection.php:216
-#: includes/Integrations/WooCommerce/DonationHandler.php:416
+#: includes/Integrations/WooCommerce/DonationHandler.php:418
 msgid "Custom"
 msgstr ""
 
@@ -1847,22 +1869,22 @@ msgid "Frequency:"
 msgstr ""
 
 #: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:817
-#: includes/Services/RecurrenceService.php:766
+#: includes/Services/RecurrenceService.php:773
 msgid "Daily"
 msgstr ""
 
 #: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:818
-#: includes/Services/RecurrenceService.php:770
+#: includes/Services/RecurrenceService.php:777
 msgid "Weekly"
 msgstr ""
 
 #: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:819
-#: includes/Services/RecurrenceService.php:778
+#: includes/Services/RecurrenceService.php:785
 msgid "Monthly"
 msgstr ""
 
 #: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:820
-#: includes/Services/RecurrenceService.php:782
+#: includes/Services/RecurrenceService.php:789
 msgid "Yearly"
 msgstr ""
 
@@ -3406,8 +3428,8 @@ msgid "Comma-separated email addresses to receive RSVP and order notifications."
 msgstr ""
 
 #: includes/Admin/Settings/EmailSettingsSection.php:302
-#: templates/emails/customer-confirmation.php:169
-#: templates/emails/rsvp-confirmation.php:154
+#: templates/emails/customer-confirmation.php:193
+#: templates/emails/rsvp-confirmation.php:171
 msgid "Cancellation Policy"
 msgstr ""
 
@@ -3649,7 +3671,7 @@ msgid "Show \"low stock\" indicator when remaining capacity falls below this per
 msgstr ""
 
 #: includes/Admin/Settings/InlineSettingsRenderer.php:422
-#: templates/ticket/scan-result.php:160
+#: templates/ticket/scan-result.php:166
 msgid "Check-In"
 msgstr ""
 
@@ -3696,7 +3718,7 @@ msgstr ""
 #: includes/Admin/Settings/Presenters/GeneralSettingsPresenter.php:44
 #: includes/Frontend/Shortcodes/CalendarShortcode.php:205
 #: includes/Integrations/BeaverBuilder/BeaverBuilderIntegration.php:416
-#: templates/parts/regulars-table.php:43
+#: templates/parts/regulars-table.php:50
 #: blocks/calendar/index.js:49
 #: blocks/calendar/src/index.jsx:25
 msgid "Day"
@@ -3992,11 +4014,6 @@ msgstr ""
 
 #: includes/Admin/SpacesPage.php:400
 msgid "Seating Model"
-msgstr ""
-
-#: includes/Admin/SpacesPage.php:415
-#: templates/single-space.php:141
-msgid "Accessibility"
 msgstr ""
 
 #: includes/Admin/SpacesPage.php:417
@@ -4370,8 +4387,8 @@ msgstr ""
 #: includes/Frontend/Shortcodes/RegularsShortcode.php:206
 #: includes/Models/Occurrence.php:676
 #: includes/Models/Occurrence.php:718
-#: templates/parts/event-card.php:150
-#: templates/parts/occurrence-row.php:51
+#: templates/parts/event-card.php:157
+#: templates/parts/occurrence-row.php:58
 msgid "All Day"
 msgstr ""
 
@@ -4804,7 +4821,7 @@ msgid "Loading..."
 msgstr ""
 
 #: includes/Core/Assets.php:650
-#: templates/parts/ticket-form.php:77
+#: templates/parts/ticket-form.php:84
 msgid "Sold Out"
 msgstr ""
 
@@ -4824,7 +4841,7 @@ msgstr ""
 
 #: includes/Core/Assets.php:655
 #: includes/Enums/OccurrenceStatus.php:38
-#: templates/parts/event-card.php:166
+#: templates/parts/event-card.php:173
 msgid "Completed"
 msgstr ""
 
@@ -4905,50 +4922,54 @@ msgid "Phone number (if provided during registration)"
 msgstr ""
 
 #: includes/Core/PrivacyHooks.php:81
-msgid "Custom attendee field responses (e.g. dietary requirements, accessibility needs)"
+msgid "Accessibility requirements you choose to tell us about when registering or buying a ticket (used only to arrange accommodations for that event, and cleared automatically after the event)"
 msgstr ""
 
 #: includes/Core/PrivacyHooks.php:82
-msgid "Ticket purchase records including ticket type, price, and order reference"
+msgid "Custom attendee field responses (e.g. dietary requirements)"
 msgstr ""
 
 #: includes/Core/PrivacyHooks.php:83
-msgid "RSVP records including attendance status and submission timestamp"
+msgid "Ticket purchase records including ticket type, price, and order reference"
 msgstr ""
 
 #: includes/Core/PrivacyHooks.php:84
-msgid "Waitlist entries including position and join timestamp"
+msgid "RSVP records including attendance status and submission timestamp"
 msgstr ""
 
 #: includes/Core/PrivacyHooks.php:85
-msgid "Check-in timestamps recorded when attending an event"
+msgid "Waitlist entries including position and join timestamp"
 msgstr ""
 
 #: includes/Core/PrivacyHooks.php:86
+msgid "Check-in timestamps recorded when attending an event"
+msgstr ""
+
+#: includes/Core/PrivacyHooks.php:87
 msgid "Activity log entries associated with your account actions"
 msgstr ""
 
-#: includes/Core/PrivacyHooks.php:89
+#: includes/Core/PrivacyHooks.php:90
 msgid "This data is used solely to manage event registrations, process ticket orders, and communicate event information. Personal data in activity logs is automatically anonymized after a configurable retention period (default: 90 days). You may request export or erasure of your personal data via the tools on your account page or by contacting the site administrator."
 msgstr ""
 
-#: includes/Core/PrivacyHooks.php:102
-#: includes/Core/PrivacyHooks.php:132
+#: includes/Core/PrivacyHooks.php:103
+#: includes/Core/PrivacyHooks.php:133
 msgid "NetterTech Events — Attendee Data"
 msgstr ""
 
-#: includes/Core/PrivacyHooks.php:107
-#: includes/Core/PrivacyHooks.php:137
+#: includes/Core/PrivacyHooks.php:108
+#: includes/Core/PrivacyHooks.php:138
 msgid "NetterTech Events — Activity Log"
 msgstr ""
 
-#: includes/Core/PrivacyHooks.php:112
-#: includes/Core/PrivacyHooks.php:142
+#: includes/Core/PrivacyHooks.php:113
+#: includes/Core/PrivacyHooks.php:143
 msgid "NetterTech Events — Organizer Data"
 msgstr ""
 
-#: includes/Core/PrivacyHooks.php:117
-#: includes/Core/PrivacyHooks.php:147
+#: includes/Core/PrivacyHooks.php:118
+#: includes/Core/PrivacyHooks.php:148
 msgid "NetterTech Events — Waitlist Data"
 msgstr ""
 
@@ -5095,6 +5116,18 @@ msgstr ""
 msgid "Template that creates occurrence tickets automatically."
 msgstr ""
 
+#: includes/Frontend/AccessibilityNotesField.php:54
+msgid "Accessibility Requirements"
+msgstr ""
+
+#: includes/Frontend/AccessibilityNotesField.php:63
+msgid "Please let us know about any accessibility needs or accommodations we can provide (wheelchair access, ASL interpreter, etc.)"
+msgstr ""
+
+#: includes/Frontend/AccessibilityNotesField.php:72
+msgid "Used only to arrange accommodations for this event."
+msgstr ""
+
 #: includes/Frontend/FrontendBranding.php:162
 msgid "Powered by NetterTech Events"
 msgstr ""
@@ -5135,13 +5168,13 @@ msgstr ""
 
 #: includes/Frontend/Shortcodes/CalendarShortcode.php:144
 #: includes/Frontend/Shortcodes/CarouselShortcode.php:222
-#: templates/parts/pagination.php:86
+#: templates/parts/pagination.php:93
 msgid "Previous"
 msgstr ""
 
 #: includes/Frontend/Shortcodes/CalendarShortcode.php:153
 #: includes/Frontend/Shortcodes/CarouselShortcode.php:225
-#: templates/parts/pagination.php:91
+#: templates/parts/pagination.php:98
 msgid "Next"
 msgstr ""
 
@@ -5198,12 +5231,12 @@ msgid "Search upcoming events"
 msgstr ""
 
 #: includes/Frontend/Shortcodes/EventListShortcode.php:300
-#: templates/parts/event-filters.php:64
+#: templates/parts/event-filters.php:74
 msgid "Filter events"
 msgstr ""
 
 #: includes/Frontend/Shortcodes/EventListShortcode.php:325
-#: templates/parts/event-filters.php:89
+#: templates/parts/event-filters.php:99
 msgid "Filter by category"
 msgstr ""
 
@@ -5212,7 +5245,7 @@ msgid "Category"
 msgstr ""
 
 #: includes/Frontend/Shortcodes/EventListShortcode.php:342
-#: templates/parts/event-filters.php:109
+#: templates/parts/event-filters.php:119
 msgid "Filter by tag"
 msgstr ""
 
@@ -5221,17 +5254,17 @@ msgid "Tag"
 msgstr ""
 
 #: includes/Frontend/Shortcodes/EventListShortcode.php:359
-#: templates/parts/event-filters.php:129
+#: templates/parts/event-filters.php:139
 msgid "From date"
 msgstr ""
 
 #: includes/Frontend/Shortcodes/EventListShortcode.php:371
-#: templates/parts/event-filters.php:141
+#: templates/parts/event-filters.php:151
 msgid "To date"
 msgstr ""
 
 #: includes/Frontend/Shortcodes/EventListShortcode.php:383
-#: templates/parts/event-filters.php:153
+#: templates/parts/event-filters.php:163
 msgid "Reset filters"
 msgstr ""
 
@@ -5239,71 +5272,75 @@ msgstr ""
 msgid "No weekly regulars at this time."
 msgstr ""
 
-#: includes/Frontend/Shortcodes/RSVPFormShortcode.php:165
+#: includes/Frontend/Shortcodes/RSVPFormShortcode.php:185
 msgid "RSVP Now"
 msgstr ""
 
-#: includes/Frontend/Shortcodes/RSVPFormShortcode.php:166
-#: includes/Frontend/Shortcodes/RSVPFormShortcode.php:408
+#: includes/Frontend/Shortcodes/RSVPFormShortcode.php:186
+#: includes/Frontend/Shortcodes/RSVPFormShortcode.php:463
 msgid "Thank you! Your RSVP has been confirmed."
 msgstr ""
 
-#: includes/Frontend/Shortcodes/RSVPFormShortcode.php:188
+#: includes/Frontend/Shortcodes/RSVPFormShortcode.php:208
 msgid "This event has ended."
 msgstr ""
 
-#: includes/Frontend/Shortcodes/RSVPFormShortcode.php:249
+#: includes/Frontend/Shortcodes/RSVPFormShortcode.php:277
 msgid "RSVP registration form"
 msgstr ""
 
-#: includes/Frontend/Shortcodes/RSVPFormShortcode.php:252
+#: includes/Frontend/Shortcodes/RSVPFormShortcode.php:280
 msgid "Required fields are marked with an asterisk (*)."
 msgstr ""
 
-#: includes/Frontend/Shortcodes/RSVPFormShortcode.php:277
+#: includes/Frontend/Shortcodes/RSVPFormShortcode.php:305
 msgid "Party Size"
 msgstr ""
 
-#: includes/Frontend/Shortcodes/RSVPFormShortcode.php:320
+#: includes/Frontend/Shortcodes/RSVPFormShortcode.php:327
+msgid "optional"
+msgstr ""
+
+#: includes/Frontend/Shortcodes/RSVPFormShortcode.php:367
 #: includes/Frontend/TicketCartAjax.php:92
 #: includes/Integrations/WooCommerce/DonationHandler.php:349
 #: includes/Services/RateLimitService.php:267
 msgid "Too many requests. Please try again later."
 msgstr ""
 
-#: includes/Frontend/Shortcodes/RSVPFormShortcode.php:338
+#: includes/Frontend/Shortcodes/RSVPFormShortcode.php:385
 msgid "Invalid form submission."
 msgstr ""
 
-#: includes/Frontend/Shortcodes/RSVPFormShortcode.php:350
+#: includes/Frontend/Shortcodes/RSVPFormShortcode.php:400
 msgid "Please enter your name."
 msgstr ""
 
-#: includes/Frontend/Shortcodes/RSVPFormShortcode.php:357
+#: includes/Frontend/Shortcodes/RSVPFormShortcode.php:407
 #: includes/Frontend/WaitlistFrontend.php:155
 msgid "Please enter a valid email address."
 msgstr ""
 
-#: includes/Frontend/Shortcodes/RSVPFormShortcode.php:369
+#: includes/Frontend/Shortcodes/RSVPFormShortcode.php:419
 msgid "This email is already registered for this event."
 msgstr ""
 
-#: includes/Frontend/Shortcodes/RSVPFormShortcode.php:414
+#: includes/Frontend/Shortcodes/RSVPFormShortcode.php:469
 #: includes/Frontend/TicketDisplay.php:518
 msgid "An error occurred. Please try again."
 msgstr ""
 
 #. translators: %d: number of spots remaining
-#: includes/Frontend/Shortcodes/RSVPFormShortcode.php:455
+#: includes/Frontend/Shortcodes/RSVPFormShortcode.php:510
 #, php-format
 msgid "Only %d spot(s) remaining for this event."
 msgstr ""
 
-#: includes/Frontend/Shortcodes/RSVPFormShortcode.php:479
+#: includes/Frontend/Shortcodes/RSVPFormShortcode.php:534
 msgid "This event is full. You may join the waitlist to be notified if a spot opens up."
 msgstr ""
 
-#: includes/Frontend/Shortcodes/RSVPFormShortcode.php:481
+#: includes/Frontend/Shortcodes/RSVPFormShortcode.php:536
 msgid "This event is full."
 msgstr ""
 
@@ -5385,8 +5422,8 @@ msgid "Joining..."
 msgstr ""
 
 #: includes/Frontend/WaitlistFrontend.php:148
-#: templates/parts/waitlist-panel.php:33
-#: templates/parts/waitlist-panel.php:73
+#: templates/parts/waitlist-panel.php:40
+#: templates/parts/waitlist-panel.php:80
 msgid "Join Waitlist"
 msgstr ""
 
@@ -5395,7 +5432,7 @@ msgid "Leaving..."
 msgstr ""
 
 #: includes/Frontend/WaitlistFrontend.php:151
-#: templates/parts/waitlist-panel.php:84
+#: templates/parts/waitlist-panel.php:91
 msgid "Leave Waitlist"
 msgstr ""
 
@@ -5898,19 +5935,9 @@ msgstr ""
 msgid "Home"
 msgstr ""
 
-#: includes/Integrations/WooCommerce/AccessibilityNotesHandler.php:64
-#: assets/js/blocks/nte-wc-blocks.js:283
-msgid "Accessibility Requirements"
-msgstr ""
-
-#: includes/Integrations/WooCommerce/AccessibilityNotesHandler.php:65
-#: assets/js/blocks/nte-wc-blocks.js:288
-msgid "Please let us know about any accessibility needs or accommodations we can provide (wheelchair access, ASL interpreter, etc.)"
-msgstr ""
-
-#: includes/Integrations/WooCommerce/AccessibilityNotesHandler.php:116
+#: includes/Integrations/WooCommerce/AccessibilityNotesHandler.php:161
 #: includes/Services/ExportService.php:111
-#: includes/Services/PrivacyService.php:108
+#: includes/Services/PrivacyService.php:109
 msgid "Accessibility Notes"
 msgstr ""
 
@@ -6004,7 +6031,7 @@ msgid "Series Pass — valid for every date of this event"
 msgstr ""
 
 #: includes/Integrations/WooCommerce/CartPresenter.php:155
-#: templates/parts/single-event-occurrence.php:44
+#: templates/parts/single-event-occurrence.php:51
 msgid "Event Date"
 msgstr ""
 
@@ -6075,7 +6102,7 @@ msgid "No thanks"
 msgstr ""
 
 #: includes/Integrations/WooCommerce/DonationHandler.php:301
-#: includes/Integrations/WooCommerce/DonationHandler.php:422
+#: includes/Integrations/WooCommerce/DonationHandler.php:424
 msgid "Donation"
 msgstr ""
 
@@ -6083,16 +6110,16 @@ msgstr ""
 msgid "Donations are not enabled."
 msgstr ""
 
-#: includes/Integrations/WooCommerce/DonationHandler.php:414
+#: includes/Integrations/WooCommerce/DonationHandler.php:416
 msgid "Round-up"
 msgstr ""
 
-#: includes/Integrations/WooCommerce/DonationHandler.php:415
+#: includes/Integrations/WooCommerce/DonationHandler.php:417
 msgid "Preset"
 msgstr ""
 
 #. translators: 1: donation amount, 2: donation type
-#: includes/Integrations/WooCommerce/DonationHandler.php:426
+#: includes/Integrations/WooCommerce/DonationHandler.php:428
 #, php-format
 msgid "Amount: %1$s (%2$s)"
 msgstr ""
@@ -6149,18 +6176,20 @@ msgid "Email address"
 msgstr ""
 
 #: includes/Integrations/WooCommerce/PerAttendeeCheckoutHandler.php:352
-#: templates/parts/waitlist-panel.php:65
+#: templates/parts/waitlist-panel.php:72
 msgid "Phone (optional)"
 msgstr ""
 
 #. translators: 1: event title, 2: date, 3: ticket type name
-#: includes/Integrations/WooCommerce/ProductManager.php:155
+#: includes/Integrations/WooCommerce/ProductManager.php:160
+#: includes/Integrations/WooCommerce/ProductManager.php:899
 #, php-format
 msgid "%1$s - %2$s - %3$s"
 msgstr ""
 
 #. translators: 1: event title, 2: ticket type name
-#: includes/Integrations/WooCommerce/ProductManager.php:733
+#: includes/Integrations/WooCommerce/ProductManager.php:746
+#: includes/Integrations/WooCommerce/ProductManager.php:916
 #, php-format
 msgid "%1$s - Series Pass - %2$s"
 msgstr ""
@@ -6631,60 +6660,69 @@ msgstr ""
 msgid "Email handler not configured."
 msgstr ""
 
-#. translators: %d: number of tickets
-#: includes/Services/EmailTemplateRenderer.php:119
-#, php-format
-msgid "Your %d Tickets - Order Confirmation"
-msgstr ""
-
-#. translators: %s: event title
-#: includes/Services/EmailTemplateRenderer.php:129
-#, php-format
-msgid "Your Ticket for %s"
-msgstr ""
-
-#: includes/Services/EmailTemplateRenderer.php:135
-#: templates/emails/customer-confirmation.php:34
+#: includes/Services/EmailTemplateRenderer.php:102
+#: includes/Services/EmailTemplateRenderer.php:126
 msgid "Your Ticket Confirmation"
 msgstr ""
 
+#. translators: %s: event title
+#: includes/Services/EmailTemplateRenderer.php:143
+#, php-format
+msgid "Your ticket to %s"
+msgid_plural "Your tickets to %s"
+msgstr[0] ""
+msgstr[1] ""
+
+#. translators: %s: order number
+#: includes/Services/EmailTemplateRenderer.php:151
+#, php-format
+msgid "Your tickets — Order #%s"
+msgstr ""
+
+#: includes/Services/EmailTemplateRenderer.php:157
+#: templates/emails/customer-confirmation.php:42
+msgid "Your ticket is confirmed"
+msgid_plural "Your tickets are confirmed"
+msgstr[0] ""
+msgstr[1] ""
+
 #. translators: 1: buyer name, 2: ticket count
-#: includes/Services/EmailTemplateRenderer.php:154
+#: includes/Services/EmailTemplateRenderer.php:176
 #, php-format
 msgid "New Ticket Purchase: %1$s (%2$d tickets)"
 msgstr ""
 
 #. translators: %s: event title
-#: includes/Services/EmailTemplateRenderer.php:341
+#: includes/Services/EmailTemplateRenderer.php:364
 #, php-format
 msgid "Your RSVP Confirmation for %s"
 msgstr ""
 
-#: includes/Services/EmailTemplateRenderer.php:345
-#: templates/emails/rsvp-confirmation.php:44
+#: includes/Services/EmailTemplateRenderer.php:368
+#: templates/emails/rsvp-confirmation.php:51
 msgid "Your RSVP Confirmation"
 msgstr ""
 
 #. translators: 1: attendee name, 2: event title or 'an event'
-#: includes/Services/EmailTemplateRenderer.php:364
+#: includes/Services/EmailTemplateRenderer.php:387
 #, php-format
 msgid "New RSVP: %1$s for %2$s"
 msgstr ""
 
-#: includes/Services/EmailTemplateRenderer.php:365
+#: includes/Services/EmailTemplateRenderer.php:388
 #: includes/Services/RsvpEmailHandler.php:233
-#: templates/emails/rsvp-venue-notification.php:62
+#: templates/emails/rsvp-venue-notification.php:69
 #: templates/ticket/public-ticket.php:30
-#: templates/ticket/scan-result.php:31
+#: templates/ticket/scan-result.php:30
 msgid "Guest"
 msgstr ""
 
-#: includes/Services/EmailTemplateRenderer.php:366
+#: includes/Services/EmailTemplateRenderer.php:389
 msgid "an event"
 msgstr ""
 
 #. translators: 1: event title, 2: event date
-#: includes/Services/EmailTemplateRenderer.php:397
+#: includes/Services/EmailTemplateRenderer.php:420
 #, php-format
 msgid "Reminder: %1$s — %2$s"
 msgstr ""
@@ -6795,74 +6833,74 @@ msgstr ""
 msgid "Conflicts with: %s"
 msgstr ""
 
-#: includes/Services/PrivacyService.php:115
+#: includes/Services/PrivacyService.php:116
 #: templates/ticket/public-ticket.php:203
 msgid "Ticket Code"
 msgstr ""
 
-#: includes/Services/PrivacyService.php:119
+#: includes/Services/PrivacyService.php:120
 msgid "Ticket Status"
 msgstr ""
 
-#: includes/Services/PrivacyService.php:123
+#: includes/Services/PrivacyService.php:124
 msgid "Price Paid"
 msgstr ""
 
-#: includes/Services/PrivacyService.php:129
+#: includes/Services/PrivacyService.php:130
 msgid "Checked In At"
 msgstr ""
 
-#: includes/Services/PrivacyService.php:137
+#: includes/Services/PrivacyService.php:138
 msgid "Event Attendance"
 msgstr ""
 
-#: includes/Services/PrivacyService.php:138
+#: includes/Services/PrivacyService.php:139
 msgid "Event attendance and ticket records from NetterTech Events."
 msgstr ""
 
-#: includes/Services/PrivacyService.php:213
+#: includes/Services/PrivacyService.php:214
 msgid "User Agent"
 msgstr ""
 
-#: includes/Services/PrivacyService.php:220
+#: includes/Services/PrivacyService.php:221
 msgid "Event Activity Log"
 msgstr ""
 
-#: includes/Services/PrivacyService.php:221
+#: includes/Services/PrivacyService.php:222
 msgid "Activity log entries from NetterTech Events."
 msgstr ""
 
-#: includes/Services/PrivacyService.php:282
+#: includes/Services/PrivacyService.php:283
 msgid "Event Organizers"
 msgstr ""
 
-#: includes/Services/PrivacyService.php:283
+#: includes/Services/PrivacyService.php:284
 msgid "Organizer records from NetterTech Events."
 msgstr ""
 
-#: includes/Services/PrivacyService.php:339
+#: includes/Services/PrivacyService.php:340
 msgid "Position"
 msgstr ""
 
-#: includes/Services/PrivacyService.php:353
+#: includes/Services/PrivacyService.php:354
 msgid "Notified At"
 msgstr ""
 
-#: includes/Services/PrivacyService.php:360
+#: includes/Services/PrivacyService.php:361
 msgid "Joined Waitlist"
 msgstr ""
 
-#: includes/Services/PrivacyService.php:367
+#: includes/Services/PrivacyService.php:368
 msgid "Event Waitlist"
 msgstr ""
 
-#: includes/Services/PrivacyService.php:368
+#: includes/Services/PrivacyService.php:369
 msgid "Waitlist entries from NetterTech Events."
 msgstr ""
 
-#: includes/Services/PrivacyService.php:419
-#: includes/Services/PrivacyService.php:538
-#: includes/Services/PrivacyService.php:592
+#: includes/Services/PrivacyService.php:420
+#: includes/Services/PrivacyService.php:539
+#: includes/Services/PrivacyService.php:593
 msgid "[Deleted]"
 msgstr ""
 
@@ -6893,34 +6931,34 @@ msgid "No occurrences generated. Check your recurrence rule and date range."
 msgstr ""
 
 #. translators: 1: occurrence date, 2: number of attendees.
-#: includes/Services/RecurrenceService.php:561
+#: includes/Services/RecurrenceService.php:568
 #, php-format
 msgid "%1$s (%2$d attending)"
 msgstr ""
 
 #. translators: %s: comma-separated list of dates with attendee counts.
-#: includes/Services/RecurrenceService.php:576
+#: includes/Services/RecurrenceService.php:583
 #, php-format
 msgid "This event cannot become a single date, because these dates have already sold tickets: %s. Cancel and refund them first, or leave the event recurring."
 msgstr ""
 
-#: includes/Services/RecurrenceService.php:774
+#: includes/Services/RecurrenceService.php:781
 msgid "Every 2 weeks"
 msgstr ""
 
-#: includes/Services/RecurrenceService.php:786
+#: includes/Services/RecurrenceService.php:793
 msgid "Every weekday (Mon-Fri)"
 msgstr ""
 
-#: includes/Services/RecurrenceService.php:790
+#: includes/Services/RecurrenceService.php:797
 msgid "Every weekend (Sat-Sun)"
 msgstr ""
 
-#: includes/Services/RecurrenceService.php:794
+#: includes/Services/RecurrenceService.php:801
 msgid "First Monday of month"
 msgstr ""
 
-#: includes/Services/RecurrenceService.php:798
+#: includes/Services/RecurrenceService.php:805
 msgid "Last Friday of month"
 msgstr ""
 
@@ -6944,7 +6982,7 @@ msgstr ""
 msgid "A spot is available for %s!"
 msgstr ""
 
-#: includes/Services/WaitlistService.php:72
+#: includes/Services/WaitlistService.php:70
 msgid "This email is already on the waitlist for this event."
 msgstr ""
 
@@ -7059,239 +7097,243 @@ msgstr ""
 msgid "Past"
 msgstr ""
 
-#: templates/emails/customer-confirmation.php:51
-msgid "Your Tickets Are Confirmed!"
-msgstr ""
-
 #. translators: %s: recipient name
-#: templates/emails/customer-confirmation.php:63
-#: templates/emails/event-reminder.php:63
-#: templates/emails/rsvp-confirmation.php:76
-#: templates/emails/waitlist-promotion.php:76
+#: templates/emails/customer-confirmation.php:78
+#: templates/emails/event-reminder.php:70
+#: templates/emails/rsvp-confirmation.php:93
+#: templates/emails/waitlist-promotion.php:83
 #, php-format
 msgid "Hi %s,"
 msgstr ""
 
-#: templates/emails/customer-confirmation.php:69
-msgid "Thank you for your purchase! Your tickets have been confirmed and are ready."
-msgstr ""
+#: templates/emails/customer-confirmation.php:86
+msgid "Thank you for your purchase! Your ticket is below and ready to use."
+msgid_plural "Thank you for your purchase! Your tickets are below and ready to use."
+msgstr[0] ""
+msgstr[1] ""
 
 #. translators: %s: Order number
-#: templates/emails/customer-confirmation.php:75
+#: templates/emails/customer-confirmation.php:99
 #, php-format
 msgid "Order #%s"
 msgstr ""
 
-#: templates/emails/customer-confirmation.php:100
-#: templates/emails/event-reminder.php:98
-#: templates/emails/rsvp-confirmation.php:106
-#: templates/emails/rsvp-venue-notification.php:119
-#: templates/emails/venue-notification.php:140
-#: templates/emails/waitlist-promotion.php:106
+#: templates/emails/customer-confirmation.php:124
+#: templates/emails/event-reminder.php:105
+#: templates/emails/rsvp-confirmation.php:123
+#: templates/emails/rsvp-venue-notification.php:126
+#: templates/emails/venue-notification.php:147
+#: templates/emails/waitlist-promotion.php:113
 msgid "Date:"
 msgstr ""
 
-#: templates/emails/customer-confirmation.php:108
-#: templates/emails/event-reminder.php:106
-#: templates/emails/rsvp-confirmation.php:114
-#: templates/emails/rsvp-venue-notification.php:127
-#: templates/emails/venue-notification.php:148
-#: templates/emails/waitlist-promotion.php:114
+#: templates/emails/customer-confirmation.php:132
+#: templates/emails/event-reminder.php:113
+#: templates/emails/rsvp-confirmation.php:131
+#: templates/emails/rsvp-venue-notification.php:134
+#: templates/emails/venue-notification.php:155
+#: templates/emails/waitlist-promotion.php:121
 msgid "Time:"
 msgstr ""
 
-#: templates/emails/customer-confirmation.php:119
-#: templates/emails/event-reminder.php:116
-#: templates/emails/rsvp-confirmation.php:125
-#: templates/emails/rsvp-venue-notification.php:137
+#: templates/emails/customer-confirmation.php:143
+#: templates/emails/event-reminder.php:123
+#: templates/emails/rsvp-confirmation.php:142
+#: templates/emails/rsvp-venue-notification.php:144
 msgid "Venue:"
 msgstr ""
 
-#: templates/emails/customer-confirmation.php:125
-#: templates/emails/event-reminder.php:122
-#: templates/emails/rsvp-confirmation.php:131
-#: templates/parts/single-event-header.php:58
-#: templates/parts/single-event-header.php:72
+#: templates/emails/customer-confirmation.php:149
+#: templates/emails/event-reminder.php:129
+#: templates/emails/rsvp-confirmation.php:148
+#: templates/parts/single-event-header.php:65
+#: templates/parts/single-event-header.php:79
 msgid "Get Directions"
 msgstr ""
 
-#: templates/emails/customer-confirmation.php:134
+#: templates/emails/customer-confirmation.php:158
 msgid "Ticket:"
 msgstr ""
 
-#: templates/emails/customer-confirmation.php:144
+#: templates/emails/customer-confirmation.php:168
 msgid "Quantity:"
 msgstr ""
 
-#: templates/emails/customer-confirmation.php:183
+#: templates/emails/customer-confirmation.php:207
 msgid "Questions? Contact the event organizer."
 msgstr ""
 
 #. translators: %s: Site name with link
-#: templates/emails/customer-confirmation.php:189
-#: templates/emails/event-reminder.php:166
-#: templates/emails/rsvp-confirmation.php:174
-#: templates/emails/waitlist-promotion.php:152
+#: templates/emails/customer-confirmation.php:213
+#: templates/emails/event-reminder.php:173
+#: templates/emails/rsvp-confirmation.php:191
+#: templates/emails/waitlist-promotion.php:159
 #, php-format
 msgid "Sent by %s"
 msgstr ""
 
-#: templates/emails/event-reminder.php:34
-#: templates/emails/event-reminder.php:50
+#: templates/emails/event-reminder.php:41
+#: templates/emails/event-reminder.php:57
 msgid "Event Reminder"
 msgstr ""
 
-#: templates/emails/event-reminder.php:67
-#: templates/emails/rsvp-confirmation.php:80
+#: templates/emails/event-reminder.php:74
+#: templates/emails/rsvp-confirmation.php:97
 msgid "Hello,"
 msgstr ""
 
 #. translators: %s: Event title
-#: templates/emails/event-reminder.php:75
+#: templates/emails/event-reminder.php:82
 #, php-format
 msgid "This is a friendly reminder that %s is coming up tomorrow. We look forward to seeing you!"
 msgstr ""
 
-#: templates/emails/event-reminder.php:131
+#: templates/emails/event-reminder.php:138
 msgid "Guests:"
 msgstr ""
 
-#: templates/emails/event-reminder.php:150
+#: templates/emails/event-reminder.php:157
 msgid "View Event Details"
 msgstr ""
 
-#: templates/emails/event-reminder.php:160
+#: templates/emails/event-reminder.php:167
 msgid "See you there!"
 msgstr ""
 
 #. translators: %s: event title
-#: templates/emails/rsvp-confirmation.php:40
+#: templates/emails/rsvp-confirmation.php:47
 #, php-format
 msgid "RSVP Confirmation - %s"
 msgstr ""
 
-#: templates/emails/rsvp-confirmation.php:63
+#. translators: %s: event title
+#: templates/emails/rsvp-confirmation.php:74
+#, php-format
+msgid "You're in for %s!"
+msgstr ""
+
+#: templates/emails/rsvp-confirmation.php:78
 msgid "You're In!"
 msgstr ""
 
-#: templates/emails/rsvp-confirmation.php:85
+#: templates/emails/rsvp-confirmation.php:102
 msgid "Your RSVP has been confirmed. We look forward to seeing you!"
 msgstr ""
 
-#: templates/emails/rsvp-confirmation.php:168
+#: templates/emails/rsvp-confirmation.php:185
 msgid "Thank you for registering."
 msgstr ""
 
-#: templates/emails/rsvp-venue-notification.php:33
-#: templates/emails/rsvp-venue-notification.php:44
+#: templates/emails/rsvp-venue-notification.php:40
+#: templates/emails/rsvp-venue-notification.php:51
 msgid "New RSVP Received"
 msgstr ""
 
-#: templates/emails/rsvp-venue-notification.php:59
+#: templates/emails/rsvp-venue-notification.php:66
 msgid "New Guest"
 msgstr ""
 
-#: templates/emails/rsvp-venue-notification.php:74
+#: templates/emails/rsvp-venue-notification.php:81
 msgid "Guest Details"
 msgstr ""
 
-#: templates/emails/rsvp-venue-notification.php:79
-#: templates/emails/venue-notification.php:94
+#: templates/emails/rsvp-venue-notification.php:86
+#: templates/emails/venue-notification.php:101
 msgid "Name:"
 msgstr ""
 
-#: templates/emails/rsvp-venue-notification.php:82
-#: templates/emails/rsvp-venue-notification.php:95
+#: templates/emails/rsvp-venue-notification.php:89
+#: templates/emails/rsvp-venue-notification.php:102
 msgid "Not provided"
 msgstr ""
 
-#: templates/emails/rsvp-venue-notification.php:87
-#: templates/emails/venue-notification.php:102
+#: templates/emails/rsvp-venue-notification.php:94
+#: templates/emails/venue-notification.php:109
 msgid "Email:"
 msgstr ""
 
-#: templates/emails/rsvp-venue-notification.php:159
+#: templates/emails/rsvp-venue-notification.php:166
 msgid "Confirmation Code"
 msgstr ""
 
 #. translators: %s: Current time
-#: templates/emails/rsvp-venue-notification.php:178
+#: templates/emails/rsvp-venue-notification.php:185
 #, php-format
 msgid "RSVP received at %s"
 msgstr ""
 
-#: templates/emails/venue-notification.php:34
-#: templates/emails/venue-notification.php:45
+#: templates/emails/venue-notification.php:41
+#: templates/emails/venue-notification.php:52
 msgid "New Ticket Purchase"
 msgstr ""
 
-#: templates/emails/venue-notification.php:63
+#: templates/emails/venue-notification.php:70
 msgid "Total Tickets"
 msgstr ""
 
-#: templates/emails/venue-notification.php:71
+#: templates/emails/venue-notification.php:78
 msgid "Revenue"
 msgstr ""
 
-#: templates/emails/venue-notification.php:89
+#: templates/emails/venue-notification.php:96
 msgid "Customer Details"
 msgstr ""
 
-#: templates/emails/venue-notification.php:112
+#: templates/emails/venue-notification.php:119
 msgid "Order:"
 msgstr ""
 
-#: templates/emails/venue-notification.php:158
+#: templates/emails/venue-notification.php:165
 msgid "Type:"
 msgstr ""
 
-#: templates/emails/venue-notification.php:167
+#: templates/emails/venue-notification.php:174
 msgid "Qty:"
 msgstr ""
 
-#: templates/emails/venue-notification.php:185
+#: templates/emails/venue-notification.php:192
 msgid "View Order in Admin"
 msgstr ""
 
 #. translators: %s: Current time
-#: templates/emails/venue-notification.php:197
+#: templates/emails/venue-notification.php:204
 #, php-format
 msgid "This notification was sent at %s"
 msgstr ""
 
 #. translators: %s: event title
-#: templates/emails/waitlist-promotion.php:41
+#: templates/emails/waitlist-promotion.php:48
 #, php-format
 msgid "A Spot is Available - %s"
 msgstr ""
 
-#: templates/emails/waitlist-promotion.php:45
+#: templates/emails/waitlist-promotion.php:52
 msgid "A Spot is Available"
 msgstr ""
 
-#: templates/emails/waitlist-promotion.php:64
+#: templates/emails/waitlist-promotion.php:71
 msgid "A Spot is Available!"
 msgstr ""
 
 #. translators: %s: event name
-#: templates/emails/waitlist-promotion.php:85
+#: templates/emails/waitlist-promotion.php:92
 #, php-format
 msgid "A spot has opened up for %s."
 msgstr ""
 
-#: templates/emails/waitlist-promotion.php:131
+#: templates/emails/waitlist-promotion.php:138
 msgid "Book Your Spot Now"
 msgstr ""
 
-#: templates/emails/waitlist-promotion.php:140
+#: templates/emails/waitlist-promotion.php:147
 msgid "This spot is held for a limited time. Book soon to secure your place."
 msgstr ""
 
-#: templates/parts/empty-state.php:30
+#: templates/parts/empty-state.php:37
 msgid "No events match your search."
 msgstr ""
 
-#: templates/parts/empty-state.php:33
+#: templates/parts/empty-state.php:40
 msgid "No events found for the selected category."
 msgstr ""
 
@@ -7303,129 +7345,129 @@ msgstr ""
 msgid "Back to Events"
 msgstr ""
 
-#: templates/parts/event-card.php:180
+#: templates/parts/event-card.php:187
 msgid "Online"
 msgstr ""
 
-#: templates/parts/event-card.php:182
+#: templates/parts/event-card.php:189
 msgid "Online Event"
 msgstr ""
 
 #. translators: %d: number of additional tags not shown.
-#: templates/parts/event-card.php:246
+#: templates/parts/event-card.php:253
 #, php-format
 msgid "…and %d more"
 msgid_plural "…and %d more"
 msgstr[0] ""
 msgstr[1] ""
 
-#: templates/parts/event-filters.php:68
+#: templates/parts/event-filters.php:78
 msgid "Search events"
 msgstr ""
 
-#: templates/parts/event-filters.php:75
+#: templates/parts/event-filters.php:85
 msgid "Search events..."
 msgstr ""
 
-#: templates/parts/event-filters.php:96
+#: templates/parts/event-filters.php:106
 msgid "All Categories"
 msgstr ""
 
-#: templates/parts/event-filters.php:116
+#: templates/parts/event-filters.php:126
 msgid "All Tags"
 msgstr ""
 
-#: templates/parts/more-dates.php:36
+#: templates/parts/more-dates.php:43
 msgid "Other dates for this event"
 msgstr ""
 
-#: templates/parts/more-dates.php:38
+#: templates/parts/more-dates.php:45
 msgid "More Dates"
 msgstr ""
 
-#: templates/parts/more-dates.php:41
+#: templates/parts/more-dates.php:48
 msgid "View all"
 msgstr ""
 
-#: templates/parts/more-dates.php:64
+#: templates/parts/more-dates.php:71
 msgid "(current)"
 msgstr ""
 
-#: templates/parts/pagination.php:49
+#: templates/parts/pagination.php:56
 msgid "Event pages"
 msgstr ""
 
-#: templates/parts/pagination.php:54
+#: templates/parts/pagination.php:61
 msgid "Previous page"
 msgstr ""
 
 #. translators: 1: Current page, 2: Total pages
-#: templates/parts/pagination.php:64
+#: templates/parts/pagination.php:71
 #, php-format
 msgid "Page %1$d of %2$d"
 msgstr ""
 
-#: templates/parts/pagination.php:76
+#: templates/parts/pagination.php:83
 msgid "Next page"
 msgstr ""
 
-#: templates/parts/single-event-header.php:36
+#: templates/parts/single-event-header.php:43
 msgid "This date has been cancelled."
 msgstr ""
 
-#: templates/parts/single-event-header.php:85
+#: templates/parts/single-event-header.php:92
 msgid "Also available online:"
 msgstr ""
 
-#: templates/parts/single-event-header.php:87
+#: templates/parts/single-event-header.php:94
 msgid "Online event:"
 msgstr ""
 
-#: templates/parts/single-event-header.php:90
+#: templates/parts/single-event-header.php:97
 msgid "Join Online"
 msgstr ""
 
-#: templates/parts/single-event-upcoming.php:31
+#: templates/parts/single-event-upcoming.php:38
 msgid "Event Dates"
 msgstr ""
 
-#: templates/parts/single-event-upcoming.php:33
+#: templates/parts/single-event-upcoming.php:40
 #: templates/series-page.php:148
 msgid "Upcoming Dates"
 msgstr ""
 
 #. translators: %s: ticket type name
-#: templates/parts/ticket-form.php:102
+#: templates/parts/ticket-form.php:109
 #, php-format
 msgid "Quantity for %s"
 msgstr ""
 
 #. translators: %d: number of tickets remaining
-#: templates/parts/ticket-form.php:112
+#: templates/parts/ticket-form.php:119
 #, php-format
 msgid "%d left"
 msgid_plural "%d left"
 msgstr[0] ""
 msgstr[1] ""
 
-#: templates/parts/ticket-form.php:121
+#: templates/parts/ticket-form.php:128
 msgid "Contact the organizer to purchase this ticket type."
 msgstr ""
 
-#: templates/parts/ticket-form.php:132
-#: templates/parts/ticket-form.php:137
+#: templates/parts/ticket-form.php:139
+#: templates/parts/ticket-form.php:144
 msgid "No tickets selected"
 msgstr ""
 
-#: templates/parts/ticket-form.php:133
+#: templates/parts/ticket-form.php:140
 msgid "Get Ticket"
 msgstr ""
 
-#: templates/parts/ticket-form.php:134
+#: templates/parts/ticket-form.php:141
 msgid "Get Tickets"
 msgstr ""
 
-#: templates/parts/waitlist-panel.php:38
+#: templates/parts/waitlist-panel.php:45
 msgid "Waitlist signup form"
 msgstr ""
 
@@ -7474,12 +7516,12 @@ msgid "sq ft"
 msgstr ""
 
 #: templates/ticket/public-ticket.php:26
-#: templates/ticket/scan-result.php:27
+#: templates/ticket/scan-result.php:26
 msgid "Ticket not found."
 msgstr ""
 
 #: templates/ticket/public-ticket.php:97
-#: templates/ticket/scan-result.php:87
+#: templates/ticket/scan-result.php:86
 msgid "Ticket Cancelled"
 msgstr ""
 
@@ -7511,56 +7553,56 @@ msgstr ""
 msgid "%1$d of %2$d guests checked in"
 msgstr ""
 
-#: templates/ticket/scan-result.php:92
+#: templates/ticket/scan-result.php:91
 msgid "Already Checked In"
 msgstr ""
 
 #. translators: 1: checked in count, 2: total quantity
-#: templates/ticket/scan-result.php:99
+#: templates/ticket/scan-result.php:98
 #, php-format
 msgid "%1$d of %2$d Checked In"
 msgstr ""
 
-#: templates/ticket/scan-result.php:107
-#: templates/ticket/scan-result.php:149
+#: templates/ticket/scan-result.php:106
+#: templates/ticket/scan-result.php:155
 msgid "Ready to Check In"
 msgstr ""
 
-#: templates/ticket/scan-result.php:145
+#: templates/ticket/scan-result.php:151
 msgid "Fully Checked In"
 msgstr ""
 
-#: templates/ticket/scan-result.php:146
+#: templates/ticket/scan-result.php:152
 msgid "of"
 msgstr ""
 
-#: templates/ticket/scan-result.php:148
+#: templates/ticket/scan-result.php:154
 msgid "Check In All"
 msgstr ""
 
-#: templates/ticket/scan-result.php:178
+#: templates/ticket/scan-result.php:184
 msgid "Seats:"
 msgstr ""
 
-#: templates/ticket/scan-result.php:188
+#: templates/ticket/scan-result.php:194
 msgid "guests"
 msgstr ""
 
-#: templates/ticket/scan-result.php:199
+#: templates/ticket/scan-result.php:205
 msgid "Check In +1"
 msgstr ""
 
 #. translators: %d: remaining guests to check in
-#: templates/ticket/scan-result.php:205
+#: templates/ticket/scan-result.php:211
 #, php-format
 msgid "Check In All (%d)"
 msgstr ""
 
-#: templates/ticket/scan-result.php:227
+#: templates/ticket/scan-result.php:233
 msgid "View Full List"
 msgstr ""
 
-#: templates/ticket/scan-result.php:231
+#: templates/ticket/scan-result.php:237
 msgid "Open camera to scan next ticket"
 msgstr ""
 

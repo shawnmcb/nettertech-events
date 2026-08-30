@@ -24,6 +24,13 @@ declare(strict_types=1);
 
 defined( 'ABSPATH' ) || exit;
 
+/**
+ * PHPStan reads only standalone assertions, not the header var-list
+ * (audit GAP-029 rollout).
+ *
+ * @var \NetterTechEvents\TemplateLoader\EmailContext $context
+ */
+
 $nettertech_events_text_color = '#333333';
 $nettertech_events_bg_color   = '#f7f7f7';
 ?>
@@ -60,7 +67,17 @@ $nettertech_events_bg_color   = '#f7f7f7';
 								<h1 style="margin: 0 0 10px; font-size: 28px; color: <?php echo esc_attr( $nettertech_events_text_color ); ?>;"><?php echo esc_html( $context->get( 'site_name', '' ) ); ?></h1>
 							<?php endif; ?>
 							<h2 style="margin: 0; font-size: 24px; color: <?php echo esc_attr( $context->accent_color() ); ?>; font-weight: 600;">
-								<?php esc_html_e( "You're In!", 'nettertech-events' ); ?>
+								<?php
+								if ( $context->event && $context->event->title ) {
+									printf(
+										/* translators: %s: event title */
+										esc_html__( "You're in for %s!", 'nettertech-events' ),
+										esc_html( $context->event->title )
+									);
+								} else {
+									esc_html_e( "You're In!", 'nettertech-events' );
+								}
+								?>
 							</h2>
 						</td>
 					</tr>

@@ -90,7 +90,11 @@ class RepositoryServiceProvider implements ServiceProviderInterface {
 			OccurrenceRepositoryInterface::class,
 			fn( Container $c ) => new OccurrenceRepository(
 				ServiceRegistry::wpdb(),
-				$c->get( OccurrenceQueryRepositoryInterface::class )
+				$c->get( OccurrenceQueryRepositoryInterface::class ),
+				// Without the event repo, every Occurrence::get_event() from a
+				// container-resolved repository silently returned null — the
+				// NTE-210 class of bug (audit 2026-08-21 GAP-018).
+				$c->get( EventRepositoryInterface::class )
 			)
 		);
 

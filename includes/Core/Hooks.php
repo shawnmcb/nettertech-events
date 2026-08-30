@@ -764,6 +764,17 @@ final class Hooks {
 	public const ACTIVITY_LOG_RETENTION_DAYS = 'nettertech_events_activity_log_retention_days';
 
 	/**
+	 * Filters how many days after an occurrence ends its attendees' accessibility
+	 * notes are kept before the daily privacy job clears them (NTE-217).
+	 *
+	 * @since 1.4.5
+	 *
+	 * @param int $days Number of days to keep notes after the event (default 30).
+	 * @return int
+	 */
+	public const ACCESSIBILITY_NOTES_RETENTION_DAYS = 'nettertech_events_accessibility_notes_retention_days';
+
+	/**
 	 * Filters the activity retention cutoff date.
 	 *
 	 * @param string $cutoff        The cutoff datetime string.

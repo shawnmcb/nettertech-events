@@ -130,6 +130,29 @@ Each type has its own inventory and pricing.
 
 ---
 
+## Attendees
+
+**Events → Attendees** lists everyone holding a seat — ticket buyers and RSVPs — across all events, or for one event when you arrive from an event's row (the "Purchases for:" view).
+
+### Filters
+- **Event** — one date of one event.
+- **Status** — Confirmed, Pending, Cancelled, Refunded, Voided, or Failed orders (seats voided because the order never paid; hidden from the default view).
+- **Data Quality** — real data only, or placeholder rows created by imports.
+- **Accessibility** — *Has accessibility notes* / *No accessibility notes* (see below).
+- **Search** — name or email.
+
+### Accessibility notes
+Attendees can tell you about accessibility needs when they buy a ticket (classic or block checkout) or submit an RSVP. The field is optional, capped at 1,000 characters, and carries the statement "Used only to arrange accommodations for this event." on every form.
+
+In the list, an attendee who entered something shows a small **Accessibility notes** badge under their name. Click or press Enter on the badge to read the full note; nothing is shown for attendees who left it blank. Use the **Accessibility** filter to see only those attendees, and the CSV export (below) to hand the list to the venue or accessibility coordinator.
+
+This is sensitive personal data, so the plugin treats it differently from a name or email: it never appears in confirmation or reminder emails or in Activity Log entries, and it is cleared automatically 30 days after the event ends (see [GDPR Privacy Tools](#gdpr-privacy-tools)).
+
+### Exporting
+**Export Selected** (bulk action) and **Export All** (respects the current filters) download a CSV with: ID, Name, Email, Event, Date/Time, Ticket Type, Quantity, Status, Checked In, Notes, Accessibility Notes, followed by one column per custom attendee field.
+
+---
+
 ## Displaying Events
 
 ### Shortcodes
@@ -504,7 +527,7 @@ Go to **Events → Activity Log** to browse entries. Each entry shows:
 - Additional details
 
 ### Retention
-Activity log entries are retained for 90 days by default. This can be adjusted via the `nte_activity_log_retention_days` filter (see [Hooks Reference](./HOOKS.md)).
+Activity log entries are retained for 90 days by default. This can be adjusted via the `nettertech_events_activity_log_retention_days` filter (see [Hooks Reference](./HOOKS.md)).
 
 ---
 
@@ -517,6 +540,9 @@ When a user requests their data via **Tools → Export Personal Data**, attendee
 
 ### Personal Data Erasure
 When a user requests erasure via **Tools → Erase Personal Data**, their attendee records are anonymized or removed.
+
+### Accessibility Notes Retention
+Accessibility requirements entered at checkout or on the RSVP form are collected for one purpose — arranging accommodations at the event — so they are not kept indefinitely. A daily job clears the note (the attendee record itself stays) once the event date has been over for 30 days. Adjust the window with the `nettertech_events_accessibility_notes_retention_days` filter (see [Hooks Reference](./HOOKS.md)); return `0` to clear notes as soon as the event ends. Notes are also included in personal-data exports and removed by personal-data erasure.
 
 ---
 

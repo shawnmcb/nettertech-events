@@ -24,6 +24,13 @@ declare(strict_types=1);
 
 defined( 'ABSPATH' ) || exit;
 
+/**
+ * PHPStan reads only standalone assertions, not the header var-list
+ * (audit GAP-029 rollout).
+ *
+ * @var \NetterTechEvents\TemplateLoader\TemplateContext $context
+ */
+
 $nettertech_events_wrapper_class = 'nte-regulars';
 if ( ! empty( $context->get( 'class', '' ) ) ) {
 	$nettertech_events_wrapper_class .= ' ' . $context->get( 'class', '' );

@@ -1104,6 +1104,73 @@
 	overflow-wrap: anywhere;
 }
 
+/* Accessibility-needs indicator in the Name cell (NTE-217): a compact badge
+   that is the <summary> of a native <details>, so the full note is one
+   keypress away without a wide always-on column. */
+.nte-attendee-accessibility {
+	position: relative;
+	margin-top: 4px;
+	font-size: 12px;
+}
+
+.nte-attendee-accessibility__badge {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 1px 8px 1px 4px;
+	border: 1px solid #2271b1;
+	border-radius: 999px;
+	color: #135e96;
+	background: #f0f6fc;
+	cursor: pointer;
+	list-style: none;
+	line-height: 1.6;
+	white-space: nowrap;
+}
+
+.nte-attendee-accessibility__badge::-webkit-details-marker {
+	display: none;
+}
+
+.nte-attendee-accessibility__badge:focus-visible {
+	outline: 2px solid #2271b1;
+	outline-offset: 1px;
+}
+
+.nte-attendee-accessibility__icon {
+	width: 16px;
+	height: 16px;
+	font-size: 16px;
+}
+
+.nte-attendee-accessibility[open] .nte-attendee-accessibility__badge {
+	background: #135e96;
+	color: #fff;
+}
+
+/* The note opens as a popover anchored to the badge rather than inside the
+   narrow Name column, so a paragraph reads as a paragraph. It sits above the
+   neighbouring cells only while open. */
+.nte-attendee-accessibility__text {
+	position: absolute;
+	top: 100%;
+	left: 0;
+	z-index: 20;
+	width: min(32em, 70vw);
+	margin: 4px 0 0;
+	padding: 8px 10px;
+	border: 1px solid #c3c4c7;
+	border-left: 3px solid #2271b1;
+	border-radius: 2px;
+	background: #fff;
+	color: #1d2327;
+	font-size: 12px;
+	line-height: 1.5;
+	white-space: normal;
+	overflow-wrap: anywhere;
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
 /* Edit / Add Attendee dialogs (NTE-143 C5) — native <dialog>. */
 .nte-attendee-dialog {
 	min-width: 360px;

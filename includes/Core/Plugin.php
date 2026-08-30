@@ -940,6 +940,19 @@ class Plugin {
 			\NetterTechEvents\Cli\NormalizeCreatedAtCommand::class
 		);
 
+		// NTE-235: collapse stacked "{event} - {date} - " prefixes on ticket products.
+		global $wpdb;
+		\WP_CLI::add_command(
+			'nettertech-events products normalize-titles',
+			new \NetterTechEvents\Cli\ProductTitleNormalizeCommand(
+				new \NetterTechEvents\Integrations\WooCommerce\ProductTitleNormalizer(
+					$wpdb,
+					$this->container->get( OccurrenceRepositoryInterface::class ),
+					$this->container->get( EventRepositoryInterface::class )
+				)
+			)
+		);
+
 		// NTE-212: void attendees left confirmed by orders that never paid.
 		if ( null !== $this->wc_integration ) {
 			\WP_CLI::add_command(

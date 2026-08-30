@@ -70,7 +70,12 @@ class AttendeesBulkActions {
 		}
 
 		// Verify user has permission (defense-in-depth per OWASP A01).
-		if ( ! current_user_can( 'edit_posts' ) ) {
+		// manage_options, matching the level the page itself is registered
+		// at (AdminMenu::CAPABILITY) — the previous edit_posts self-gate was
+		// a latent two-level privilege mismatch: export/delete of attendee
+		// PII must never be one menu-registration change away from
+		// Contributor access (audit 2026-08-21 GAP-014).
+		if ( ! current_user_can( \NetterTechEvents\Admin\AdminMenu::CAPABILITY ) ) {
 			return;
 		}
 
@@ -110,8 +115,9 @@ class AttendeesBulkActions {
 			$search             = isset( $_POST['filter_search'] ) ? sanitize_text_field( wp_unslash( $_POST['filter_search'] ) ) : '';
 			$status_filter      = isset( $_POST['filter_status'] ) ? sanitize_text_field( wp_unslash( $_POST['filter_status'] ) ) : '';
 			$placeholder_filter = isset( $_POST['filter_placeholder'] ) ? sanitize_text_field( wp_unslash( $_POST['filter_placeholder'] ) ) : '';
+			$access_filter      = isset( $_POST['filter_accessibility'] ) ? sanitize_text_field( wp_unslash( $_POST['filter_accessibility'] ) ) : '';
 
-			$this->handle_export_all( $occurrence_id, $event_id, $search, $status_filter, $placeholder_filter, $orderby, $order );
+			$this->handle_export_all( $occurrence_id, $event_id, $search, $status_filter, $placeholder_filter, $orderby, $order, $access_filter );
 			return;
 		}
 
@@ -243,7 +249,8 @@ class AttendeesBulkActions {
 	 * @return void
 	 */
 	public function handle_single_delete(): void {
-		if ( ! current_user_can( 'edit_posts' ) ) {
+		// manage_options — same rationale as handle() (GAP-014).
+		if ( ! current_user_can( \NetterTechEvents\Admin\AdminMenu::CAPABILITY ) ) {
 			wp_die( esc_html__( 'You do not have permission to perform this action.', 'nettertech-events' ) );
 		}
 
@@ -337,9 +344,10 @@ class AttendeesBulkActions {
 	 * @param string $placeholder_filter Filter: placeholder flag.
 	 * @param string $orderby            Sort key selected on the list.
 	 * @param string $order              Sort direction selected on the list.
+	 * @param string $access_filter      Filter: "has accessibility notes" ('yes'/'no'/'').
 	 * @return void
 	 */
-	private function handle_export_all( int $occurrence_id, int $event_id, string $search, string $status_filter, string $placeholder_filter, string $orderby = '', string $order = '' ): void {
-		$this->exporter->export_all_filtered( $occurrence_id, $event_id, $search, $status_filter, $placeholder_filter, $orderby, $order );
+	private function handle_export_all( int $occurrence_id, int $event_id, string $search, string $status_filter, string $placeholder_filter, string $orderby = '', string $order = '', string $access_filter = '' ): void {
+		$this->exporter->export_all_filtered( $occurrence_id, $event_id, $search, $status_filter, $placeholder_filter, $orderby, $order, $access_filter );
 	}
 }

@@ -23,16 +23,31 @@ declare(strict_types=1);
 
 defined( 'ABSPATH' ) || exit;
 
+/**
+ * PHPStan reads only standalone assertions, not the header var-list
+ * (audit GAP-029 rollout).
+ *
+ * @var \NetterTechEvents\TemplateLoader\EmailContext $context
+ */
+
 $nettertech_events_text_color = '#333333';
 $nettertech_events_bg_color   = '#f7f7f7';
+
+// Heading is built by EmailTemplateRenderer::get_customer_email_heading() (real
+// _n() plural forms, event name, multi-event fallback); the string below only
+// covers theme overrides that render this template without the renderer.
+$nettertech_events_ticket_count = count( $context->get( 'tickets', array() ) );
+$nettertech_events_heading      = (string) $context->get( 'heading', '' );
+if ( '' === $nettertech_events_heading ) {
+	$nettertech_events_heading = _n( 'Your ticket is confirmed', 'Your tickets are confirmed', $nettertech_events_ticket_count, 'nettertech-events' );
+}
 ?>
 <!DOCTYPE html>
 <html lang="<?php echo esc_attr( get_bloginfo( 'language' ) ); ?>">
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title><?php esc_html_e( 'Your Ticket Confirmation', 'nettertech-events' ); ?></title>
-	<!-- Note: event name is not included here because a single order may contain tickets for multiple events. Event titles appear in the per-ticket sections below. -->
+	<title><?php echo esc_html( $nettertech_events_heading ); ?></title>
 </head>
 <body style="margin: 0; padding: 0; background-color: <?php echo esc_attr( $nettertech_events_bg_color ); ?>; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;">
 	<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: <?php echo esc_attr( $nettertech_events_bg_color ); ?>;">
@@ -48,7 +63,7 @@ $nettertech_events_bg_color   = '#f7f7f7';
 								<h1 style="margin: 0 0 10px; font-size: 28px; color: <?php echo esc_attr( $nettertech_events_text_color ); ?>;"><?php echo esc_html( $context->get( 'site_name', '' ) ); ?></h1>
 							<?php endif; ?>
 							<h2 style="margin: 0; font-size: 24px; color: <?php echo esc_attr( $context->accent_color() ); ?>; font-weight: 600;">
-								<?php esc_html_e( 'Your Tickets Are Confirmed!', 'nettertech-events' ); ?>
+								<?php echo esc_html( $nettertech_events_heading ); ?>
 							</h2>
 						</td>
 					</tr>
@@ -66,7 +81,16 @@ $nettertech_events_bg_color   = '#f7f7f7';
 								?>
 							</p>
 							<p style="margin: 0 0 20px; font-size: 16px; color: <?php echo esc_attr( $nettertech_events_text_color ); ?>; line-height: 1.6;">
-								<?php esc_html_e( 'Thank you for your purchase! Your tickets have been confirmed and are ready.', 'nettertech-events' ); ?>
+								<?php
+								echo esc_html(
+									_n(
+										'Thank you for your purchase! Your ticket is below and ready to use.',
+										'Thank you for your purchase! Your tickets are below and ready to use.',
+										$nettertech_events_ticket_count,
+										'nettertech-events'
+									)
+								);
+								?>
 							</p>
 							<p style="margin: 0 0 30px; font-size: 14px; color: #666666;">
 								<?php

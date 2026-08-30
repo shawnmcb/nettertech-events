@@ -370,7 +370,9 @@ class DonationHandler {
 
 		switch ( $option ) {
 			case 'roundup':
-				$cart_total = WC()->cart->get_subtotal();
+				// WC_Cart::get_subtotal() returns a string when totals are rehydrated from the
+				// session (the admin-ajax case); strict_types made this a fatal TypeError.
+				$cart_total = (float) WC()->cart->get_subtotal();
 				$amount     = $this->get_roundup_amount( $cart_total );
 				$this->set_session_donation( $amount, 'roundup' );
 				break;

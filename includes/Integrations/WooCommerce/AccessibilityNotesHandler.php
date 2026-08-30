@@ -11,6 +11,9 @@ namespace NetterTechEvents\Integrations\WooCommerce;
 
 defined( 'ABSPATH' ) || exit;
 
+use NetterTechEvents\Core\MetaKeys;
+use NetterTechEvents\Frontend\AccessibilityNotesField;
+
 /**
  * Handles accessibility notes field on WooCommerce checkout.
  *
@@ -42,6 +45,42 @@ class AccessibilityNotesHandler {
 	}
 
 	/**
+	 * Style handle for the checkout field (classic and block).
+	 *
+	 * @var string
+	 */
+	public const STYLE_HANDLE = 'nettertech-events-accessibility-notes';
+
+	/**
+	 * Enqueue the field's small stylesheet on the checkout page.
+	 *
+	 * A src-less handle with inline CSS: the plugin's checkout stylesheet is
+	 * the donations sheet and only loads when donations are on, so the
+	 * accessibility field carries its own few rules — enough that the purpose
+	 * line reads as part of the field and the placeholder stays legible on
+	 * themes that paint placeholders in a pale palette colour.
+	 *
+	 * @return void
+	 */
+	public function enqueue_styles(): void {
+		if ( ! function_exists( 'is_checkout' ) || ! is_checkout() ) {
+			return;
+		}
+
+		$css = '
+			.nte-accessibility-notes-field .description,
+			.nte-wc-blocks-field__purpose { display: block; margin: 4px 0 0; font-size: 0.9em; line-height: 1.4; color: #50575e; }
+			.nte-wc-blocks-field__heading { display: block; margin: 0 0 8px; font-weight: 600; }
+			.nte-wc-blocks-field__textarea { width: 100%; font: inherit; }
+			.nte-accessibility-notes-field textarea::placeholder { color: #6b6b6b; opacity: 1; }
+		';
+
+		wp_register_style( self::STYLE_HANDLE, false, array(), NETTERTECH_EVENTS_VERSION );
+		wp_enqueue_style( self::STYLE_HANDLE );
+		wp_add_inline_style( self::STYLE_HANDLE, $css );
+	}
+
+	/**
 	 * Render accessibility notes field on checkout.
 	 *
 	 * Only displays if cart contains event tickets.
@@ -56,16 +95,23 @@ class AccessibilityNotesHandler {
 
 		echo '<div class="nte-accessibility-notes-field">';
 
+		// Wording, limit and input name come from the shared field definition so
+		// this surface, the block checkout and the RSVP form stay identical.
+		// WooCommerce renders `description` as the field's aria-describedby text.
 		woocommerce_form_field(
-			'nettertech_events_accessibility_notes',
+			AccessibilityNotesField::input_name(),
 			array(
-				'type'        => 'textarea',
-				'class'       => array( 'form-row-wide' ),
-				'label'       => __( 'Accessibility Requirements', 'nettertech-events' ),
-				'placeholder' => __( 'Please let us know about any accessibility needs or accommodations we can provide (wheelchair access, ASL interpreter, etc.)', 'nettertech-events' ),
-				'required'    => false,
+				'type'              => 'textarea',
+				'class'             => array( 'form-row-wide' ),
+				'label'             => AccessibilityNotesField::label(),
+				'placeholder'       => AccessibilityNotesField::placeholder(),
+				'description'       => AccessibilityNotesField::purpose_text(),
+				'required'          => false,
+				'custom_attributes' => array(
+					'maxlength' => (string) AccessibilityNotesField::MAX_LENGTH,
+				),
 			),
-			$checkout->get_value( 'nettertech_events_accessibility_notes' )
+			$checkout->get_value( AccessibilityNotesField::input_name() )
 		);
 
 		echo '</div>';
@@ -86,15 +132,14 @@ class AccessibilityNotesHandler {
 			return;
 		}
 
-		$raw_notes = $checkout->get_value( 'nettertech_events_accessibility_notes' );
-		if ( ! is_string( $raw_notes ) || '' === $raw_notes ) {
+		$notes = AccessibilityNotesField::sanitize( $checkout->get_value( AccessibilityNotesField::input_name() ) );
+		if ( null === $notes ) {
 			return;
 		}
 
-		$notes = sanitize_textarea_field( $raw_notes );
 		$order = wc_get_order( $order_id );
 		if ( $order instanceof \WC_Order ) {
-			$order->update_meta_data( '_nettertech_events_accessibility_notes', $notes );
+			$order->update_meta_data( MetaKeys::ACCESSIBILITY_NOTES, $notes );
 			$order->save();
 		}
 	}
@@ -106,7 +151,7 @@ class AccessibilityNotesHandler {
 	 * @return void
 	 */
 	public function display_admin( $order ): void {
-		$notes = $order->get_meta( '_nettertech_events_accessibility_notes', true );
+		$notes = $order->get_meta( MetaKeys::ACCESSIBILITY_NOTES, true );
 
 		if ( empty( $notes ) ) {
 			return;

@@ -53,7 +53,6 @@ class WaitlistService implements WaitlistServiceInterface {
 	 * @param string      $email          Email address.
 	 * @param string      $name           Name.
 	 * @param string|null $phone          Phone number (optional).
-	 * @param int|null    $ticket_type_id Ticket type ID (optional).
 	 * @return WaitlistEntry The created entry.
 	 * @throws ValidationException If already on waitlist.
 	 */
@@ -61,8 +60,7 @@ class WaitlistService implements WaitlistServiceInterface {
 		int $occurrence_id,
 		string $email,
 		string $name,
-		?string $phone = null,
-		?int $ticket_type_id = null
+		?string $phone = null
 	): WaitlistEntry {
 		// Check for existing entry.
 		$existing = $this->repo->find_by_email( $email, $occurrence_id );
@@ -74,23 +72,21 @@ class WaitlistService implements WaitlistServiceInterface {
 			}
 
 			// Re-join: reuse existing row for removed/expired/converted entries.
-			$existing->name           = sanitize_text_field( $name );
-			$existing->phone          = $phone ? sanitize_text_field( $phone ) : null;
-			$existing->ticket_type_id = $ticket_type_id;
-			$existing->position       = $this->repo->get_next_position( $occurrence_id );
-			$existing->status         = 'waiting';
-			$existing->notified_at    = null;
+			$existing->name        = sanitize_text_field( $name );
+			$existing->phone       = $phone ? sanitize_text_field( $phone ) : null;
+			$existing->position    = $this->repo->get_next_position( $occurrence_id );
+			$existing->status      = 'waiting';
+			$existing->notified_at = null;
 
 			$entry = $this->repo->save( $existing );
 		} else {
-			$entry                 = new WaitlistEntry();
-			$entry->occurrence_id  = $occurrence_id;
-			$entry->email          = sanitize_email( $email );
-			$entry->name           = sanitize_text_field( $name );
-			$entry->phone          = $phone ? sanitize_text_field( $phone ) : null;
-			$entry->ticket_type_id = $ticket_type_id;
-			$entry->position       = $this->repo->get_next_position( $occurrence_id );
-			$entry->status         = 'waiting';
+			$entry                = new WaitlistEntry();
+			$entry->occurrence_id = $occurrence_id;
+			$entry->email         = sanitize_email( $email );
+			$entry->name          = sanitize_text_field( $name );
+			$entry->phone         = $phone ? sanitize_text_field( $phone ) : null;
+			$entry->position      = $this->repo->get_next_position( $occurrence_id );
+			$entry->status        = 'waiting';
 
 			$entry = $this->repo->save( $entry );
 		}

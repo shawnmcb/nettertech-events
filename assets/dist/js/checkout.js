@@ -111,23 +111,41 @@
          * Refresh the round-up amount after cart totals change.
          */
         refreshRoundupAmount: function() {
-            // The server will recalculate round-up amount on next checkout update
-            // We just need to trigger a UI refresh if round-up is selected
+            // Re-sync the round-up amount after totals change (shipping, coupons).
+            // Silent: only re-trigger update_checkout when the server-side amount
+            // actually moved, otherwise updated_checkout -> AJAX -> update_checkout
+            // -> updated_checkout never terminates (NTE-222).
             var $roundupRadio = $('input.nte-donation-option[value="roundup"]');
 
-            if ($roundupRadio.is(':checked')) {
-                this.sendDonationUpdate('roundup', 0);
+            if ($roundupRadio.is(':checked') && !this.refreshing) {
+                this.sendDonationUpdate('roundup', 0, true);
             }
         },
 
         /**
+         * Last donation amount the server confirmed, used to detect real changes.
+         *
+         * @type {number|null}
+         */
+        lastSyncedAmount: null,
+
+        /**
+         * Whether a silent refresh is in flight.
+         *
+         * @type {boolean}
+         */
+        refreshing: false,
+
+        /**
          * Send donation update to server.
          *
-         * @param {string} option The selected option (roundup, fixed, custom, none).
-         * @param {number} amount The donation amount.
+         * @param {string}  option The selected option (roundup, fixed, custom, none).
+         * @param {number}  amount The donation amount.
+         * @param {boolean} silent Refresh mode: only trigger update_checkout if the amount changed.
          */
-        sendDonationUpdate: function(option, amount) {
+        sendDonationUpdate: function(option, amount, silent) {
             var self = this;
+            silent = silent === true;
 
             if (!window.nettertechEventsDonation) {
                 console.warn('NetterTechEvents Donation: Missing configuration');
@@ -136,6 +154,9 @@
 
             // Show loading indicator
             $('#nte-donation-field').addClass('nte-loading');
+            if (silent) {
+                self.refreshing = true;
+            }
 
             $.ajax({
                 url: window.nettertechEventsDonation.ajaxUrl,
@@ -147,8 +168,19 @@
                     amount: amount
                 },
                 success: function(response) {
-                    if (response.success) {
-                        // Trigger WooCommerce checkout update to recalculate totals
+                    if (!response.success) {
+                        return;
+                    }
+
+                    var confirmed = response.data && typeof response.data.amount !== 'undefined'
+                        ? parseFloat(response.data.amount)
+                        : null;
+                    var changed = confirmed === null || confirmed !== self.lastSyncedAmount;
+                    self.lastSyncedAmount = confirmed;
+
+                    // Trigger WooCommerce checkout update to recalculate totals —
+                    // but a silent refresh only does so when the amount really moved.
+                    if (!silent || changed) {
                         $(document.body).trigger('update_checkout');
                     }
                 },
@@ -156,6 +188,7 @@
                     console.error('NetterTechEvents Donation: Update failed', error);
                 },
                 complete: function() {
+                    self.refreshing = false;
                     $('#nte-donation-field').removeClass('nte-loading');
                 }
             });

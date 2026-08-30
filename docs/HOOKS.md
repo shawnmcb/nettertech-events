@@ -1061,6 +1061,27 @@ Filter the cutoff date for activity log cleanup.
 
 ---
 
+#### `nettertech_events_accessibility_notes_retention_days`
+
+Filter how many days after an occurrence ends its attendees' accessibility notes are kept before the daily privacy job clears them. Notes are special-category data collected only to arrange accommodations, so the default window is short.
+
+**Parameters:**
+- `$days` (int) — Days to keep notes after the event ends (default `30`)
+
+**Returns:** `int` — Modified window; `0` clears notes as soon as the event is over
+
+**Example:**
+```php
+add_filter( 'nettertech_events_accessibility_notes_retention_days', function( $days ) {
+    // Keep notes for a fortnight of follow-up, then clear.
+    return 14;
+} );
+```
+
+**Location:** `includes/Core/PrivacyHooks.php`
+
+---
+
 ### Email Filters
 
 #### `nettertech_events_reminder_email_data`
@@ -1278,6 +1299,7 @@ Every hook the plugin fires, grouped by kind, with the version it first shipped 
 
 | Hook | Type | Since | Fired at | Description |
 |---|---|---|---|---|
+| `nettertech_events_accessibility_notes_retention_days` | filter | 1.4.5 | `includes/Core/PrivacyHooks.php` | Filters how many days after an occurrence ends its attendees' accessibility notes are kept before being cleared. |
 | `nettertech_events_activated` | action | 1.0.2 | `includes/Core/Activator.php:61` | Fires on plugin activation, after tables are created. |
 | `nettertech_events_activity_log_retention_days` | filter | 1.0.2 | `includes/Core/PrivacyHooks.php:169`; `includes/Services/ActivityLogService.php:291` | Filters the activity log retention days. |
 | `nettertech_events_activity_logged` (internal) | action | 1.0.2 | `includes/Services/ActivityLogService.php:114`; `includes/Services/ActivityLogService.php:133`; `includes/Services/ActivityLogService.php:152` (+4 more) | Fires after an activity is logged. |

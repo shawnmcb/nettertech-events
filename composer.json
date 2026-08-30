@@ -42,13 +42,17 @@
 		"phpcbf": "phpcbf",
 		"test": "phpunit --no-coverage",
 		"test:unit": "phpunit --testsuite=Unit --no-coverage",
-		"test:coverage": "bash scripts/check-coverage.sh",
+		"test:coverage": "phpunit --coverage-clover build/coverage/clover.xml --coverage-text",
 		"test:fresh-matrix": "bash scripts/fresh-install-matrix.sh",
 		"test:integration": "php -d memory_limit=1G vendor/bin/phpunit --configuration phpunit-integration.xml.dist --no-coverage",
-		"test:all": "phpunit --no-coverage",
+		"test:all": [
+			"@test",
+			"@test:integration"
+		],
 		"test:wiring": "phpunit --group wiring --no-coverage",
 		"test:structural": "phpunit --group structural --no-coverage",
 		"check": [
+			"@hooks:verify",
 			"@check:public-text",
 			"@phpcs",
 			"@test"
@@ -74,7 +78,6 @@
 		],
 		"hook:install": "git config core.hooksPath .githooks && echo 'Git hooks active (.githooks/)'",
 		"hook:remove": "git config --unset core.hooksPath && echo 'Git hooks deactivated'",
-		"test:coverage": "phpunit --coverage-clover build/coverage/clover.xml --coverage-text",
 		"coverage": "php -d pcov.enabled=1 vendor/bin/phpunit --coverage-text --coverage-html build/coverage",
 		"coverage:html": "phpunit --coverage-html build/coverage",
 		"coverage:integration": "phpunit --configuration phpunit-integration.xml.dist",
@@ -92,10 +95,13 @@
 			"@hook:install"
 		],
 		"release:check": "bash scripts/release-gates.sh",
-		"sbom": "composer CycloneDX:make-sbom --output-format=JSON --output-file=build/nettertech-events.sbom.json --omit=dev"
+		"sbom": "composer CycloneDX:make-sbom --output-format=JSON --output-file=build/nettertech-events.sbom.json --omit=dev",
+		"hooks:verify": "[ \"$(git config core.hooksPath)\" = \".githooks\" ] || { echo 'Git hooks NOT installed — run: composer hook:install' >&2; exit 1; }"
 	},
 	"scripts-descriptions": {
-		"patch:infection": "Patch Infection IncludeInterceptor for PHP 8.5 (STREAM_OPEN_FOR_INCLUDE removed)"
+		"patch:infection": "Patch Infection IncludeInterceptor for PHP 8.5 (STREAM_OPEN_FOR_INCLUDE removed)",
+		"hooks:verify": "Fail unless git core.hooksPath points at .githooks (audit 2026-08-21 GAP-003)",
+		"test:all": "Unit+Performance suites plus Integration (was a byte-identical alias of test — audit GAP-008)"
 	},
 	"config": {
 		"allow-plugins": {

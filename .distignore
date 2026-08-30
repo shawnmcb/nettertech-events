@@ -34,6 +34,7 @@ phpunit.xml.dist
 phpunit-integration.xml.dist
 phpstan.neon
 phpstan-baseline.neon
+phpstan-baseline-templates.neon
 phpstan-bootstrap.php
 phpstan-stubs.php
 patchwork.json
@@ -154,3 +155,4 @@ CURRENT.md
 .DS_Store
 Thumbs.db
 Sites
+scripts/check-hook-literals.php

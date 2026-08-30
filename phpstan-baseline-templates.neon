@@ -1,0 +1,114 @@
+# Template/block analysis baseline — created 2026-08-24 (GAP-029 rollout;
+# these files previously had ZERO static analysis). Entries are crate-typed
+# model-property access (Event methods via TemplateContext magic __get),
+# WP-core union types into esc_*, and two always-true ternaries — noise, not
+# logic. The REAL findings the rollout surfaced were FIXED in code, not
+# baselined: scan-result.php imported a nonexistent base-namespace
+# CheckInTokenService (fatal when rendered; now Pro-guarded with clean
+# degradation) and event-filters.php constructed CategoryRepository with 0
+# of 1 required args (fatal on the no-categories path; now via
+# ServiceRegistry). Do not add entries without rationale; shrink toward
+# empty (seating's convention).
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Parameter \#1 \$text of function esc_html expects string, int\<0, max\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: templates/emails/customer-confirmation.php
+
+		-
+			message: '#^Parameter \#1 \$text of function esc_html expects string, int\<0, max\> given\.$#'
+			identifier: argument.type
+			count: 2
+			path: templates/emails/venue-notification.php
+
+		-
+			message: '#^Call to an undefined method object\:\:is_virtual_event\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: templates/parts/event-card.php
+
+		-
+			message: '#^Ternary operator condition is always true\.$#'
+			identifier: ternary.alwaysTrue
+			count: 2
+			path: templates/parts/event-card.php
+
+		-
+			message: '#^Parameter \#1 \$content of function wp_kses expects string, string\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: templates/parts/occurrence-row.php
+
+		-
+			message: '#^Call to an undefined method object\:\:is_hybrid\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: templates/parts/single-event-header.php
+
+		-
+			message: '#^Parameter \#1 \$event_id of method NetterTechEvents\\Contracts\\OccurrenceRepositoryInterface\:\:for_event_grouped\(\) expects int, int\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: templates/series-page.php
+
+		-
+			message: '#^Access to an undefined property object\:\:\$capacity\.$#'
+			identifier: property.notFound
+			count: 1
+			path: templates/single-space.php
+
+		-
+			message: '#^Access to an undefined property object\:\:\$featured_image_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: templates/single-space.php
+
+		-
+			message: '#^Access to an undefined property object\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 2
+			path: templates/single-space.php
+
+		-
+			message: '#^Access to an undefined property object\:\:\$square_footage\.$#'
+			identifier: property.notFound
+			count: 2
+			path: templates/single-space.php
+
+		-
+			message: '#^Access to an undefined property object\:\:\$event_title\.$#'
+			identifier: property.notFound
+			count: 1
+			path: templates/ticket/public-ticket.php
+
+		-
+			message: '#^Access to an undefined property object\:\:\$occurrence_title\.$#'
+			identifier: property.notFound
+			count: 1
+			path: templates/ticket/public-ticket.php
+
+		-
+			message: '#^Access to an undefined property object\:\:\$attendee_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: templates/ticket/scan-result.php
+
+		-
+			message: '#^Access to an undefined property object\:\:\$event_title\.$#'
+			identifier: property.notFound
+			count: 1
+			path: templates/ticket/scan-result.php
+
+		-
+			message: '#^Access to an undefined property object\:\:\$occurrence_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: templates/ticket/scan-result.php
+
+		-
+			message: '#^Access to an undefined property object\:\:\$occurrence_title\.$#'
+			identifier: property.notFound
+			count: 1
+			path: templates/ticket/scan-result.php

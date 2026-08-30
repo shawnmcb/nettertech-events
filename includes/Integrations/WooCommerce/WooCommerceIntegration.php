@@ -21,6 +21,7 @@ use NetterTechEvents\Contracts\TicketRepositoryInterface;
 use NetterTechEvents\Contracts\TicketTypeRepositoryInterface;
 use NetterTechEvents\Core\Hooks;
 use NetterTechEvents\Core\MetaKeys;
+use NetterTechEvents\Frontend\AccessibilityNotesField;
 use NetterTechEvents\Frontend\TicketCartAjax;
 use NetterTechEvents\Integrations\WooCommerce\Blocks\BlockIntegration;
 use NetterTechEvents\Integrations\WooCommerce\Blocks\StoreApiExtension;
@@ -382,6 +383,7 @@ class WooCommerceIntegration {
 
 		// Checkout hooks for accessibility notes.
 		add_action( 'woocommerce_after_order_notes', array( $this->accessibility_handler, 'render_field' ) );
+		add_action( 'wp_enqueue_scripts', array( $this->accessibility_handler, 'enqueue_styles' ) );
 		add_action( 'woocommerce_checkout_update_order_meta', array( $this->accessibility_handler, 'save_notes' ) );
 
 		// Checkout hooks for custom attendee registration fields.
@@ -454,9 +456,11 @@ class WooCommerceIntegration {
 						'namespace' => StoreApiExtension::NAMESPACE,
 						'callback'  => function ( array $data ): void {
 							if ( isset( $data['accessibility_notes'] ) ) {
+								// Same sanitizer as the classic checkout and the RSVP form,
+								// so all three surfaces store the same shape (NTE-217).
 								WC()->session->set(
-									'nettertech_events_accessibility_notes',
-									sanitize_textarea_field( $data['accessibility_notes'] )
+									AccessibilityNotesField::input_name(),
+									AccessibilityNotesField::sanitize( $data['accessibility_notes'] ) ?? ''
 								);
 							}
 
@@ -478,9 +482,9 @@ class WooCommerceIntegration {
 		add_action(
 			'woocommerce_store_api_checkout_update_order_from_request',
 			function ( \WC_Order $order ): void {
-				$notes = WC()->session->get( 'nettertech_events_accessibility_notes', '' );
+				$notes = WC()->session->get( AccessibilityNotesField::input_name(), '' );
 				if ( ! empty( $notes ) ) {
-					$order->update_meta_data( '_nettertech_events_accessibility_notes', $notes );
+					$order->update_meta_data( MetaKeys::ACCESSIBILITY_NOTES, $notes );
 				}
 
 				// Save custom field data from Block checkout session.

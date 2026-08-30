@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace NetterTechEvents\Admin;
 
+use NetterTechEvents\Admin\Attendees\AccessibilityNotesFilter;
 use NetterTechEvents\Admin\Attendees\AttendeeOrderStatusFilter;
 defined( 'ABSPATH' ) || exit;
 
@@ -126,7 +127,10 @@ class AttendeesPage {
 	 * @return void
 	 */
 	public function render(): void {
-		if ( ! current_user_can( 'edit_posts' ) ) {
+		// manage_options, matching the menu registration (GAP-014); the
+		// check-in toggle handler below intentionally stays at edit_posts
+		// (operational check-in level, aligned with Pro).
+		if ( ! current_user_can( \NetterTechEvents\Admin\AdminMenu::CAPABILITY ) ) {
 			wp_die( esc_html__( 'You do not have permission to view this page.', 'nettertech-events' ) );
 		}
 
@@ -159,6 +163,7 @@ class AttendeesPage {
 		$page               = max( 1, (int) AdminRequest::get_text( 'paged', '1' ) );
 		$status_filter      = AdminRequest::get_text( 'status' );
 		$placeholder_filter = AdminRequest::get_text( 'placeholder' );
+		$access_filter      = AdminRequest::get_text( AccessibilityNotesFilter::PARAM );
 		$orderby            = AdminRequest::get_text( 'orderby' );
 		$order              = strtoupper( AdminRequest::get_order( 'desc' ) );
 
@@ -169,10 +174,13 @@ class AttendeesPage {
 		if ( ! in_array( $order, array( 'ASC', 'DESC' ), true ) ) {
 			$order = 'DESC';
 		}
+		if ( ! AccessibilityNotesFilter::is_valid( $access_filter ) ) {
+			$access_filter = '';
+		}
 
-		$result = $this->get_attendees( $occurrence_id, $event_id, $search, $status_filter, $placeholder_filter, $page, $orderby, $order );
+		$result = $this->get_attendees( $occurrence_id, $event_id, $search, $status_filter, $placeholder_filter, $page, $orderby, $order, $access_filter );
 
-		$this->render_page( $result, $occurrence_id, $event_id, $search, $status_filter, $placeholder_filter, $page, $orderby, $order );
+		$this->render_page( $result, $occurrence_id, $event_id, $search, $status_filter, $placeholder_filter, $page, $orderby, $order, $access_filter );
 	}
 
 	/**
@@ -186,9 +194,10 @@ class AttendeesPage {
 	 * @param int    $page               Current page.
 	 * @param string $orderby            Column to sort by (must be in SORTABLE_COLUMNS).
 	 * @param string $order              Sort direction (ASC or DESC).
+	 * @param string $access_filter      "Has accessibility notes" filter ('yes', 'no', or '').
 	 * @return array{items: array<array<string, mixed>>, total: int, guests: int, pages: int}
 	 */
-	private function get_attendees( int $occurrence_id, int $event_id, string $search, string $status_filter, string $placeholder_filter, int $page, string $orderby = '', string $order = 'DESC' ): array {
+	private function get_attendees( int $occurrence_id, int $event_id, string $search, string $status_filter, string $placeholder_filter, int $page, string $orderby = '', string $order = 'DESC', string $access_filter = '' ): array {
 		$attendees_table   = Schema::table( 'attendees' );
 		$occurrences_table = Schema::table( 'occurrences' );
 		$events_table      = Schema::table( 'events' );
@@ -238,6 +247,12 @@ class AttendeesPage {
 			$where[] = "a.name NOT REGEXP '^Attendee [0-9]+$'";
 			$where[] = "(e.title IS NULL OR e.title != 'Imported Attendees - Unknown Event')";
 			$where[] = "(o.start_datetime IS NULL OR DATE(o.start_datetime) != '2099-12-31')";
+		}
+
+		// "Has accessibility notes" (NTE-217) — shared with Export All.
+		$access_predicate = AccessibilityNotesFilter::predicate( $access_filter, 'a' );
+		if ( null !== $access_predicate ) {
+			$where[] = $access_predicate;
 		}
 
 		$where_clause = implode( ' AND ', $where );
@@ -642,9 +657,10 @@ class AttendeesPage {
 	 * @param int                  $page               Current page.
 	 * @param string               $orderby            Current sort column.
 	 * @param string               $order              Current sort direction.
+	 * @param string               $access_filter      Current "has accessibility notes" filter.
 	 * @return void
 	 */
-	private function render_page( array $result, int $occurrence_id, int $event_id, string $search, string $status_filter, string $placeholder_filter, int $page, string $orderby = '', string $order = 'DESC' ): void {
+	private function render_page( array $result, int $occurrence_id, int $event_id, string $search, string $status_filter, string $placeholder_filter, int $page, string $orderby = '', string $order = 'DESC', string $access_filter = '' ): void {
 		// Occurrence dropdown: scope to the event's own occurrences when event-filtered
 		// (group-by-occurrence drill-down); otherwise the upcoming set.
 		$occurrences = $event_id > 0 ? $this->occurrence_repo->for_event( $event_id ) : $this->occurrence_repo->upcoming( 100 );
@@ -693,7 +709,7 @@ class AttendeesPage {
 				?>
 			</p>
 
-			<?php $this->render_filters( $occurrence_id, $event_id, $search, $status_filter, $placeholder_filter, $occurrences ); ?>
+			<?php $this->render_filters( $occurrence_id, $event_id, $search, $status_filter, $placeholder_filter, $occurrences, $access_filter ); ?>
 
 			<?php if ( empty( $result['items'] ) ) : ?>
 				<div class="notice notice-info">
@@ -707,6 +723,7 @@ class AttendeesPage {
 					<input type="hidden" name="filter_search" value="<?php echo esc_attr( $search ); ?>">
 					<input type="hidden" name="filter_status" value="<?php echo esc_attr( $status_filter ); ?>">
 					<input type="hidden" name="filter_placeholder" value="<?php echo esc_attr( $placeholder_filter ); ?>">
+					<input type="hidden" name="filter_accessibility" value="<?php echo esc_attr( $access_filter ); ?>">
 					<input type="hidden" name="filter_orderby" value="<?php echo esc_attr( $orderby ); ?>">
 					<input type="hidden" name="filter_order" value="<?php echo esc_attr( $order ); ?>">
 					<?php $this->render_bulk_actions( $result['total'] ); ?>
@@ -744,7 +761,7 @@ class AttendeesPage {
 
 					$this->render_table( $result['items'], $orderby, $order, $extra_columns );
 					?>
-					<?php $this->render_pagination( $result['total'], $result['pages'], $page, $occurrence_id, $event_id, $search, $status_filter, $placeholder_filter, $orderby, $order ); ?>
+					<?php $this->render_pagination( $result['total'], $result['pages'], $page, $occurrence_id, $event_id, $search, $status_filter, $placeholder_filter, $orderby, $order, $access_filter ); ?>
 				</form>
 			<?php endif; ?>
 
@@ -820,9 +837,10 @@ class AttendeesPage {
 	 * @param string                                     $status_filter      Current status.
 	 * @param string                                     $placeholder_filter Current placeholder filter.
 	 * @param array<\NetterTechEvents\Models\Occurrence> $occurrences        Available occurrences.
+	 * @param string                                     $access_filter      Current "has accessibility notes" filter.
 	 * @return void
 	 */
-	private function render_filters( int $occurrence_id, int $event_id, string $search, string $status_filter, string $placeholder_filter, array $occurrences ): void {
+	private function render_filters( int $occurrence_id, int $event_id, string $search, string $status_filter, string $placeholder_filter, array $occurrences, string $access_filter = '' ): void {
 		$presenter = new AttendeesFiltersPresenter(
 			$occurrence_id,
 			$event_id,
@@ -831,7 +849,8 @@ class AttendeesPage {
 			$placeholder_filter,
 			$occurrences,
 			AdminMenu::SUBMENU_ATTENDEES,
-			admin_url( 'admin.php?page=' . AdminMenu::SUBMENU_ATTENDEES )
+			admin_url( 'admin.php?page=' . AdminMenu::SUBMENU_ATTENDEES ),
+			$access_filter
 		);
 		include dirname( __DIR__, 2 ) . '/templates/admin/attendees/filters.php';
 	}
@@ -1025,6 +1044,7 @@ class AttendeesPage {
 				}
 				?>
 				<div class="nte-attendee-identity"><?php echo esc_html( $nettertech_events_identity ); ?></div>
+				<?php $this->render_accessibility_notes( $item ); ?>
 				<?php $this->render_row_actions( (int) ( $item['id'] ?? 0 ), (int) ( $item['wc_order_id'] ?? 0 ), $item ); ?>
 				<button type="button" class="toggle-row">
 					<span class="screen-reader-text"><?php esc_html_e( 'Show more details', 'nettertech-events' ); ?></span>
@@ -1098,6 +1118,35 @@ class AttendeesPage {
 				</td>
 			<?php endforeach; ?>
 		</tr>
+		<?php
+	}
+
+	/**
+	 * Render the accessibility-needs indicator for a row (NTE-217).
+	 *
+	 * A compact badge in the Name cell when the attendee told us about a need,
+	 * with the full text behind a native `<details>` — visible on demand, never
+	 * a wide always-on column. Nothing renders when there are no notes, so the
+	 * badge alone is the signal. Special-category data: this is the only place
+	 * in the list where the text appears, escaped, for operators with the
+	 * page's capability.
+	 *
+	 * @param array<string, mixed> $item Attendee record.
+	 * @return void
+	 */
+	private function render_accessibility_notes( array $item ): void {
+		$notes = $item['accessibility_notes'] ?? null;
+		if ( ! AccessibilityNotesFilter::has_notes( $notes ) ) {
+			return;
+		}
+		?>
+		<details class="nte-attendee-accessibility">
+			<summary class="nte-attendee-accessibility__badge">
+				<span class="dashicons dashicons-universal-access-alt nte-attendee-accessibility__icon" aria-hidden="true"></span>
+				<span class="nte-attendee-accessibility__label"><?php esc_html_e( 'Accessibility notes', 'nettertech-events' ); ?></span>
+			</summary>
+			<p class="nte-attendee-accessibility__text"><?php echo nl2br( esc_html( (string) $notes ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- esc_html() runs first; nl2br() only inserts <br /> tags. ?></p>
+		</details>
 		<?php
 	}
 
@@ -1394,9 +1443,10 @@ class AttendeesPage {
 	 * @param string $placeholder_filter Placeholder filter.
 	 * @param string $orderby            Current sort column.
 	 * @param string $order              Current sort direction.
+	 * @param string $access_filter      "Has accessibility notes" filter.
 	 * @return void
 	 */
-	private function render_pagination( int $total, int $pages, int $current_page, int $occurrence_id, int $event_id, string $search, string $status_filter, string $placeholder_filter, string $orderby = '', string $order = 'DESC' ): void {
+	private function render_pagination( int $total, int $pages, int $current_page, int $occurrence_id, int $event_id, string $search, string $status_filter, string $placeholder_filter, string $orderby = '', string $order = 'DESC', string $access_filter = '' ): void {
 		if ( $pages <= 1 ) {
 			return;
 		}
@@ -1416,6 +1466,9 @@ class AttendeesPage {
 		}
 		if ( $placeholder_filter ) {
 			$base_url = add_query_arg( 'placeholder', $placeholder_filter, $base_url );
+		}
+		if ( $access_filter ) {
+			$base_url = add_query_arg( AccessibilityNotesFilter::PARAM, $access_filter, $base_url );
 		}
 		if ( $orderby ) {
 			$base_url = add_query_arg( 'orderby', $orderby, $base_url );

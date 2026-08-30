@@ -63,6 +63,19 @@ defined( 'ABSPATH' ) || exit;
 	</div>
 
 	<div class="nte-filter-group">
+		<label for="nte-filter-accessibility"><?php echo esc_html( $presenter->accessibility_label() ); ?></label>
+		<select name="<?php echo esc_attr( $presenter->accessibility_param() ); ?>" id="nte-filter-accessibility">
+			<option value=""><?php echo esc_html( $presenter->any_accessibility_label() ); ?></option>
+			<?php foreach ( $presenter->accessibility_options() as $nettertech_events_option ) : ?>
+				<option value="<?php echo esc_attr( $nettertech_events_option['value'] ); ?>"
+					<?php selected( $nettertech_events_option['selected'] ); ?>>
+					<?php echo esc_html( $nettertech_events_option['label'] ); ?>
+				</option>
+			<?php endforeach; ?>
+		</select>
+	</div>
+
+	<div class="nte-filter-group">
 		<label for="s"><?php echo esc_html( $presenter->search_label() ); ?></label>
 		<input type="search" name="s" id="s" value="<?php echo esc_attr( $presenter->search() ); ?>"
 			placeholder="<?php echo esc_attr( $presenter->search_placeholder() ); ?>">

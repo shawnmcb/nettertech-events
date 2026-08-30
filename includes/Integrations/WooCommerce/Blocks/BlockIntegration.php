@@ -15,6 +15,7 @@ namespace NetterTechEvents\Integrations\WooCommerce\Blocks;
 defined( 'ABSPATH' ) || exit;
 
 use Automattic\WooCommerce\Blocks\Integrations\IntegrationInterface;
+use NetterTechEvents\Frontend\AccessibilityNotesField;
 
 /**
  * Registers nettertech-events scripts and data for WC Blocks.
@@ -127,8 +128,12 @@ class BlockIntegration implements IntegrationInterface {
 	 */
 	public function get_script_data(): array {
 		return array(
-			'namespace'        => StoreApiExtension::NAMESPACE,
-			'donationsEnabled' => $this->donations_enabled,
+			'namespace'          => StoreApiExtension::NAMESPACE,
+			'donationsEnabled'   => $this->donations_enabled,
+			// The block checkout renders the accessibility-needs textarea in JS;
+			// its strings come from the shared field definition so the block,
+			// classic and RSVP surfaces read identically (NTE-217).
+			'accessibilityNotes' => AccessibilityNotesField::to_script_data(),
 		);
 	}
 }

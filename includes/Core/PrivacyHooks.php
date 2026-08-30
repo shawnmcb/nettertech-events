@@ -3,7 +3,7 @@
  * Privacy Hooks registration.
  *
  * Registers WordPress Privacy Tools exporters and erasers
- * and schedules the activity log retention cron.
+ * and schedules the daily retention cron (activity-log PII, accessibility notes).
  *
  * @package NetterTechEvents\Core
  * @since   1.1.0
@@ -78,7 +78,8 @@ class PrivacyHooks {
 		$policy_text .= '<ul>';
 		$policy_text .= '<li>' . esc_html__( 'Name and email address (required for ticket and RSVP registration)', 'nettertech-events' ) . '</li>';
 		$policy_text .= '<li>' . esc_html__( 'Phone number (if provided during registration)', 'nettertech-events' ) . '</li>';
-		$policy_text .= '<li>' . esc_html__( 'Custom attendee field responses (e.g. dietary requirements, accessibility needs)', 'nettertech-events' ) . '</li>';
+		$policy_text .= '<li>' . esc_html__( 'Accessibility requirements you choose to tell us about when registering or buying a ticket (used only to arrange accommodations for that event, and cleared automatically after the event)', 'nettertech-events' ) . '</li>';
+		$policy_text .= '<li>' . esc_html__( 'Custom attendee field responses (e.g. dietary requirements)', 'nettertech-events' ) . '</li>';
 		$policy_text .= '<li>' . esc_html__( 'Ticket purchase records including ticket type, price, and order reference', 'nettertech-events' ) . '</li>';
 		$policy_text .= '<li>' . esc_html__( 'RSVP records including attendance status and submission timestamp', 'nettertech-events' ) . '</li>';
 		$policy_text .= '<li>' . esc_html__( 'Waitlist entries including position and join timestamp', 'nettertech-events' ) . '</li>';
@@ -169,5 +170,17 @@ class PrivacyHooks {
 		$days = (int) apply_filters( 'nettertech_events_activity_log_retention_days', 90 );
 
 		$this->service->purge_old_activity_log_pii( $days );
+
+		/**
+		 * Filters how many days after an occurrence ends its attendees'
+		 * accessibility notes are kept before being cleared (NTE-217).
+		 *
+		 * @since 1.4.5
+		 *
+		 * @param int $days Number of days to keep notes after the event (default 30).
+		 */
+		$notes_days = (int) apply_filters( Hooks::ACCESSIBILITY_NOTES_RETENTION_DAYS, 30 );
+
+		$this->service->purge_aged_accessibility_notes( $notes_days );
 	}
 }

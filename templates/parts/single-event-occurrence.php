@@ -24,6 +24,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+/**
+ * PHPStan reads only standalone assertions, not the header var-list
+ * (audit GAP-029 rollout).
+ *
+ * @var \NetterTechEvents\TemplateLoader\TemplateContext $context
+ */
+
 // On event-level views (no occurrence in the URL) fall back to the next
 // upcoming occurrence — but only when the Upcoming Dates component won't
 // render it, so layouts with both components visible don't show the first

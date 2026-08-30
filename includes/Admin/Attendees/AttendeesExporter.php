@@ -82,6 +82,7 @@ class AttendeesExporter {
 		'Status',
 		'Checked In',
 		'Notes',
+		'Accessibility Notes',
 	);
 
 	/**
@@ -141,6 +142,7 @@ class AttendeesExporter {
 	 * @param string $placeholder_filter Placeholder data filter.
 	 * @param string $orderby            Sort key selected on the list (validated against whitelist).
 	 * @param string $order              Sort direction selected on the list.
+	 * @param string $accessibility_filter "Has accessibility notes" filter ('yes'/'no'/'').
 	 * @return void
 	 */
 	public function export_all_filtered(
@@ -150,7 +152,8 @@ class AttendeesExporter {
 		string $status_filter = '',
 		string $placeholder_filter = '',
 		string $orderby = '',
-		string $order = ''
+		string $order = '',
+		string $accessibility_filter = ''
 	): void {
 		$attendees_table    = Schema::table( 'attendees' );
 		$occurrences_table  = Schema::table( 'occurrences' );
@@ -196,6 +199,12 @@ class AttendeesExporter {
 			$where[] = "a.name NOT REGEXP '^Attendee [0-9]+$'";
 			$where[] = "(e.title IS NULL OR e.title != 'Imported Attendees - Unknown Event')";
 			$where[] = "(o.start_datetime IS NULL OR DATE(o.start_datetime) != '2099-12-31')";
+		}
+
+		// "Has accessibility notes" (NTE-217) — same predicate as the list page.
+		$accessibility_predicate = AccessibilityNotesFilter::predicate( $accessibility_filter, 'a' );
+		if ( null !== $accessibility_predicate ) {
+			$where[] = $accessibility_predicate;
 		}
 
 		$where_clause = implode( ' AND ', $where );
@@ -406,6 +415,9 @@ class AttendeesExporter {
 			ucfirst( $item['status'] ?? 'confirmed' ),
 			$checked_in,
 			$item['notes'] ?? '',
+			// Full text, same header as the check-in CSV. Special-category data:
+			// the export is an operator-only, capability-gated download.
+			$item['accessibility_notes'] ?? '',
 		);
 	}
 }
