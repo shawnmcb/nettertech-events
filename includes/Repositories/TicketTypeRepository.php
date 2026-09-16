@@ -466,6 +466,23 @@ class TicketTypeRepository implements TicketTypeRepositoryInterface {
 	}
 
 	/**
+	 * Compute the house capacity of each occurrence in a batch.
+	 *
+	 * Date-grain sibling of event_capacity_for_events(): tiers on one date share
+	 * one house, event-scoped tiers (series passes) reach every date of their
+	 * event and combine by max() rather than sum, and the occurrence's own
+	 * capacity bounds the result when set.
+	 *
+	 * @since 1.4.8
+	 *
+	 * @param array<int> $occurrence_ids Occurrence IDs to aggregate.
+	 * @return array<int, array{capacity: ?int, has_unlimited: bool, configured: bool}>
+	 */
+	public function occurrence_capacity_for_occurrences( array $occurrence_ids ): array {
+		return $this->query_repo->occurrence_capacity_for_occurrences( $occurrence_ids );
+	}
+
+	/**
 	 * Get ticket templates for an event.
 	 *
 	 * @param int                  $event_id Event ID.

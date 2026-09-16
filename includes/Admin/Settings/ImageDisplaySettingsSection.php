@@ -82,6 +82,7 @@ class ImageDisplaySettingsSection implements SettingsSectionInterface {
 					$this->render_view_ratio_field( 'carousel', __( 'Carousel', 'nettertech-events' ), $settings );
 					$this->render_view_ratio_field( 'calendar', __( 'Calendar Tooltip', 'nettertech-events' ), $settings );
 					$this->render_date_badge_color_field( $settings );
+					$this->render_default_ticket_image_field( $settings );
 					?>
 				</table>
 			</div>
@@ -107,6 +108,10 @@ class ImageDisplaySettingsSection implements SettingsSectionInterface {
 		// Date badge color — always persist the color value so it can be re-enabled without re-entering.
 		$current_settings['date_badge_color_custom'] = ! empty( $input['date_badge_color_custom'] );
 		$current_settings['date_badge_color']        = $sanitizer->sanitize_hex_color( $input['date_badge_color'] ?? null, '#2563eb' );
+
+		// Default ticket product image (NTE-219): a valid image attachment or nothing.
+		$image_id                                    = absint( $input['default_ticket_image_id'] ?? 0 );
+		$current_settings['default_ticket_image_id'] = \NetterTechEvents\Utilities\ImageHelper::is_valid_image_attachment( $image_id ) ? $image_id : 0;
 
 		// Handle event layout configuration.
 		$this->process_layout_settings( $input, $current_settings );
@@ -283,6 +288,46 @@ class ImageDisplaySettingsSection implements SettingsSectionInterface {
 				</label>
 				<p class="description">
 					<?php esc_html_e( 'Background color for the date badge on event cards and the series-page active tab. Uncheck to use your theme\'s primary color. Choose a color dark enough for white text — WCAG AA requires a 4.5:1 contrast ratio.', 'nettertech-events' ); ?>
+				</p>
+			</td>
+		</tr>
+		<?php
+	}
+
+	/**
+	 * "Default ticket product image" attachment picker (NTE-219).
+	 *
+	 * Same `.nte-media-picker` widget the Spaces form uses; the settings page
+	 * enqueues the media library + picker script for it.
+	 *
+	 * @param array<string, mixed> $settings Settings.
+	 * @return void
+	 */
+	private function render_default_ticket_image_field( array $settings ): void {
+		$image_id = absint( $settings['default_ticket_image_id'] ?? 0 );
+		?>
+		<tr>
+			<th scope="row">
+				<label for="default_ticket_image_id"><?php esc_html_e( 'Default Ticket Product Image', 'nettertech-events' ); ?></label>
+			</th>
+			<td>
+				<input type="hidden" name="nettertech_events_settings[default_ticket_image_id]" id="default_ticket_image_id"
+					value="<?php echo esc_attr( $image_id ? (string) $image_id : '' ); ?>">
+				<div class="nte-media-picker" data-target="default_ticket_image_id" data-mode="single">
+					<div class="nte-media-picker__preview">
+						<?php if ( $image_id ) : ?>
+							<?php echo wp_get_attachment_image( $image_id, 'medium' ); // wp_get_attachment_image() returns pre-escaped HTML. ?>
+						<?php endif; ?>
+					</div>
+					<button type="button" class="button nte-media-picker__select">
+						<?php esc_html_e( 'Choose image', 'nettertech-events' ); ?>
+					</button>
+					<button type="button" class="button-link nte-media-picker__clear" <?php echo $image_id ? '' : 'hidden'; ?>>
+						<?php esc_html_e( 'Remove', 'nettertech-events' ); ?>
+					</button>
+				</div>
+				<p class="description">
+					<?php esc_html_e( 'Shown for ticket products in the cart, checkout, and order screens when the event has no featured image. Leave empty to use the built-in ticket icon.', 'nettertech-events' ); ?>
 				</p>
 			</td>
 		</tr>

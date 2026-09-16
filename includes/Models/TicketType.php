@@ -486,6 +486,39 @@ class TicketType {
 	}
 
 	/**
+	 * Whether this tier's sale window has closed.
+	 *
+	 * Distinct from "not on sale": a tier can be off sale because its window has
+	 * not opened yet, and the public page must not call that closed.
+	 *
+	 * @since 1.4.7
+	 *
+	 * @param DateTimeZone|null $timezone The event's timezone. Defaults to the site's.
+	 * @return bool True when a sale end is set and has passed.
+	 */
+	public function sale_has_ended( ?DateTimeZone $timezone = null ): bool {
+		$zone = $timezone ?? wp_timezone();
+		$end  = $this->parse_wall_clock( $this->sale_end, $zone );
+
+		return null !== $end && new DateTimeImmutable( 'now', $zone ) > $end;
+	}
+
+	/**
+	 * Whether this tier's sale window has not opened yet.
+	 *
+	 * @since 1.4.7
+	 *
+	 * @param DateTimeZone|null $timezone The event's timezone. Defaults to the site's.
+	 * @return bool True when a sale start is set and is still in the future.
+	 */
+	public function sale_not_yet_open( ?DateTimeZone $timezone = null ): bool {
+		$zone  = $timezone ?? wp_timezone();
+		$start = $this->parse_wall_clock( $this->sale_start, $zone );
+
+		return null !== $start && new DateTimeImmutable( 'now', $zone ) < $start;
+	}
+
+	/**
 	 * Check if ticket type has low stock.
 	 *
 	 * @return bool

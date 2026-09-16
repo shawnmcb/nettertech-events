@@ -14,6 +14,7 @@ defined( 'ABSPATH' ) || exit;
 use NetterTechEvents\Admin\AdminRequest;
 use NetterTechEvents\Admin\SpacesPage;
 use NetterTechEvents\Contracts\SpaceRepositoryInterface;
+use NetterTechEvents\Core\Hooks;
 
 // Load WP_List_Table if not available.
 if ( ! class_exists( 'WP_List_Table' ) ) {
@@ -57,12 +58,26 @@ class SpacesListTable extends \WP_List_Table {
 	 * @return array<string, string>
 	 */
 	public function get_columns(): array {
-		return array(
+		$columns = array(
 			'cb'       => '<input type="checkbox">',
 			'name'     => __( 'Name', 'nettertech-events' ),
 			'capacity' => __( 'Capacity', 'nettertech-events' ),
 			'status'   => __( 'Status', 'nettertech-events' ),
 		);
+
+		/**
+		 * Filters the columns of the Spaces list table.
+		 *
+		 * Add-ons append their own columns here and supply the cell HTML on
+		 * {@see Hooks::SPACE_LIST_COLUMN_CONTENT}.
+		 *
+		 * @since 1.4.7
+		 *
+		 * @param array<string, string> $columns Map of column key to header label.
+		 */
+		$filtered = apply_filters( Hooks::SPACE_LIST_COLUMNS, $columns );
+
+		return is_array( $filtered ) ? $filtered : $columns;
 	}
 
 	/**
@@ -133,13 +148,35 @@ class SpacesListTable extends \WP_List_Table {
 	/**
 	 * Render checkbox column.
 	 *
+	 * Each row's checkbox carries its own screen-reader label naming the space,
+	 * the way WordPress core's posts list does. Without one every checkbox in
+	 * the table announces as an unnamed control, so a screen-reader user cannot
+	 * tell which row they are about to act on — axe rates it a critical
+	 * `label` failure.
+	 *
 	 * @param \NetterTechEvents\Models\Space $item Space object.
 	 * @return string
 	 */
 	public function column_cb( $item ): string {
+		// `Space::$id` is `?int` (unsaved rows have none) and `Space::$name` is a
+		// non-nullable `string`, so the null coalesce is the only normalisation
+		// either value needs — a cast here would be untestable dead weight.
+		$id   = $item->id ?? 0;
+		$name = $item->name;
+
+		if ( '' === trim( $name ) ) {
+			/* translators: %d: space ID */
+			$label = sprintf( __( 'Select space %d', 'nettertech-events' ), $id );
+		} else {
+			/* translators: %s: space name */
+			$label = sprintf( __( 'Select %s', 'nettertech-events' ), $name );
+		}
+
 		return sprintf(
-			'<input type="checkbox" name="space[]" value="%d">',
-			$item->id
+			'<label class="screen-reader-text" for="cb-select-%1$d">%2$s</label>' .
+			'<input id="cb-select-%1$d" type="checkbox" name="space[]" value="%1$d">',
+			$id,
+			esc_html( $label )
 		);
 	}
 
@@ -221,7 +258,25 @@ class SpacesListTable extends \WP_List_Table {
 	 * @return string
 	 */
 	public function column_default( $item, $column_name ): string {
-		return esc_html( (string) ( $item->$column_name ?? '' ) );
+		if ( isset( $item->$column_name ) ) {
+			return esc_html( (string) $item->$column_name );
+		}
+
+		/**
+		 * Filters the cell HTML for an extension-added Spaces list column.
+		 *
+		 * Applied only for columns core does not render itself. The return
+		 * value is passed through wp_kses_post().
+		 *
+		 * @since 1.4.7
+		 *
+		 * @param string $content     Cell HTML (default '').
+		 * @param object $item        The space row being rendered.
+		 * @param string $column_name Column key being rendered.
+		 */
+		$content = apply_filters( Hooks::SPACE_LIST_COLUMN_CONTENT, '', $item, $column_name );
+
+		return wp_kses_post( (string) $content );
 	}
 
 	/**

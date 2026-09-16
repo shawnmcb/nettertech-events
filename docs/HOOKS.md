@@ -480,6 +480,84 @@ add_action( 'nettertech_events_after_ticket_form', function( $ticket_types, $occ
 
 ---
 
+### Spaces Admin Extensibility
+
+Core owns the Spaces screen. Its editor is complete and usable with no other
+plugin installed — add-ons extend it through the four seams below, they never
+replace it.
+
+#### `nettertech_events_space_editor_panels`
+
+Fired inside core's Space add/edit form, after core's own fieldsets and inside
+the same `<form>` element. Fields printed by a listener post with core's nonce
+to `admin-post.php?action=nettertech_events_save_space`; persist them on
+`nettertech_events_space_saved_extra`. Listeners escape their own output and
+must not print core's field names.
+
+**Parameters:**
+- `$space` (object|null) — The space being edited, or `null` when adding
+- `$action` (string) — `add` or `edit`
+
+**Location:** `includes/Admin/SpacesPage.php`
+
+---
+
+#### `nettertech_events_space_saved_extra`
+
+Fired at the end of a successful save, for create and update alike, with the
+resulting space ID. Core has already checked the capability and verified the
+nonce before this fires; a listener requiring a different capability should
+still check its own.
+
+**Parameters:**
+- `$space_id` (int) — The saved space ID
+- `$post` (array) — Unslashed `$_POST` from the save request
+
+**Location:** `includes/Admin/SpaceSaveHandler.php`
+
+**Example:**
+```php
+add_action( 'nettertech_events_space_saved_extra', function ( $space_id, $post ) {
+    if ( ! current_user_can( 'manage_my_addon' ) ) {
+        return;
+    }
+    my_addon_save_space_fields( $space_id, $post );
+}, 10, 2 );
+```
+
+---
+
+#### `nettertech_events_space_editor_assets`
+
+Fired on core's Space add/edit screen during `admin_enqueue_scripts`, so add-ons
+can enqueue the styles and scripts their panels need without guessing at the
+screen.
+
+**Parameters:**
+- `$action` (string) — `add` or `edit`
+
+**Location:** `includes/Core/Assets.php`
+
+---
+
+#### `nettertech_events_space_list_columns` / `nettertech_events_space_list_column_content`
+
+The Spaces list table's column pair. The first filters the column map (key to
+header label); the second supplies the cell HTML for columns core does not
+render itself, and its return value passes through `wp_kses_post()`.
+
+**Parameters (`..._columns`):**
+- `$columns` (array) — Map of column key to header label
+
+**Parameters (`..._column_content`):**
+- `$content` (string) — Cell HTML, default `''`
+- `$item` (object) — The space row being rendered
+- `$column_name` (string) — Column key being rendered
+
+**Location:** `includes/Admin/ListTables/SpacesListTable.php`
+
+---
+
 ### Cache Operations
 
 #### `nettertech_events_cache_invalidated`
@@ -1332,7 +1410,8 @@ Every hook the plugin fires, grouped by kind, with the version it first shipped 
 | `nettertech_events_buffer_stock_updated` | action | 1.0.2 | `includes/Services/CapacityCalculator.php:321` | Fires after buffer stock is updated for a ticket type. |
 | `nettertech_events_cache_invalidated` | action | 1.0.2 | `includes/Core/CacheManager.php:207`; `includes/Services/BulkImportHandler.php:142` | Fires after plugin caches are intentionally invalidated. Useful for other plugins/themes to clear their own related caches. |
 | `nettertech_events_calendar_enqueue_scripts` | action | 1.0.2 | `includes/Core/Assets.php:457` | Fires when calendar scripts are enqueued. |
-| `nettertech_events_calendar_header_html` | filter | 1.0.2 | `includes/Frontend/Shortcodes/CalendarShortcode.php:171` | Filters the calendar header HTML content. |
+| `nettertech_events_calendar_header_html` | filter | 1.0.2 | `includes/Frontend/Shortcodes/CalendarShortcode.php:174` | Filters the calendar header HTML content. |
+| `nettertech_events_calendar_header_allowed_html` | filter | 1.4.7 | `includes/Frontend/Shortcodes/CalendarShortcode.php:185` | Filters the wp_kses allowlist applied to the calendar header extension slot. |
 | `nettertech_events_calendar_js_config` | filter | 1.0.2 | `includes/Core/Assets.php:648` | Filters the calendar JavaScript configuration data. |
 | `nettertech_events_calendar_render_complete` | action | 1.0.2 | `includes/Frontend/Shortcodes/CalendarShortcode.php:225` | Fires after calendar rendering is complete. |
 | `nettertech_events_calendar_shortcode_atts` | filter | 1.0.2 | `includes/Frontend/Shortcodes/CalendarShortcode.php:85` | Filters the calendar shortcode attributes. |
@@ -1426,12 +1505,18 @@ Every hook the plugin fires, grouped by kind, with the version it first shipped 
 | `nettertech_events_show_frontend_branding` | filter | 1.0.2 | `includes/Frontend/FrontendBranding.php:102` | Filters whether to show optional frontend branding. |
 | `nettertech_events_single_occurrence_actions` | action | 1.0.2 | `templates/parts/occurrence-row.php:72` | Fires to render actions for a single occurrence display. |
 | `nettertech_events_single_space_content` | action | 1.0.2 | `templates/single-space.php:160` | Fires within the space detail page article. |
+| `nettertech_events_space_editor_assets` | action | 1.4.7 | `includes/Core/Assets.php` | Fires on core's Space add/edit screen while admin assets are enqueued, so add-ons can enqueue their editor-panel assets. |
+| `nettertech_events_space_editor_panels` | action | 1.4.7 | `includes/Admin/SpacesPage.php` | Fires inside core's Space add/edit form, after core's own fieldsets, so add-ons can render their own panels. |
+| `nettertech_events_space_list_column_content` | filter | 1.4.7 | `includes/Admin/ListTables/SpacesListTable.php` | Filters the cell HTML for an extension-added Spaces list column. |
+| `nettertech_events_space_list_columns` | filter | 1.4.7 | `includes/Admin/ListTables/SpacesListTable.php` | Filters the columns of core's Spaces list table. |
+| `nettertech_events_space_saved_extra` | action | 1.4.7 | `includes/Admin/SpaceSaveHandler.php` | Fires after a space is successfully saved from core's Space editor, with the resulting space ID. |
 | `nettertech_events_template_args` | filter | 1.0.2 | `includes/TemplateLoader/TemplateLoader.php:256` | Filters the arguments passed to a template file before it is rendered. |
 | `nettertech_events_template_paths` | filter | 1.0.2 | `includes/TemplateLoader/TemplateResolver.php:203` | Filters the array of paths to search for template files. |
 | `nettertech_events_templates_applied` | action | 1.0.2 | `includes/Services/RecurrenceService.php:903` | Fires after templates are applied to occurrences. |
 | `nettertech_events_ticket_add_button_area` | action | 1.0.2 | `includes/Admin/Metaboxes/TicketsMetabox.php:294`; `includes/Admin/Metaboxes/TicketsMetabox.php:389`; `includes/Admin/Metaboxes/TicketsMetabox.php:424` (+1 more) | Fires after the ticket type list in admin metaboxes. |
 | `nettertech_events_ticket_row_fields` | action | 1.1.2 | `includes/Admin/Metaboxes/TicketFormRenderer.php:294` | Fires inside a ticket-type row in the admin form, after the tier's own fields. |
 | `nettertech_events_ticket_scan_data` | filter | 1.0.2 | `templates/ticket/scan-result.php:74` | Filters ticket scan result template data. |
+| `nettertech_events_ticket_thumbnail_html` | filter | 1.4.7 | `includes/Integrations/WooCommerce/WCTicketThumbnailFilter.php:150` | Filters the thumbnail HTML shown for a ticket product that has no image of its own — the default ticket image or the bundled placeholder — in the cart and on admin order items; receives the product ID and a context of `cart` or `admin_order_item`. |
 | `nettertech_events_ticket_type_revenue` | filter | 1.1.2 | `includes/Admin/AttendeesPage.php:356` | Filters per-ticket-type revenue for the consolidated attendees overview; return a tier-id-keyed map to add a net-revenue column. Pro answers this filter. |
 | `nettertech_events_ticket_type_created` | action | 1.1.2 | `includes/Repositories/TicketTypeRepository.php:234` | Fires when a ticket type is created. |
 | `nettertech_events_ticket_type_deleted` | action | 1.1.1 | `includes/Repositories/TicketTypeRepository.php:274`; `includes/Repositories/TicketTypeRepository.php:357` | Fires when a ticket type is deleted. |
@@ -1452,6 +1537,7 @@ Every hook the plugin fires, grouped by kind, with the version it first shipped 
 | `nettertech_events_waitlist_notification_sent` | action | 1.0.2 | `includes/Services/WaitlistEmailHandler.php:204` | Fires after a waitlist notification email is sent (or attempted). |
 | `nettertech_events_waitlist_promoted` | action | 1.0.2 | `includes/Services/WaitlistService.php:213` | Fires when a waitlist entry is promoted (next in line). |
 | `nettertech_events_waitlist_status_authorized` | filter | 1.0.2 | `includes/API/WaitlistRestController.php:320` | Filters whether a waitlist status query may reveal the real status. |
+| `nettertech_events_wc_email_header_image` | filter | 1.4.7 | `includes/Integrations/WooCommerce/WCEmailHeaderImage.php:95` | Filters the header image NetterTech Events supplies to WooCommerce's own order emails when WooCommerce's header-image setting is empty (defaults to the site logo; return an empty string to keep WooCommerce's text-name header). |
 
 ### Dynamic hooks
 

@@ -41,7 +41,7 @@ class SpaceRepository implements SpaceRepositoryInterface {
 	 *
 	 * @var string
 	 */
-	private const LIST_COLUMNS = 'id, name, slug, tagline, capacity, square_footage, featured_image_id, sort_order, status, seating_model, created_at, updated_at';
+	private const LIST_COLUMNS = 'id, name, slug, tagline, capacity, square_footage, featured_image_id, sort_order, status, seating_model, door_sales, created_at, updated_at';
 
 	/**
 	 * WordPress database instance.

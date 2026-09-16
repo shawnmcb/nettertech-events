@@ -775,6 +775,33 @@ final class Hooks {
 	public const ACCESSIBILITY_NOTES_RETENTION_DAYS = 'nettertech_events_accessibility_notes_retention_days';
 
 	/**
+	 * Filters the header image supplied to WooCommerce's own order emails
+	 * when WooCommerce's header-image setting is empty.
+	 *
+	 * Defaults to the site logo. Return an empty string to keep
+	 * WooCommerce's text-name header.
+	 *
+	 * @since 1.4.8
+	 *
+	 * @param string $logo_url Site logo URL, or empty string when none is set.
+	 * @return string
+	 */
+	public const WC_EMAIL_HEADER_IMAGE = 'nettertech_events_wc_email_header_image';
+
+	/**
+	 * Filters the thumbnail HTML shown for a ticket product that has no image
+	 * of its own (cart line items and admin order items).
+	 *
+	 * @since 1.4.8
+	 *
+	 * @param string $html       Thumbnail HTML (default ticket image or placeholder).
+	 * @param int    $product_id Ticket product ID.
+	 * @param string $context    'cart' or 'admin_order_item'.
+	 * @return string
+	 */
+	public const TICKET_THUMBNAIL_HTML = 'nettertech_events_ticket_thumbnail_html';
+
+	/**
 	 * Filters the activity retention cutoff date.
 	 *
 	 * @param string $cutoff        The cutoff datetime string.
@@ -985,6 +1012,83 @@ final class Hooks {
 	 */
 	public const AFTER_SINGLE_SPACE_CONTENT = 'nettertech_events_after_single_space_content';
 
+	// =========================================================================
+	// Spaces Admin Extension Hooks
+	//
+	// Core owns the Spaces screen: the editor is complete and usable with no
+	// other plugin installed. Add-ons (Rentals, Seating) extend it through the
+	// five hooks below — they never replace it.
+	// =========================================================================
+
+	/**
+	 * Fires inside core's Space add/edit form, after core's own fieldsets.
+	 *
+	 * Add-ons render their own panels here. The hook fires INSIDE the `<form>`
+	 * element, so any field printed by a listener submits with core's nonce to
+	 * `admin-post.php?action=nettertech_events_save_space`; persist those fields
+	 * on {@see self::SPACE_SAVE_EXTRA}. Listeners must escape their own output
+	 * and must not print core's field names.
+	 *
+	 * @since 1.4.8
+	 *
+	 * @param object|null $space  The space being edited, or null when adding.
+	 * @param string      $action Editor action: 'add' or 'edit'.
+	 */
+	public const SPACE_EDITOR_PANELS = 'nettertech_events_space_editor_panels';
+
+	/**
+	 * Fires after a space is successfully saved from core's Space editor.
+	 *
+	 * Fired at the end of {@see \NetterTechEvents\Admin\SpaceSaveHandler::handle_save()}
+	 * for both create and update, with the resulting space ID. Core has already
+	 * checked the capability and verified the nonce before this fires; listeners
+	 * should still re-check their own capability if they require a different one.
+	 *
+	 * @since 1.4.8
+	 *
+	 * @param int                  $space_id The saved space ID.
+	 * @param array<string, mixed> $post     Unslashed POST data from the save request.
+	 */
+	public const SPACE_SAVE_EXTRA = 'nettertech_events_space_saved_extra';
+
+	/**
+	 * Filters the columns of core's Spaces list table.
+	 *
+	 * Return a map of column key to header label. Cell content for added
+	 * columns is supplied via {@see self::SPACE_LIST_COLUMN_CONTENT}.
+	 *
+	 * @since 1.4.8
+	 *
+	 * @param array<string, string> $columns Map of column key to header label.
+	 */
+	public const SPACE_LIST_COLUMNS = 'nettertech_events_space_list_columns';
+
+	/**
+	 * Filters the cell HTML for an extension-added Spaces list column.
+	 *
+	 * Applied only for columns core does not render itself. The return value is
+	 * passed through `wp_kses_post()`.
+	 *
+	 * @since 1.4.8
+	 *
+	 * @param string $content     Cell HTML (default '').
+	 * @param object $item        The space row being rendered.
+	 * @param string $column_name Column key being rendered.
+	 */
+	public const SPACE_LIST_COLUMN_CONTENT = 'nettertech_events_space_list_column_content';
+
+	/**
+	 * Fires on core's Space add/edit screen while admin assets are enqueued.
+	 *
+	 * Add-ons enqueue the styles and scripts their editor panels need here,
+	 * rather than guessing at the screen from `admin_enqueue_scripts`.
+	 *
+	 * @since 1.4.8
+	 *
+	 * @param string $action Editor action: 'add' or 'edit'.
+	 */
+	public const SPACE_EDITOR_ASSETS = 'nettertech_events_space_editor_assets';
+
 	/**
 	 * Filters the empty-state message shown when no events match.
 	 *
@@ -1059,6 +1163,27 @@ final class Hooks {
 	 * @return string
 	 */
 	public const CALENDAR_HEADER_HTML = 'nettertech_events_calendar_header_html';
+
+	/**
+	 * Filters the allowed HTML for the calendar header extension slot.
+	 *
+	 * {@see self::CALENDAR_HEADER_HTML} is passed through `wp_kses()` before it
+	 * is printed. The default allowlist is `wp_kses_allowed_html( 'post' )`,
+	 * which has no form controls, so an add-on that injects a `<select>` filter
+	 * would have it stripped. Widening the allowlist here lets an add-on print
+	 * its own controls into the header instead of routing around the slot.
+	 *
+	 * Add only the tags and attributes the add-on actually prints; the value is
+	 * a `wp_kses()` allowlist and every tag added here is trusted on the
+	 * frontend for every calendar instance on the site.
+	 *
+	 * @since 1.4.8
+	 *
+	 * @param array<string, array<string, bool>> $allowed The wp_kses allowlist.
+	 * @param array<string, mixed>               $atts    The shortcode attributes.
+	 * @return array<string, array<string, bool>>
+	 */
+	public const CALENDAR_HEADER_ALLOWED_HTML = 'nettertech_events_calendar_header_allowed_html';
 
 	/**
 	 * Filters the calendar JavaScript configuration data.
@@ -1651,12 +1776,28 @@ final class Hooks {
 	 * `manage_{screen}_custom_column`. Add-ons echo cell content for columns they
 	 * registered via the filter.
 	 *
+	 * A third argument carries the occurrence when the cell belongs to one of the
+	 * per-date rows an expanded event emits, and null on the event's own row.
+	 *
 	 * @since 1.1.1
 	 *
-	 * @param string                       $column_name The column key being rendered.
-	 * @param \NetterTechEvents\Models\Event $item       The event for this row.
+	 * @param string                               $column_name The column key being rendered.
+	 * @param \NetterTechEvents\Models\Event        $item        The event for this row.
+	 * @param \NetterTechEvents\Models\Occurrence|null $occurrence The occurrence for a date row, null on an event row.
 	 */
 	public const ACTION_LIST_COLUMN = 'nettertech_events_list_column';
+
+	/**
+	 * AJAX action returning one event's per-date rows for the All Events list.
+	 *
+	 * Admin-only (`edit_posts` + nonce) and read-only: it renders the same rows the
+	 * `expanded` URL argument renders server-side, so the toggle never has to build
+	 * markup in the browser. The action is carried in the request URL query (not just
+	 * the body) so a Cloudflare WAF rule can scope to it without body inspection.
+	 *
+	 * @since 1.4.8
+	 */
+	public const AJAX_EVENT_OCCURRENCE_ROWS = 'nettertech_events_event_occurrence_rows';
 
 	/**
 	 * AJAX action for the All Events list "SKUs" row-action dialog (NTE-114).

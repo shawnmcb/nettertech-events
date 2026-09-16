@@ -49,10 +49,11 @@ final class SpacesNoticesPresenter {
 	 */
 	public function message(): string {
 		return match ( $this->message_key ) {
-			'created' => __( 'Space created.', 'nettertech-events' ),
-			'updated' => __( 'Space updated.', 'nettertech-events' ),
-			'deleted' => __( 'Space deleted.', 'nettertech-events' ),
-			'error'   => null !== $this->error_text && '' !== $this->error_text
+			'created'        => __( 'Space created.', 'nettertech-events' ),
+			'updated'        => __( 'Space updated.', 'nettertech-events' ),
+			'deleted'        => __( 'Space deleted.', 'nettertech-events' ),
+			'unknown_action' => __( 'That screen does not exist. Showing all spaces instead.', 'nettertech-events' ),
+			'error'          => null !== $this->error_text && '' !== $this->error_text
 				? $this->error_text
 				: __( 'An error occurred.', 'nettertech-events' ),
 			default => '',
@@ -60,11 +61,15 @@ final class SpacesNoticesPresenter {
 	}
 
 	/**
-	 * Notice CSS type ('success' or 'error').
+	 * Notice CSS type ('success', 'warning' or 'error').
 	 *
 	 * @return string
 	 */
 	public function type(): string {
-		return 'error' === $this->message_key ? 'error' : 'success';
+		return match ( $this->message_key ) {
+			'error'          => 'error',
+			'unknown_action' => 'warning',
+			default          => 'success',
+		};
 	}
 }

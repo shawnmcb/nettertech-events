@@ -30,6 +30,21 @@ interface OccurrenceQueryRepositoryInterface {
 	public function for_event( int $event_id, array $args = array() ): array;
 
 	/**
+	 * Get occurrences for several events in one query, keyed by event.
+	 *
+	 * Batched sibling of for_event() for screens rendering the dates of a whole
+	 * page of events. Argument defaults match for_event(); the limit applies to
+	 * the batch as a whole. Events with no matching occurrences are omitted.
+	 *
+	 * @since 1.4.8
+	 *
+	 * @param array<int>           $event_ids Event IDs to fetch.
+	 * @param array<string, mixed> $args      Query arguments.
+	 * @return array<int, array<Occurrence>> Map of event_id => occurrences in start order.
+	 */
+	public function for_events( array $event_ids, array $args = array() ): array;
+
+	/**
 	 * Get occurrences for an event, grouped by past and upcoming.
 	 *
 	 * @param int                  $event_id Event ID.

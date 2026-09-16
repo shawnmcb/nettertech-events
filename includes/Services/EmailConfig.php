@@ -167,12 +167,36 @@ class EmailConfig {
 	}
 
 	/**
+	 * Get the logo URL for email headers.
+	 *
+	 * Resolution order: the plugin's own venue-logo setting, then the
+	 * theme's site logo (Customizer / Site Editor `custom_logo`), then
+	 * nothing — templates print the site name as text in that case.
+	 *
+	 * @since 1.4.7
+	 *
+	 * @return string Absolute image URL, or empty string.
+	 */
+	public function get_logo_url(): string {
+		$venue_logo = $this->get_venue_logo();
+		if ( '' !== $venue_logo ) {
+			return $venue_logo;
+		}
+
+		return \NetterTechEvents\Utilities\ImageHelper::get_site_logo_url();
+	}
+
+	/**
 	 * Get the email accent color.
 	 *
-	 * Returns the admin-configured accent color, or falls back to the
-	 * theme's primary color for brand consistency.
+	 * Resolution order: the admin-configured accent color (explicit
+	 * override), then WooCommerce's email base color so ticket emails
+	 * match the store's own order emails, then the theme's primary
+	 * color, then a neutral default.
 	 *
 	 * @since 2.1.0
+	 * @since 1.4.7 Inherits WooCommerce's `woocommerce_email_base_color`
+	 *              before the theme palette.
 	 *
 	 * @return string Hex color with # prefix.
 	 */
@@ -182,6 +206,11 @@ class EmailConfig {
 
 		if ( ! empty( $color ) ) {
 			return $color;
+		}
+
+		$wc_color = $this->get_wc_email_color( 'woocommerce_email_base_color' );
+		if ( null !== $wc_color ) {
+			return $wc_color;
 		}
 
 		// Fall back to theme primary color.
@@ -209,18 +238,88 @@ class EmailConfig {
 	}
 
 	/**
+	 * Get the email body text color.
+	 *
+	 * Inherits WooCommerce's email text color; neutral default otherwise.
+	 *
+	 * @since 1.4.7
+	 *
+	 * @return string Hex color with # prefix.
+	 */
+	public function get_text_color(): string {
+		return $this->get_wc_email_color( 'woocommerce_email_text_color' ) ?? '#333333';
+	}
+
+	/**
+	 * Get the outer (page) background color.
+	 *
+	 * Inherits WooCommerce's email background color; neutral default otherwise.
+	 *
+	 * @since 1.4.7
+	 *
+	 * @return string Hex color with # prefix.
+	 */
+	public function get_background_color(): string {
+		return $this->get_wc_email_color( 'woocommerce_email_background_color' ) ?? '#f7f7f7';
+	}
+
+	/**
+	 * Get the content-card background color.
+	 *
+	 * Inherits WooCommerce's email body background color; white otherwise.
+	 *
+	 * @since 1.4.7
+	 *
+	 * @return string Hex color with # prefix.
+	 */
+	public function get_body_background_color(): string {
+		return $this->get_wc_email_color( 'woocommerce_email_body_background_color' ) ?? '#ffffff';
+	}
+
+	/**
+	 * Read one of WooCommerce's email design colors.
+	 *
+	 * WooCommerce seeds these options on install, so a present, well-formed
+	 * hex value means the store's order emails use it. Anything else (no
+	 * WooCommerce, an unset option, a malformed value) yields null so the
+	 * caller can fall through to its own default.
+	 *
+	 * @param string $option_name WooCommerce option name.
+	 * @return string|null Six-digit hex color with # prefix, or null.
+	 */
+	private function get_wc_email_color( string $option_name ): ?string {
+		$value = get_option( $option_name, '' );
+		if ( ! is_string( $value ) ) {
+			return null;
+		}
+		$value = strtolower( trim( $value ) );
+
+		return 1 === preg_match( '/^#[0-9a-f]{6}$/', $value ) ? $value : null;
+	}
+
+	/**
 	 * Get template settings for renderer.
 	 *
+	 * The `venue_logo` key carries the resolved logo (plugin setting →
+	 * site logo → none) so every email template inherits the site logo
+	 * without a per-template change.
+	 *
 	 * @since 2.1.0
+	 * @since 1.4.7 Adds `text_color`, `background_color`,
+	 *              `body_background_color`; `venue_logo` falls back to
+	 *              the site logo.
 	 *
 	 * @return array<string, mixed>
 	 */
 	public function get_template_settings(): array {
 		return array(
-			'venue_logo'          => $this->get_venue_logo(),
-			'show_qr_codes'       => ! $this->is_qr_disabled(),
-			'cancellation_policy' => $this->get_cancellation_policy(),
-			'accent_color'        => $this->get_accent_color(),
+			'venue_logo'            => $this->get_logo_url(),
+			'show_qr_codes'         => ! $this->is_qr_disabled(),
+			'cancellation_policy'   => $this->get_cancellation_policy(),
+			'accent_color'          => $this->get_accent_color(),
+			'text_color'            => $this->get_text_color(),
+			'background_color'      => $this->get_background_color(),
+			'body_background_color' => $this->get_body_background_color(),
 		);
 	}
 

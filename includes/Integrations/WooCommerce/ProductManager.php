@@ -183,6 +183,9 @@ class ProductManager {
 				$event_image_id = (int) $full_occurrence->get_event()->featured_image_id;
 			}
 		}
+		if ( ! $event_image_id ) {
+			$event_image_id = $this->default_ticket_image_id();
+		}
 		if ( $event_image_id ) {
 			$product->set_image_id( $event_image_id );
 		}
@@ -756,8 +759,9 @@ class ProductManager {
 		$product->set_virtual( true );
 		$product->set_sold_individually( false );
 
-		if ( $event && $event->featured_image_id ) {
-			$product->set_image_id( (int) $event->featured_image_id );
+		$series_image_id = $event && $event->featured_image_id ? (int) $event->featured_image_id : $this->default_ticket_image_id();
+		if ( $series_image_id ) {
+			$product->set_image_id( $series_image_id );
 		}
 
 		$stock = null === $ticket_type->id ? null : $this->available_for_stock( $ticket_type->id );
@@ -1110,5 +1114,17 @@ class ProductManager {
 			),
 			wc_get_cart_url()
 		);
+	}
+
+	/**
+	 * Site-wide default ticket product image (NTE-219), used when neither the
+	 * occurrence nor the event has a featured image.
+	 *
+	 * @since 1.4.7
+	 *
+	 * @return int Attachment ID, or 0 when unset.
+	 */
+	private function default_ticket_image_id(): int {
+		return \NetterTechEvents\Core\NetterTechEventsSettings::from_option()->tickets->default_ticket_image_id;
 	}
 }

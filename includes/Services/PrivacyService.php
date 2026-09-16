@@ -104,6 +104,13 @@ class PrivacyService {
 				);
 			}
 
+			if ( ! empty( $attendee->notes ) ) {
+				$data[] = array(
+					'name'  => __( 'Order Notes', 'nettertech-events' ),
+					'value' => $attendee->notes,
+				);
+			}
+
 			if ( ! empty( $attendee->accessibility_notes ) ) {
 				$data[] = array(
 					'name'  => __( 'Accessibility Notes', 'nettertech-events' ),
@@ -385,7 +392,7 @@ class PrivacyService {
 	/**
 	 * Erase attendee personal data.
 	 *
-	 * Anonymizes attendee PII (name, email, phone, accessibility_notes).
+	 * Anonymizes attendee PII (name, email, phone, notes, accessibility_notes).
 	 * Tickets reference attendees via FK only — no standalone PII to erase.
 	 *
 	 * @param string $email_address Email address to erase data for.
@@ -420,10 +427,11 @@ class PrivacyService {
 					'name'                => __( '[Deleted]', 'nettertech-events' ),
 					'email'               => 'deleted-' . $attendee->id . '@anonymized.invalid',
 					'phone'               => null,
+					'notes'               => null,
 					'accessibility_notes' => null,
 				),
 				array( 'id' => $attendee->id ),
-				array( '%s', '%s', '%s', '%s' ),
+				array( '%s', '%s', '%s', '%s', '%s' ),
 				array( '%d' )
 			);
 

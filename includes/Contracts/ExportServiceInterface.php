@@ -24,10 +24,11 @@ interface ExportServiceInterface {
 	/**
 	 * Generate CSV data for check-in list.
 	 *
-	 * @param int $occurrence_id Occurrence ID.
+	 * @param int  $occurrence_id     Occurrence ID.
+	 * @param bool $include_sensitive Include Art.9 columns (accessibility notes).
 	 * @return string CSV content.
 	 */
-	public function generate_csv( int $occurrence_id ): string;
+	public function generate_csv( int $occurrence_id, bool $include_sensitive = false ): string;
 
 	/**
 	 * Generate a standardized CSV filename.
@@ -40,11 +41,12 @@ interface ExportServiceInterface {
 	/**
 	 * Send CSV as a download response.
 	 *
-	 * @param int    $occurrence_id Occurrence ID.
-	 * @param string $event_title   Event title for filename.
+	 * @param int    $occurrence_id     Occurrence ID.
+	 * @param string $event_title       Event title for filename.
+	 * @param bool   $include_sensitive Include Art.9 columns (accessibility notes).
 	 * @return void
 	 */
-	public function send_csv_download( int $occurrence_id, string $event_title ): void;
+	public function send_csv_download( int $occurrence_id, string $event_title, bool $include_sensitive = false ): void;
 
 	/**
 	 * Get occurrence with event title for export.

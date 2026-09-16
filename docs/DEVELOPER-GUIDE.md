@@ -146,9 +146,69 @@ ServiceRegistry::reset(); // Clean up in tearDown()
 The plugin uses two prefixes by design; this split is intentional and stable:
 
 - **`nettertech_events_` / `nettertech-events`** for every developer-facing identifier: hooks, shortcodes, options, capabilities, the REST namespace, and the text domain. All new work uses this prefix.
-- **`nte_` / `nte-` / `--nte-`** for high-volume internal and presentational identifiers: database table names (`wp_nte_*`), the `nte_event` shadow post type, CSS classes, and CSS custom properties. These predate the long prefix and stay short on purpose: table names are internal, and the CSS surface is a published theming API whose rename would break existing site customizations for no functional gain.
+- **`nte_` / `nte-` / `--nte-`** for high-volume internal and presentational identifiers: the `nte_event` shadow post type, CSS classes, and CSS custom properties. These stay short on purpose: the CSS surface is a published theming API whose rename would break existing site customizations for no functional gain.
 
 Do not "fix" `nte_` identifiers in these categories to the long prefix, and do not introduce `nte_` for anything in the first list.
+
+## Comments
+
+Seven rules. They apply to PHP, JavaScript, CSS, shell, and tests alike.
+
+1. **Four properties.** A comment is minimal, addresses the code itself, is idempotent and
+   not tied to any state, and appears only where a maintainer would otherwise build
+   incorrectly.
+
+2. **The wrong-change test.** Keep a comment only if its absence would let a maintainer make
+   a wrong change. Restating the adjacent line fails this test, however accurate. This is the
+   discriminator; "but it is true" is not a defence.
+
+   ```php
+   // Bad — restates the line.
+   // Loop through the occurrences.
+   foreach ( $occurrences as $occurrence ) {
+
+   // Good — states a constraint the code does not show.
+   // Ordered by start_utc: the caller pages on this order.
+   ```
+
+3. **Idempotence.** A comment must still be true after the next three issues ship. No
+   "currently", "for now", "until X lands", "was Y before", and no "keep in sync with" notes
+   for values that cannot realistically change. Rationale tied to a moment goes in the commit
+   description.
+
+4. **No provenance or precedent.** Comments explain the constraint, never the history. No
+   ticket ids, no dates, no links, no "Pro already does it this way", no "extracted from
+   AdminMenu". Issue linkage lives in the branch name; defect history lives in the commit.
+
+5. **Negatives need a strong default to deny.** Say what something is *not* only when a naive
+   read of the code would pull toward the denied possibility. Otherwise state the constraint
+   positively.
+
+   ```php
+   // Justified — the naive fix is exactly this.
+   // Do not add wp_kses_post() here: its allowlist has no <iframe>.
+   ```
+
+6. **Docblocks and JSDoc.** A paragraph of *why* usually compresses to one clause; keep only
+   the surprising part. The PHPCS-required docblock shape stays, as do `@param`, `@return`,
+   `@var`, `@throws`, `@package` and every `@since` value, `translators:` comment, and
+   `phpcs:ignore` / `eslint-disable` justification.
+
+7. **Tests.** No comments restating the test name, and none explaining a mock idiom. Keep only
+   notes marking a deliberately odd fixture — a boundary value, or a row shape chosen to
+   reproduce a specific engine behaviour.
+
+### The gate
+
+`composer check:comments` (`scripts/check-comment-standard.php`) scans comment text only —
+strings and code can never trip it — across `includes`, `templates`, `assets/js`, `assets/css`,
+`blocks`, `tests`, `scripts` and `.githooks`. It is run on demand and is not yet wired into
+`composer check`, `composer quality`, `composer push`, or the pre-commit hook, because the
+existing tree does not pass it. There is no escape hatch: rewrite the comment.
+
+The gate catches rules 3, 4 and 5 mechanically. It cannot catch rule 2 — `// Constants.` and a
+docblock that restates its method name both pass it — so the wrong-change test stays a human
+judgement on every new comment, and belongs in every code-review brief.
 
 ## Common Workflows
 

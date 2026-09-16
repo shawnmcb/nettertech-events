@@ -200,6 +200,30 @@
 	margin-top: 0.5rem;
 }
 
+/* Sales-closed notice replaces the ticket form once every window has shut */
+.nte-occurrence-status--closed {
+	display: flex;
+	flex-direction: column;
+	gap: 0.25rem;
+	padding: var(--nte-spacing-sm, 0.5rem) var(--nte-spacing-md, 1em);
+	border-left: 3px solid var(--nte-color-text-muted, #5a616e);
+	color: var(--nte-color-text, #1f2937);
+}
+
+.nte-occurrence-status__headline,
+.nte-occurrence-status__door {
+	margin: 0;
+}
+
+.nte-occurrence-status__headline {
+	font-weight: 600;
+}
+
+.nte-occurrence-status__door {
+	font-size: var(--nte-font-size-sm, 0.875em);
+	color: var(--nte-color-text-muted, #5a616e);
+}
+
 /* Event Content */
 .nte-single-event__content {
 	margin-bottom: var(--nte-spacing-xl, 2rem);

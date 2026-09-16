@@ -13,6 +13,7 @@ defined( 'ABSPATH' ) || exit;
 
 use NetterTechEvents\Catalog\AccessibilityFeature;
 use NetterTechEvents\Contracts\SpaceRepositoryInterface;
+use NetterTechEvents\Core\Hooks;
 use NetterTechEvents\Enums\SeatingModel;
 use NetterTechEvents\Models\Space;
 
@@ -78,11 +79,25 @@ class SpaceSaveHandler {
 		$data     = $this->build_space_data( $space_id, $post );
 
 		try {
-			$this->repo->save( $data );
-			$message = $space_id > 0 ? 'updated' : 'created';
+			$saved_id = $this->repo->save( $data );
+			$message  = $space_id > 0 ? 'updated' : 'created';
 		} catch ( \RuntimeException $e ) {
 			$this->redirect_to_error( $space_id, $e );
 		}
+
+		/**
+		 * Fires after a space is successfully saved from core's Space editor.
+		 *
+		 * Add-ons persist the fields they rendered on
+		 * {@see Hooks::SPACE_EDITOR_PANELS} here. Core has already checked the
+		 * capability and verified the nonce before this fires.
+		 *
+		 * @since 1.4.7
+		 *
+		 * @param int                  $space_id The saved space ID (new or updated).
+		 * @param array<string, mixed> $post     Unslashed POST data from the save request.
+		 */
+		do_action( Hooks::SPACE_SAVE_EXTRA, $saved_id, $post );
 
 		$this->redirect_to_list( $message );
 	}
@@ -162,6 +177,7 @@ class SpaceSaveHandler {
 			'gallery_image_ids'      => $this->sanitize_gallery_ids( $raw_gallery_image_ids ),
 			'status'                 => $this->sanitize_status( $raw_status ),
 			'seating_model'          => $this->sanitize_seating_model( $raw_seating_model ),
+			'door_sales'             => ! empty( $post['space_door_sales'] ),
 			'accessibility_features' => $this->sanitize_accessibility_features( $raw_accessibility_features ),
 		);
 

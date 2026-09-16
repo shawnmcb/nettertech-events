@@ -34,6 +34,7 @@ final readonly class TicketSettings {
 	 * @param bool         $allow_custom_donation   Allow custom donation amounts.
 	 * @param int          $max_donation            Maximum donation amount.
 	 * @param array<float> $donation_presets        Donation preset amounts.
+	 * @param int          $default_ticket_image_id Site-wide default ticket product image attachment ID (0 = none).
 	 */
 	public function __construct(
 		public bool $enable_rsvp = false,
@@ -47,6 +48,7 @@ final readonly class TicketSettings {
 		public bool $allow_custom_donation = true,
 		public int $max_donation = 100,
 		public array $donation_presets = array( 5.0, 10.0, 25.0 ),
+		public int $default_ticket_image_id = 0,
 	) {
 	}
 }

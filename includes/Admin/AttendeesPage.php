@@ -1045,6 +1045,7 @@ class AttendeesPage {
 				?>
 				<div class="nte-attendee-identity"><?php echo esc_html( $nettertech_events_identity ); ?></div>
 				<?php $this->render_accessibility_notes( $item ); ?>
+				<?php $this->render_order_notes( $item ); ?>
 				<?php $this->render_row_actions( (int) ( $item['id'] ?? 0 ), (int) ( $item['wc_order_id'] ?? 0 ), $item ); ?>
 				<button type="button" class="toggle-row">
 					<span class="screen-reader-text"><?php esc_html_e( 'Show more details', 'nettertech-events' ); ?></span>
@@ -1146,6 +1147,33 @@ class AttendeesPage {
 				<span class="nte-attendee-accessibility__label"><?php esc_html_e( 'Accessibility notes', 'nettertech-events' ); ?></span>
 			</summary>
 			<p class="nte-attendee-accessibility__text"><?php echo nl2br( esc_html( (string) $notes ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- esc_html() runs first; nl2br() only inserts <br /> tags. ?></p>
+		</details>
+		<?php
+	}
+
+	/**
+	 * Render the buyer's order-notes indicator for a row (NTE-226).
+	 *
+	 * Same shape as the accessibility badge: a compact badge in the Name cell
+	 * with the text behind a native `<details>`, nothing when there is no
+	 * note. Ordinary personal data (the checkout "Order notes" field), so it
+	 * needs no special gating beyond the page's own capability.
+	 *
+	 * @param array<string, mixed> $item Attendee record.
+	 * @return void
+	 */
+	private function render_order_notes( array $item ): void {
+		$notes = $item['notes'] ?? null;
+		if ( ! is_string( $notes ) || '' === trim( $notes ) ) {
+			return;
+		}
+		?>
+		<details class="nte-attendee-notes">
+			<summary class="nte-attendee-notes__badge">
+				<span class="dashicons dashicons-testimonial nte-attendee-notes__icon" aria-hidden="true"></span>
+				<span class="nte-attendee-notes__label"><?php esc_html_e( 'Order notes', 'nettertech-events' ); ?></span>
+			</summary>
+			<p class="nte-attendee-notes__text"><?php echo nl2br( esc_html( $notes ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- esc_html() runs first; nl2br() only inserts <br /> tags. ?></p>
 		</details>
 		<?php
 	}

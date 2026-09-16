@@ -102,4 +102,21 @@ class ImageHelper {
 
 		return wp_attachment_is_image( $attachment_id );
 	}
+
+	/**
+	 * Get the theme's site logo URL (Customizer / Site Editor `custom_logo`).
+	 *
+	 * Returns the full-size attachment URL so email clients, which cannot
+	 * pick from a srcset, get the best copy; callers constrain display size
+	 * with markup.
+	 *
+	 * @since 1.4.7
+	 *
+	 * @return string Absolute URL, or empty string when no logo is set.
+	 */
+	public static function get_site_logo_url(): string {
+		$logo_id = (int) get_theme_mod( 'custom_logo', 0 );
+
+		return self::get_attachment_image_url( $logo_id, 'full' ) ?? '';
+	}
 }

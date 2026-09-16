@@ -29,7 +29,7 @@ while IFS= read -r line; do
     fi
 done < <(grep -rnIiE "$DENY" . \
     --exclude-dir=vendor --exclude-dir=node_modules --exclude-dir=tests --exclude-dir=specs \
-    --exclude-dir=.git --exclude-dir=.claude --exclude-dir=build --exclude-dir=dist --exclude-dir=.wordpress-org --exclude-dir=test-results --exclude-dir=playwright-report --exclude-dir=coverage \
+    --exclude-dir=.git --exclude-dir=.claude --exclude-dir=build --exclude-dir=dist --exclude-dir=.wordpress-org --exclude-dir=test-results --exclude-dir=playwright-report --exclude-dir=coverage --exclude-dir=.infection \
     --include='*.php' --include='*.js' --include='*.css' --include='*.md' --include='*.txt' --include='*.json' --include='*.html' --include='*.pot' --include='*.sh' --include='*.yaml' --include='*.yml' --include='*.xml' \
     --exclude='*.min.js' --exclude='package-lock.json' --exclude='composer.lock' --exclude='check-public-text.sh' 2>/dev/null || true)
 

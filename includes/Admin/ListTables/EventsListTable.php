@@ -24,6 +24,7 @@ use NetterTechEvents\Contracts\TicketTypeRepositoryInterface;
 use NetterTechEvents\Core\Hooks;
 use NetterTechEvents\Database\Queries\EventQuery;
 use NetterTechEvents\Models\Event;
+use NetterTechEvents\Models\Occurrence;
 use NetterTechEvents\Services\EventDuplicationService;
 
 // Load WP_List_Table if not available.
@@ -48,6 +49,30 @@ class EventsListTable extends \WP_List_Table {
 	 * @var string
 	 */
 	private const TICKETED_FILTER = 'ticketed';
+
+	/**
+	 * Screen ID of the All Events list page.
+	 *
+	 * Needed outside a `WP_Screen` context (admin-ajax) to read the same hidden-column
+	 * user option Screen Options writes, so AJAX-inserted rows hide the same columns.
+	 *
+	 * @var string
+	 */
+	public const SCREEN_ID = 'toplevel_page_nettertech-events';
+
+	/**
+	 * Upper bound on the number of events one request may expand.
+	 *
+	 * @var int
+	 */
+	public const MAX_EXPANDED = 50;
+
+	/**
+	 * GET argument carrying the expanded event IDs.
+	 *
+	 * @var string
+	 */
+	public const ARG_EXPANDED = 'expanded';
 
 	/**
 	 * Occurrence repository.
@@ -120,6 +145,34 @@ class EventsListTable extends \WP_List_Table {
 	private array $capacity_map = array();
 
 	/**
+	 * Event IDs expanded on this render, already intersected with the page.
+	 *
+	 * @var array<int, int>
+	 */
+	private array $expanded = array();
+
+	/**
+	 * Map of event_id => occurrences, for the expanded events only.
+	 *
+	 * @var array<int, array<Occurrence>>
+	 */
+	private array $expanded_occurrences = array();
+
+	/**
+	 * Map of occurrence_id => confirmed guest count.
+	 *
+	 * @var array<int, int>
+	 */
+	private array $occurrence_sold_counts = array();
+
+	/**
+	 * Map of occurrence_id => capacity denominator data.
+	 *
+	 * @var array<int, array{capacity: ?int, has_unlimited: bool, configured: bool}>
+	 */
+	private array $occurrence_capacity_map = array();
+
+	/**
 	 * Constructor.
 	 *
 	 * @param EventRepositoryInterface                $event_repo            Event repository.
@@ -164,6 +217,19 @@ class EventsListTable extends \WP_List_Table {
 	 * @return array<string, string>
 	 */
 	public function get_columns(): array {
+		return self::filtered_columns();
+	}
+
+	/**
+	 * Build the filtered column map without a list-table instance.
+	 *
+	 * The occurrence-row AJAX endpoint renders child rows outside any screen, and
+	 * the child cells must match the parent's columns exactly; sharing one builder
+	 * is what keeps the two from drifting.
+	 *
+	 * @return array<string, string>
+	 */
+	public static function filtered_columns(): array {
 		$columns = array(
 			'cb'           => '<input type="checkbox">',
 			'title'        => __( 'Event', 'nettertech-events' ),
@@ -287,6 +353,7 @@ class EventsListTable extends \WP_List_Table {
 		$this->items = $result['items'];
 
 		$this->prime_column_aggregates();
+		$this->prime_expanded_occurrences();
 
 		$this->set_pagination_args(
 			array(
@@ -333,6 +400,143 @@ class EventsListTable extends \WP_List_Table {
 		if ( null !== $this->ticket_type_repo ) {
 			$this->capacity_map = $this->ticket_type_repo->event_capacity_for_events( $event_ids );
 		}
+	}
+
+	/**
+	 * Resolve the `expanded` request argument into occurrences and their aggregates.
+	 *
+	 * IDs are intersected with the events actually on this page, so a stale or
+	 * hand-edited URL expands nothing it cannot show and the fetch stays bounded by
+	 * the page. Three batched queries cover the whole page whatever K is.
+	 *
+	 * @return void
+	 */
+	private function prime_expanded_occurrences(): void {
+		$this->expanded                = array();
+		$this->expanded_occurrences    = array();
+		$this->occurrence_sold_counts  = array();
+		$this->occurrence_capacity_map = array();
+
+		$requested = AdminRequest::get_id_list( self::ARG_EXPANDED, self::MAX_EXPANDED );
+		if ( empty( $requested ) || null === $this->occurrence_query_repo ) {
+			return;
+		}
+
+		$page_ids = array();
+		foreach ( $this->items as $item ) {
+			if ( $item instanceof Event && null !== $item->id ) {
+				$page_ids[] = $item->id;
+			}
+		}
+
+		$this->expanded = array_values( array_intersect( $requested, $page_ids ) );
+		if ( empty( $this->expanded ) ) {
+			return;
+		}
+
+		$this->expanded_occurrences = $this->occurrence_query_repo->for_events( $this->expanded );
+
+		$occurrence_ids = array();
+		foreach ( $this->expanded_occurrences as $occurrences ) {
+			foreach ( $occurrences as $occurrence ) {
+				if ( $occurrence instanceof Occurrence && null !== $occurrence->id ) {
+					$occurrence_ids[] = $occurrence->id;
+				}
+			}
+		}
+
+		if ( empty( $occurrence_ids ) ) {
+			return;
+		}
+
+		if ( null !== $this->attendee_repo ) {
+			$this->occurrence_sold_counts = $this->attendee_repo->confirmed_guest_counts_for_occurrences( $occurrence_ids );
+		}
+
+		if ( null !== $this->ticket_type_repo ) {
+			$this->occurrence_capacity_map = $this->ticket_type_repo->occurrence_capacity_for_occurrences( $occurrence_ids );
+		}
+	}
+
+	/**
+	 * Display rows, following each expanded event with its date rows.
+	 *
+	 * @return void
+	 */
+	public function display_rows(): void {
+		foreach ( $this->items as $item ) {
+			$this->single_row( $item );
+
+			if ( $item instanceof Event ) {
+				$this->display_occurrence_rows( $item );
+			}
+		}
+	}
+
+	/**
+	 * Emit the child date rows for one event when it is expanded.
+	 *
+	 * @param Event $item Event object.
+	 * @return void
+	 */
+	private function display_occurrence_rows( Event $item ): void {
+		if ( null === $item->id || ! in_array( $item->id, $this->expanded, true ) ) {
+			return;
+		}
+
+		$occurrences = $this->expanded_occurrences[ $item->id ] ?? array();
+		if ( empty( $occurrences ) ) {
+			return;
+		}
+
+		// WP core tolerates a three-element _column_headers (it appends the primary
+		// column itself), so the fourth slot is read defensively rather than unpacked.
+		$column_info = $this->get_column_info();
+		$columns     = is_array( $column_info[0] ?? null ) ? $column_info[0] : $this->get_columns();
+		$hidden      = is_array( $column_info[1] ?? null ) ? $column_info[1] : array();
+		$primary     = is_string( $column_info[3] ?? null ) ? $column_info[3] : 'title';
+
+		$renderer = new OccurrenceRowRenderer( $columns, $hidden, $primary );
+
+		// Escaped cell by cell inside the renderer; this is assembled markup, not data.
+		echo $renderer->render( $item, $occurrences, $this->occurrence_sold_counts, $this->occurrence_capacity_map ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Assembled table markup; OccurrenceRowRenderer escapes every cell value as it builds it.
+	}
+
+	/**
+	 * The current list URL, as the toggle and WP core's own sort links use it.
+	 *
+	 * Built from the request URI rather than from known arguments so filters this
+	 * class does not know about (an add-on's, for one) survive a toggle click.
+	 *
+	 * @return string
+	 */
+	private function current_list_url(): string {
+		$uri = isset( $_SERVER['REQUEST_URI'] )
+			? esc_url_raw( wp_unslash( $_SERVER['REQUEST_URI'] ) )
+			: admin_url( 'admin.php?page=' . AdminMenu::MENU_SLUG );
+
+		return remove_query_arg( array( '_wpnonce', '_wp_http_referer', 'action', 'action2', 'event' ), $uri );
+	}
+
+	/**
+	 * Build the URL that opens or closes one event's dates.
+	 *
+	 * @param int  $event_id Event ID.
+	 * @param bool $is_open  Whether the event is currently expanded.
+	 * @return string
+	 */
+	private function toggle_url( int $event_id, bool $is_open ): string {
+		$url = $this->current_list_url();
+
+		$target = $is_open
+			? array_diff( $this->expanded, array( $event_id ) )
+			: array_merge( $this->expanded, array( $event_id ) );
+
+		if ( empty( $target ) ) {
+			return remove_query_arg( self::ARG_EXPANDED, $url );
+		}
+
+		return add_query_arg( self::ARG_EXPANDED, implode( ',', $target ), $url );
 	}
 
 	/**
@@ -653,11 +857,7 @@ class EventsListTable extends \WP_List_Table {
 		$displayed_type = $item->event_type;
 		if ( 'single' === $item->event_type && $occ_count > 1 ) {
 			$displayed_type = 'recurring';
-			$label          = sprintf(
-				/* translators: %d: number of dates on the event. */
-				__( 'Recurring (%d dates)', 'nettertech-events' ),
-				$occ_count
-			);
+			$label          = $types['recurring'];
 		}
 
 		$filter_url = add_query_arg(
@@ -668,7 +868,59 @@ class EventsListTable extends \WP_List_Table {
 			admin_url( 'admin.php' )
 		);
 
-		return sprintf( '<a href="%s">%s</a>', esc_url( $filter_url ), esc_html( $label ) );
+		$cell = sprintf( '<a href="%s">%s</a>', esc_url( $filter_url ), esc_html( $label ) );
+
+		// The date count carried the "(N dates)" suffix on the type label; it is now
+		// the expansion control, so the label stays the plain filter link.
+		if ( $occ_count > 1 && null !== $item->id ) {
+			$cell .= $this->render_dates_toggle( $item->id, $occ_count );
+		}
+
+		return $cell;
+	}
+
+	/**
+	 * Render the control that opens or closes an event's date rows.
+	 *
+	 * A link, not a button: with scripting off it requests the same page with this
+	 * event added to `expanded`, which the server renders to the same rows.
+	 *
+	 * @param int $event_id  Event ID.
+	 * @param int $occ_count Number of dates on the event.
+	 * @return string
+	 */
+	private function render_dates_toggle( int $event_id, int $occ_count ): string {
+		$is_open = in_array( $event_id, $this->expanded, true );
+
+		$controls = '';
+		if ( $is_open ) {
+			$row_ids = array();
+			foreach ( $this->expanded_occurrences[ $event_id ] ?? array() as $occurrence ) {
+				if ( $occurrence instanceof Occurrence && null !== $occurrence->id ) {
+					$row_ids[] = OccurrenceRowRenderer::row_id( (int) $occurrence->id );
+				}
+			}
+			if ( ! empty( $row_ids ) ) {
+				$controls = sprintf( ' aria-controls="%s"', esc_attr( implode( ' ', $row_ids ) ) );
+			}
+		}
+
+		return sprintf(
+			'<a class="nte-dates-toggle" href="%1$s" aria-expanded="%2$s"%3$s data-event-id="%4$d" data-count="%5$d"><span class="nte-dates-toggle__chevron" aria-hidden="true">%6$s</span>%7$s</a>',
+			esc_url( $this->toggle_url( $event_id, $is_open ) ),
+			$is_open ? 'true' : 'false',
+			$controls,
+			$event_id,
+			$occ_count,
+			$is_open ? '&#9662;' : '&#9656;',
+			esc_html(
+				sprintf(
+					/* translators: %d: number of dates on the event. */
+					_n( '%d date', '%d dates', $occ_count, 'nettertech-events' ),
+					$occ_count
+				)
+			)
+		);
 	}
 
 	/**
@@ -752,14 +1004,29 @@ class EventsListTable extends \WP_List_Table {
 	 */
 	public function column_tickets_sold( $item ): string {
 		$event_id = null !== $item->id ? (int) $item->id : 0;
-		$capacity = $this->capacity_map[ $event_id ] ?? null;
 
-		// No ticketing configured anywhere for this event: single dash, no second line.
+		return self::render_sold_cell(
+			(int) ( $this->sold_counts[ $event_id ] ?? 0 ),
+			$this->capacity_map[ $event_id ] ?? null
+		);
+	}
+
+	/**
+	 * Format a confirmed-count-over-capacity cell.
+	 *
+	 * Shared by the event row and the per-date child rows so a date's figure reads
+	 * exactly like the event's, only against that date's house.
+	 *
+	 * @param int                                                               $sold     Confirmed guest count.
+	 * @param array{capacity: ?int, has_unlimited: bool, configured: bool}|null $capacity Capacity denominator data.
+	 * @return string
+	 */
+	public static function render_sold_cell( int $sold, ?array $capacity ): string {
+		// No ticketing configured anywhere: single dash, no second line.
 		if ( null === $capacity || empty( $capacity['configured'] ) ) {
 			return '<span style="color: #999;">' . esc_html__( '—', 'nettertech-events' ) . '</span>';
 		}
 
-		$sold        = (int) ( $this->sold_counts[ $event_id ] ?? 0 );
 		$sold_markup = '<strong>' . esc_html( (string) $sold ) . '</strong>';
 
 		// Second line: percentage of capacity sold.
@@ -807,10 +1074,11 @@ class EventsListTable extends \WP_List_Table {
 			 *
 			 * @since 1.0.3
 			 *
-			 * @param string $column_name The column key being rendered.
-			 * @param Event  $item        The event for this row.
+			 * @param string          $column_name The column key being rendered.
+			 * @param Event           $item        The event for this row.
+			 * @param Occurrence|null $occurrence  The occurrence for a date row, null on an event row.
 			 */
-			do_action( Hooks::ACTION_LIST_COLUMN, $column_name, $item );
+			do_action( Hooks::ACTION_LIST_COLUMN, $column_name, $item, null );
 
 			$output = (string) ob_get_clean();
 			if ( '' !== $output ) {

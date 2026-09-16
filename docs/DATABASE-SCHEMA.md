@@ -176,6 +176,8 @@ Bookable rooms/venues. Core properties only — the Rentals add-on appends renta
 | `featured_image_id` | `bigint(20) unsigned` | NULL | WP attachment ID |
 | `sort_order` | `int(11)` | DEFAULT 0 | Display order |
 | `status` | `varchar(20)` | DEFAULT 'active' | active / inactive |
+| `seating_model` | `varchar(20)` | NOT NULL, DEFAULT 'free' | free / assigned (Seating add-on reads this) |
+| `door_sales` | `tinyint(1)` | NOT NULL, DEFAULT 0 | Venue sells at the door after online sales close; drives the public "still available at the door" line (never shown for a sold-out date) |
 | `is_accessible` | `tinyint(1)` | NOT NULL, DEFAULT 0 | Wheelchair accessible |
 | `has_accessible_stage` | `tinyint(1)` | NOT NULL, DEFAULT 0 | Accessible stage access |
 | `has_hearing_loop` | `tinyint(1)` | NOT NULL, DEFAULT 0 | Hearing loop installed |

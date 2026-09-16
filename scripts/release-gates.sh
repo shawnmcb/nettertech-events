@@ -88,6 +88,11 @@ $ids = $wpdb->get_col( "SELECT id FROM {$t} WHERE title LIKE \"E2E Test Event%\"
 foreach ( $ids as $id ) { $repo->delete( (int) $id ); }
 echo count( $ids ) . " prior E2E artifacts cleaned\n";
 ' --path="$WP_ROOT" 2>/dev/null | tail -1 || echo "  (E2E pre-clean skipped — wp eval unavailable)"
+# The fixture-driven specs shell out to WP-CLI against $WP_PATH (default
+# /var/www/html, the CI container). Point them at this checkout's WordPress
+# unless the operator already did; WP_CLI_CMD wins over WP_PATH in the specs.
+export WP_PATH="${WP_PATH:-$WP_ROOT}"
+export WP_CLI_CMD="${WP_CLI_CMD:-php -d memory_limit=512M $HOME/bin/wp --path=$WP_ROOT}"
 E2E_LOG=$(mktemp /tmp/nte-e2e.XXXXXX)
 # Scope notes:
 # - fresh-install-matrix flows ("Flow N:") assert a base-only fresh install

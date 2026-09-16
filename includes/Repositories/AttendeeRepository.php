@@ -307,11 +307,15 @@ class AttendeeRepository implements
 	 * @return Attendee|null
 	 */
 	public function find_by_ticket_code( string $ticket_code, int $occurrence_id ): ?Attendee {
+		$tickets = Schema::table( 'tickets' );
+
+		// ticket_code lives on the tickets table; attendees has no such column.
 		$row = $this->db->get_row(
 			$this->db->prepare(
-				"SELECT * FROM {$this->table}
-				 WHERE occurrence_id = %d AND ticket_code = %s AND status = 'confirmed'
-				 LIMIT 1", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name from trusted constant or plugin property; user values bound via prepare().
+				"SELECT a.* FROM {$this->table} a
+				 INNER JOIN {$tickets} t ON t.attendee_id = a.id
+				 WHERE a.occurrence_id = %d AND t.ticket_code = %s AND a.status = 'confirmed'
+				 LIMIT 1", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table names from trusted constant or plugin property; user values bound via prepare().
 				$occurrence_id,
 				$ticket_code
 			)
@@ -462,6 +466,48 @@ class AttendeeRepository implements
 		$counts = array();
 		foreach ( $rows ? $rows : array() as $row ) {
 			$counts[ (int) $row->event_id ] = (int) $row->guests;
+		}
+
+		return $counts;
+	}
+
+	/**
+	 * Sum confirmed guest quantities per occurrence.
+	 *
+	 * Date-grain sibling of {@see self::confirmed_guest_counts_for_events()},
+	 * for screens that break a series out into its individual dates. Counts
+	 * guests (SUM of party quantity) rather than ticket rows for the same
+	 * reason: a free RSVP carries its party size in the quantity of a single
+	 * row, and legacy-migrated rows have no ticket rows at all.
+	 *
+	 * @since 1.4.8
+	 *
+	 * @param array<int> $occurrence_ids Occurrence IDs to aggregate.
+	 * @return array<int, int> Map of occurrence_id => confirmed guest count (occurrences with none omitted).
+	 */
+	public function confirmed_guest_counts_for_occurrences( array $occurrence_ids ): array {
+		$occurrence_ids = array_unique( array_filter( array_map( 'absint', $occurrence_ids ) ) );
+
+		if ( empty( $occurrence_ids ) ) {
+			return array();
+		}
+
+		$placeholders = implode( ',', array_fill( 0, count( $occurrence_ids ), '%d' ) );
+
+		$rows = $this->db->get_results(
+			$this->db->prepare(
+				"SELECT a.occurrence_id AS occurrence_id, COALESCE( SUM( a.quantity ), 0 ) AS guests
+				FROM {$this->table} a
+				WHERE a.occurrence_id IN ({$placeholders})
+					AND a.status = %s
+				GROUP BY a.occurrence_id", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name from trusted constant; occurrence IDs bound via prepare(); status from typed enum.
+				array_merge( $occurrence_ids, array( AttendeeStatus::CONFIRMED->value ) )
+			)
+		);
+
+		$counts = array();
+		foreach ( $rows ? $rows : array() as $row ) {
+			$counts[ (int) $row->occurrence_id ] = (int) $row->guests;
 		}
 
 		return $counts;

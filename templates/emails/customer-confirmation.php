@@ -30,8 +30,12 @@ defined( 'ABSPATH' ) || exit;
  * @var \NetterTechEvents\TemplateLoader\EmailContext $context
  */
 
-$nettertech_events_text_color = '#333333';
-$nettertech_events_bg_color   = '#f7f7f7';
+// Colors inherit WooCommerce's email design settings unless the plugin's
+// own accent color is set (resolved in EmailConfig; helpers carry defaults).
+$nettertech_events_text_color = $context->text_color();
+$nettertech_events_bg_color   = $context->background_color();
+$nettertech_events_card_color = $context->body_background_color();
+$nettertech_events_logo_url   = (string) $context->get( 'venue_logo', '' );
 
 // Heading is built by EmailTemplateRenderer::get_customer_email_heading() (real
 // _n() plural forms, event name, multi-event fallback); the string below only
@@ -53,15 +57,14 @@ if ( '' === $nettertech_events_heading ) {
 	<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: <?php echo esc_attr( $nettertech_events_bg_color ); ?>;">
 		<tr>
 			<td align="center" style="padding: 40px 20px;">
-				<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-					<!-- Header -->
+				<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background-color: <?php echo esc_attr( $nettertech_events_card_color ); ?>; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+					<!-- Header, centered: logo (plugin setting → site logo) when set, site name always -->
 					<tr>
-						<td style="padding: 40px 40px 20px; text-align: center; border-bottom: 3px solid <?php echo esc_attr( $context->accent_color() ); ?>;">
-							<?php if ( $context->get( 'venue_logo', '' ) ) : ?>
-								<img src="<?php echo esc_url( $context->get( 'venue_logo', '' ) ); ?>" alt="<?php echo esc_attr( $context->get( 'site_name', '' ) ); ?>" style="max-width: 200px; max-height: 80px; margin-bottom: 20px;">
-							<?php else : ?>
-								<h1 style="margin: 0 0 10px; font-size: 28px; color: <?php echo esc_attr( $nettertech_events_text_color ); ?>;"><?php echo esc_html( $context->get( 'site_name', '' ) ); ?></h1>
+						<td align="center" style="padding: 32px 40px 20px; text-align: center; border-bottom: 3px solid <?php echo esc_attr( $context->accent_color() ); ?>;">
+							<?php if ( '' !== $nettertech_events_logo_url ) : ?>
+								<p style="margin: 0 0 16px;"><img src="<?php echo esc_url( $nettertech_events_logo_url ); ?>" alt="" width="200" style="display: block; margin: 0 auto; max-width: 200px; max-height: 80px; width: auto; height: auto; border: 0;"></p>
 							<?php endif; ?>
+							<h1 style="margin: 0 0 10px; font-size: <?php echo '' !== $nettertech_events_logo_url ? '20px' : '28px'; ?>; color: <?php echo esc_attr( $nettertech_events_text_color ); ?>;"><?php echo esc_html( $context->get( 'site_name', '' ) ); ?></h1>
 							<h2 style="margin: 0; font-size: 24px; color: <?php echo esc_attr( $context->accent_color() ); ?>; font-weight: 600;">
 								<?php echo esc_html( $nettertech_events_heading ); ?>
 							</h2>
@@ -108,7 +111,15 @@ if ( '' === $nettertech_events_heading ) {
 					<?php foreach ( $context->get( 'grouped_tickets', array() ) as $nettertech_events_occ_id => $nettertech_events_group ) : ?>
 						<tr>
 							<td style="padding: 0 40px 30px;">
-								<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: <?php echo esc_attr( $nettertech_events_bg_color ); ?>; border-radius: 8px; overflow: hidden;">
+								<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: <?php echo esc_attr( $context->panel_color() ); ?>; border-radius: 8px; overflow: hidden;">
+									<?php if ( ! empty( $nettertech_events_group['image_url'] ) ) : ?>
+										<!-- Event image (occurrence override, else event featured image) -->
+										<tr>
+											<td style="padding: 20px 20px 0;">
+												<img src="<?php echo esc_url( $nettertech_events_group['image_url'] ); ?>" alt="<?php echo $nettertech_events_group['event'] ? esc_attr( $nettertech_events_group['event']->title ) : ''; ?>" width="480" style="display: block; width: 100%; max-width: 480px; height: auto; border: 0; border-radius: 8px;">
+											</td>
+										</tr>
+									<?php endif; ?>
 									<tr>
 										<td style="padding: 20px;">
 											<!-- Event Title -->

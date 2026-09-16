@@ -13,6 +13,7 @@ defined( 'ABSPATH' ) || exit;
 
 use NetterTechEvents\Admin\AdminMenu;
 use NetterTechEvents\Admin\AdminRequest;
+use NetterTechEvents\Admin\SpacesPage;
 use NetterTechEvents\Services\PaletteResolver;
 
 /**
@@ -295,6 +296,18 @@ class Assets {
 			)
 		);
 
+		// Per-date row expansion on the events list (NTE-245).
+		wp_register_script(
+			'nettertech-events-dates-toggle',
+			NETTERTECH_EVENTS_PLUGIN_URL . 'assets/js/admin/event-dates-toggle.js',
+			array( 'wp-a11y' ),
+			NETTERTECH_EVENTS_VERSION,
+			array(
+				'in_footer' => true,
+				'strategy'  => 'defer',
+			)
+		);
+
 		// Attendees screen check-in toggle (NTE-144).
 		wp_register_script(
 			'nettertech-events-attendee-checkin',
@@ -487,6 +500,13 @@ class Assets {
 	 * @return void
 	 */
 	public function enqueue_admin( string $hook_suffix ): void {
+		// Spaces add/edit screen: let add-ons enqueue their editor-panel assets
+		// at proper admin_enqueue_scripts timing. This runs before the
+		// NTE-page guard below because the Spaces screen is not in the
+		// PageContextDetector allowlist — core's Spaces form registers its own
+		// assets from the page itself.
+		$this->fire_space_editor_assets( $hook_suffix );
+
 		// Only load on our admin pages.
 		if ( ! $this->context_detector->is_nettertech_events_admin_page( $hook_suffix ) ) {
 			return;
@@ -507,6 +527,12 @@ class Assets {
 				'wp-color-picker',
 				"jQuery(function($){ $('.nte-color-picker').wpColorPicker(); });"
 			);
+
+			// Media picker for the default ticket image (NTE-219) — same widget
+			// as the Spaces form.
+			wp_enqueue_media();
+			wp_enqueue_style( 'nettertech-events-space-form' );
+			wp_enqueue_script( 'nettertech-events-space-form' );
 		}
 
 		$localize_data = array(
@@ -604,6 +630,23 @@ class Assets {
 		if ( 'toplevel_page_nettertech-events' === $hook_suffix ) {
 			wp_enqueue_script( 'nettertech-events-quick-edit' );
 
+			// Per-date row expansion (NTE-245) — same screen as quick edit.
+			wp_enqueue_script( 'nettertech-events-dates-toggle' );
+			wp_localize_script(
+				'nettertech-events-dates-toggle',
+				'nettertechEventsDatesToggle',
+				array(
+					'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+					'action'  => Hooks::AJAX_EVENT_OCCURRENCE_ROWS,
+					'nonce'   => wp_create_nonce( Hooks::AJAX_EVENT_OCCURRENCE_ROWS ),
+					'i18n'    => array(
+						/* translators: %d: number of dates shown. */
+						'shown'  => __( '%d dates shown.', 'nettertech-events' ),
+						'hidden' => __( 'Dates hidden.', 'nettertech-events' ),
+					),
+				)
+			);
+
 			$localize_data['quickEditNonce'] = wp_create_nonce( \NetterTechEvents\Admin\EventQuickEditHandler::NONCE_ACTION );
 			$localize_data['statuses']       = array(
 				'draft'     => __( 'Draft', 'nettertech-events' ),
@@ -628,6 +671,37 @@ class Assets {
 		}
 
 		wp_localize_script( 'nettertech-events-admin', 'nettertechEventsAdmin', $localize_data );
+	}
+
+	/**
+	 * Fire the Space-editor asset seam on core's Space add/edit screen.
+	 *
+	 * @since 1.4.7
+	 *
+	 * @param string $hook_suffix The current admin page hook suffix.
+	 * @return void
+	 */
+	private function fire_space_editor_assets( string $hook_suffix ): void {
+		if ( ! str_ends_with( $hook_suffix, '_page_' . SpacesPage::PAGE_SLUG ) ) {
+			return;
+		}
+
+		$action = AdminRequest::get_key( 'action', 'list' );
+
+		if ( 'add' !== $action && 'edit' !== $action ) {
+			return;
+		}
+
+		/**
+		 * Fires on core's Space add/edit screen while admin assets are enqueued.
+		 *
+		 * Add-ons enqueue the styles and scripts their editor panels need here.
+		 *
+		 * @since 1.4.7
+		 *
+		 * @param string $action Editor action: 'add' or 'edit'.
+		 */
+		do_action( Hooks::SPACE_EDITOR_ASSETS, $action );
 	}
 
 	/**

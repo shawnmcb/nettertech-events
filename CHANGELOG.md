@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Identifiers such as `NTE-123` reference NetterTech's internal issue tracker and are included for traceability only.
 
+## [1.4.8]
+
+### Added
+
+- **See every date of a recurring event without leaving the events list.** The Type column now carries an "N dates" link; open it and the event's dates appear as rows beneath it, each showing its date and time, how many tickets that date has sold against its capacity, its own status, and links to edit that date or view its purchases. Dates open and close without reloading the page, several events can be open at once, and the address bar tracks what is open — so a bookmarked or shared list link opens in the same state. Sorting and paging keep your open dates; using the Filter button starts fresh.
+
+## [1.4.7]
+
+### Added
+
+- **Buyers are told when online sales have closed.** A date whose ticket sale windows have all ended used to show an empty ticket area, indistinguishable from an event that was never ticketed. It now says "Online ticket sales have closed." (or "Online RSVPs have closed." for a free event). Each space has a new **Door Sales** setting, off by default; when on, events in that space add "Tickets are still available at the door until sold out." A sold-out date never offers door tickets regardless of the setting, and a date whose tickets have not gone on sale yet still shows nothing. Database schema 3.19.0 adds `door_sales` to the spaces table.
+- **Ticket and RSVP confirmation emails now match your WooCommerce order emails.** Colors inherit WooCommerce's email design settings (base, text, and background colors) so the two emails read as one set; the plugin's own **Email Accent Color** setting stays available as an explicit override. Each event in the ticket email shows its featured image (an occurrence's own image wins over the event's), and the header carries your site logo top-left, falling back to the site name as text. The logo comes from the plugin's venue-logo setting, then the site logo set in the Customizer or Site Editor. (NTE-225)
+- **Buyers see their own accessibility note on the Order Received page.** When a buyer entered accessibility requirements at checkout, the order-received page (classic and block checkout alike) now repeats it beneath the order details under "Accessibility Requirements", with the same purpose statement shown at capture, so they can confirm what the venue was told. This shows the buyer their own submission inside the order view WooCommerce already protects; the note still never appears in any email or in the activity log. (NTE-223)
+- **Attendees now carry the buyer's order notes.** The "Order notes" a buyer types at checkout are copied onto each attendee created from that order, so the Attendees screen shows an **Order notes** badge (open it to read the text) and the CSV export's "Notes" column, which had always been empty, is populated. Existing attendees can be filled in from their orders with `wp nettertech-events backfill-attendee-notes --execute` (dry-run by default). Order notes are included in the personal-data export and cleared by the eraser. (NTE-226)
+- **Ticket products show their real image, and you can set a default.** Cart lines and admin order items used to show the built-in ticket icon for every ticket product, even when the event had a featured image synced onto it. The real image now wins wherever WooCommerce renders it. A new **Default Ticket Product Image** setting (Events → Settings → Display → Image Display) supplies an image for tickets whose event has none — applied at the product level so the block and classic cart, checkout, order screens, and WooCommerce emails all agree, and synced onto newly created ticket products. The built-in icon remains the last fallback, now sized to match WooCommerce's thumbnails; the `nettertech_events_ticket_thumbnail_html` filter lets a theme replace it. (NTE-219)
+- **Find and clear leftover ticket products.** Earlier versions created a fresh WooCommerce product for a ticket tier on every event save, leaving the previous product behind with its ticket data still attached. Two WP-CLI commands sort that out: `wp nettertech-events products audit` lists every ticket product whose tier no longer points at it (grouped by event, with the number of orders each carries; add `--skus` for the list of `-2`, `-3` SKU duplicates), and `wp nettertech-events products prune` moves the ones with no orders to the trash. Prune is a dry run until you pass `--confirm`, and products with orders are always listed rather than touched. (NTE-228)
+- **WooCommerce's own order emails pick up your site logo.** When WooCommerce's "Header image" setting is empty, NetterTech Events supplies the site logo so the "Thank you for your order" email is branded like the ticket email. An explicitly configured WooCommerce header image is never overridden; the `nettertech_events_wc_email_header_image` filter opts out. (NTE-225)
+- **Add-ons can extend the Spaces screen instead of replacing it.** The Space editor stays the one place a space is created and edited — with its capacity, seating model, accessibility features, tagline and imagery — whether or not any add-on is installed. Five new extension points let an add-on add its own panel to that editor (`nettertech_events_space_editor_panels`), enqueue the assets that panel needs (`nettertech_events_space_editor_assets`), save its own fields after the space is saved (`nettertech_events_space_saved_extra`), and add a column to the Spaces list (`nettertech_events_space_list_columns` and `nettertech_events_space_list_column_content`). Documented in `docs/HOOKS.md`.
+
+### Fixed
+
+- **Round-up donations made through the block checkout are now recorded on the order.** The donation was charged, but only the classic checkout saved it to the order, so a block-checkout order carried no donation record and the amount could carry over into the buyer's next order. Both checkouts now save the donation the same way and clear it from the session afterwards.
+
+### Security
+
+- **Attendee accessibility notes are left out of check-in CSV exports unless the export explicitly asks for them.** The notes are special-category personal data; exports now include that column only when the exporting screen opts in from behind a capability check, so an export path without one can never carry it by default.
+
 ## [1.4.6]
 
 ### Added
@@ -15,6 +42,9 @@ Identifiers such as `NTE-123` reference NetterTech's internal issue tracker and 
 
 ### Fixed
 
+- **Round-up donation was never charged.** Choosing "Round up" at classic checkout showed the fee in the label but the donation request failed silently, so no fee reached the order. The fee is now stored, and the checkout refresh loop it triggered has been quieted. (NTE-222)
+- **Confirmation email heading and subject name the event and use real plurals.** "Your ticket to {Event}" / "Your tickets to {Event}", with an order-scoped heading when an order spans several events. (NTE-224)
+- **Waitlist clean-up.** A dead duplicate waitlist front-end and its orphaned assets were removed; the join flow is covered end to end and the confirmation names the event. (NTE-211)
 - **Ticket product titles could grow on every import or re-sync.** Product sync composed the title as "{event} - {date} - {tier}" from the tier name on every run, while the migrator adopted a product's title back as its tier name — so each cycle stacked one more prefix onto both, until names overran the 255-character column. Sync now composes from the bare tier name (a name that already carries the prefix is reduced first), never renames a product the migrator adopted (`_nettertech_events_adopted`), and records the bare tier name on the product (`_nettertech_events_tier_name`) so importers read the tier instead of the composed title. (NTE-235)
 - **Automatic schedule extension could drop an occurrence later the same day.** The nightly job that extends recurring series compared occurrence times against UTC while the times themselves are in the site's timezone, so on sites west of Greenwich an occurrence within the next few hours could be removed and not regenerated, and a series whose next date was later today could be mistaken for concluded. Both comparisons now use the site's clock.
 - **The ticket QR scan-result page could never render.** The template referenced a class that does not exist, so scanning a ticket QR code met an error page instead of the result view. It now uses the correct service when the Pro check-in feature is present and cleanly omits the check-in link when it is not.

@@ -336,6 +336,10 @@ class WooCommerceIntegration {
 	 * @return void
 	 */
 	private function register_hooks(): void {
+		// WooCommerce's own order emails: default the header image to the
+		// site logo when the store has not configured one (NTE-225).
+		( new WCEmailHeaderImage() )->register();
+
 		// Product manager hooks.
 		add_action( 'nettertech_events_ticket_type_sync_product', array( $this->product_manager, 'sync_product' ), 10, 2 );
 		add_action( 'nettertech_events_ticket_type_deleted', array( $this->product_manager, 'delete_product' ) );
@@ -358,6 +362,7 @@ class WooCommerceIntegration {
 		add_filter( 'woocommerce_get_item_data', array( $this->cart_handler, 'display_cart_item_data' ), 10, 2 );
 		add_filter( 'woocommerce_cart_item_thumbnail', array( $this, 'filter_ticket_thumbnail' ), 10, 3 );
 		add_filter( 'woocommerce_admin_order_item_thumbnail', array( $this, 'filter_admin_order_item_thumbnail' ), 10, 3 );
+		add_filter( 'woocommerce_product_get_image_id', array( $this, 'filter_ticket_product_image_id' ), 10, 2 );
 		add_action( 'woocommerce_checkout_create_order_line_item', array( $this->cart_handler, 'add_order_item_meta' ), 10, 4 );
 
 		// Cart capacity reservation hooks.
@@ -398,6 +403,10 @@ class WooCommerceIntegration {
 
 		// Display accessibility notes in admin order view.
 		add_action( 'woocommerce_admin_order_data_after_billing_address', array( $this->accessibility_handler, 'display_admin' ) );
+
+		// Show the buyer their own note on Order Received (classic thank-you
+		// template and block Order Confirmation both fire this) — NTE-223.
+		add_action( 'woocommerce_order_details_after_order_table', array( $this->accessibility_handler, 'display_order_received' ) );
 
 		// Donation hooks.
 		add_action( 'woocommerce_after_order_notes', array( $this->donation_handler, 'render_donation_field' ), 20 );
@@ -478,22 +487,37 @@ class WooCommerceIntegration {
 			20
 		);
 
-		// Save accessibility notes from Block checkout session to order meta.
+		// Save Block checkout session data (notes, custom fields, donation) to order meta.
 		add_action(
 			'woocommerce_store_api_checkout_update_order_from_request',
-			function ( \WC_Order $order ): void {
-				$notes = WC()->session->get( AccessibilityNotesField::input_name(), '' );
-				if ( ! empty( $notes ) ) {
-					$order->update_meta_data( MetaKeys::ACCESSIBILITY_NOTES, $notes );
-				}
-
-				// Save custom field data from Block checkout session.
-				$custom_field_data = WC()->session->get( 'nettertech_events_custom_field_data', '' );
-				if ( ! empty( $custom_field_data ) ) {
-					$order->update_meta_data( MetaKeys::CUSTOM_FIELD_DATA, $custom_field_data );
-				}
-			}
+			array( $this, 'save_block_checkout_order_meta' )
 		);
+	}
+
+	/**
+	 * Persist Block checkout session data onto the order.
+	 *
+	 * Block checkout does not fire woocommerce_checkout_update_order_meta, so
+	 * everything the classic checkout stores there has to be re-applied here.
+	 *
+	 * @param \WC_Order $order Order being built from the Store API request.
+	 * @return void
+	 */
+	public function save_block_checkout_order_meta( \WC_Order $order ): void {
+		$notes = WC()->session->get( AccessibilityNotesField::input_name(), '' );
+		if ( ! empty( $notes ) ) {
+			$order->update_meta_data( MetaKeys::ACCESSIBILITY_NOTES, $notes );
+		}
+
+		// Save custom field data from Block checkout session.
+		$custom_field_data = WC()->session->get( 'nettertech_events_custom_field_data', '' );
+		if ( ! empty( $custom_field_data ) ) {
+			$order->update_meta_data( MetaKeys::CUSTOM_FIELD_DATA, $custom_field_data );
+		}
+
+		// Donations are charged as a cart fee under Block checkout but were
+		// never recorded on the order (2026-09-03 audit Q-001).
+		$this->donation_handler->save_donation_meta_from_store_api( $order );
 	}
 
 	/**
@@ -685,6 +709,19 @@ class WooCommerceIntegration {
 	 */
 	public function filter_admin_order_item_thumbnail( string $thumbnail, int $item_id, $item ): string {
 		return $this->thumbnail_filter()->filter_admin_order_item_thumbnail( $thumbnail, $item_id, $item );
+	}
+
+	/**
+	 * Default ticket image at the product level (NTE-219).
+	 *
+	 * Thin facade over {@see WCTicketThumbnailFilter::filter_product_image_id()}.
+	 *
+	 * @param mixed             $image_id Stored image id.
+	 * @param \WC_Product|mixed $product  Product.
+	 * @return mixed
+	 */
+	public function filter_ticket_product_image_id( $image_id, $product ) {
+		return $this->thumbnail_filter()->filter_product_image_id( $image_id, $product );
 	}
 
 	/**

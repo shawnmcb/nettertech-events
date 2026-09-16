@@ -128,6 +128,11 @@ Create multiple ticket types per event:
 
 Each type has its own inventory and pricing.
 
+### When Online Sales Close
+Each ticket type has an optional sale window (**Sale starts** / **Sale ends**). Once every ticket type on a date has passed its sale end, the date's ticket form is replaced by the message **"Online ticket sales have closed."** (or **"Online RSVPs have closed."** for a free event). A date whose tickets have not gone on sale yet shows nothing, and a date in the past shows **"Past Event"**.
+
+If your venue sells tickets at the door after online sales close, turn on **Door Sales → Tell visitors that tickets are still available at the door** on the space (Events → Spaces → edit). It is off by default. With it on, the closed-sales message adds **"Tickets are still available at the door until sold out."** for events held in that space. A sold-out date never offers door tickets, whatever the setting.
+
 ---
 
 ## Attendees

@@ -320,14 +320,55 @@ class DonationHandler {
 		if ( $donation_amount > 0 ) {
 			$order = wc_get_order( $order_id );
 			if ( $order instanceof \WC_Order ) {
-				$order->update_meta_data( '_nettertech_events_donation_amount', (string) $donation_amount );
-				$order->update_meta_data( '_nettertech_events_donation_type', $donation_type );
-				$order->save();
+				$this->persist_donation( $order, $donation_amount, $donation_type );
 			}
 		}
 
 		// Clear session after saving.
 		$this->clear_session_donation();
+	}
+
+	/**
+	 * Save donation metadata to an order created through the Store API.
+	 *
+	 * Block checkout never fires woocommerce_checkout_update_order_meta, so the
+	 * classic path above never ran and block-checkout donations were charged as
+	 * a cart fee but recorded nowhere (2026-09-03 audit Q-001). Hooked to
+	 * woocommerce_store_api_checkout_update_order_from_request, which hands over
+	 * the order object before it is saved.
+	 *
+	 * The session is left intact when there is no donation so an unrelated
+	 * Store API request cannot wipe a pending amount.
+	 *
+	 * @param \WC_Order $order Order being built from the Store API request.
+	 * @return void
+	 */
+	public function save_donation_meta_from_store_api( \WC_Order $order ): void {
+		$donation_amount = $this->get_session_donation();
+
+		if ( $donation_amount <= 0 ) {
+			return;
+		}
+
+		$this->persist_donation( $order, $donation_amount, $this->get_session_donation_type() );
+		$this->clear_session_donation();
+	}
+
+	/**
+	 * Write donation meta to an order.
+	 *
+	 * Single persistence path for the classic and Store API checkouts so the
+	 * two cannot drift on key names or value shapes.
+	 *
+	 * @param \WC_Order $order  Order to write to.
+	 * @param float     $amount Donation amount.
+	 * @param string    $type   Donation type (roundup, fixed, custom).
+	 * @return void
+	 */
+	private function persist_donation( \WC_Order $order, float $amount, string $type ): void {
+		$order->update_meta_data( '_nettertech_events_donation_amount', (string) $amount );
+		$order->update_meta_data( '_nettertech_events_donation_type', $type );
+		$order->save();
 	}
 
 	/**

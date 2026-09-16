@@ -135,6 +135,72 @@ class OccurrenceQueryRepository implements OccurrenceQueryRepositoryInterface {
 	}
 
 	/**
+	 * Get occurrences for several events in one query, keyed by event.
+	 *
+	 * Batched sibling of {@see self::for_event()} for screens that render the
+	 * dates of a whole page of events: one query for the page rather than one
+	 * per row. Argument defaults are identical, and the limit applies to the
+	 * batch as a whole.
+	 *
+	 * @since 1.4.8
+	 *
+	 * @param array<int>           $event_ids Event IDs to fetch.
+	 * @param array<string, mixed> $args      Query arguments.
+	 * @return array<int, array<Occurrence>> Map of event_id => occurrences in start order (events with none omitted).
+	 */
+	public function for_events( array $event_ids, array $args = array() ): array {
+		$event_ids = array_unique( array_filter( array_map( 'absint', $event_ids ) ) );
+
+		if ( empty( $event_ids ) ) {
+			return array();
+		}
+
+		$defaults = array(
+			'status'   => null,
+			'upcoming' => false,
+			'orderby'  => 'start_datetime',
+			'order'    => 'ASC',
+			'limit'    => 100,
+		);
+
+		$args = wp_parse_args( $args, $defaults );
+
+		$placeholders = implode( ',', array_fill( 0, count( $event_ids ), '%d' ) );
+		$where        = array( "event_id IN ({$placeholders})" );
+		$values       = $event_ids;
+
+		if ( null !== $args['status'] ) {
+			$where[]  = 'status = %s';
+			$values[] = $args['status'];
+		}
+
+		if ( $args['upcoming'] ) {
+			$where[]  = Timeline::not_ended( false );
+			$values[] = Timeline::now();
+		}
+
+		$where_clause      = 'WHERE ' . implode( ' AND ', $where );
+		$sanitized_orderby = sanitize_sql_orderby( $args['orderby'] . ' ' . $args['order'] );
+		$orderby           = $sanitized_orderby ? $sanitized_orderby : 'start_datetime ASC';
+
+		// Grouping happens in PHP: ordering by event first would scatter the
+		// requested sort, and one flat ordered result set groups identically.
+		$sql = $this->db->prepare(
+			'SELECT ' . self::LIST_COLUMNS . " FROM {$this->table} {$where_clause} ORDER BY {$orderby} LIMIT %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name from trusted constant or plugin property; user values bound via prepare().
+			array_merge( $values, array( $args['limit'] ) )
+		);
+
+		$rows = $this->db->get_results( $sql ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- SQL built by this class's own query builder and conditionally run through prepare().
+
+		$grouped = array();
+		foreach ( $rows ? $rows : array() as $row ) {
+			$grouped[ (int) $row->event_id ][] = Occurrence::from_row( $row );
+		}
+
+		return $grouped;
+	}
+
+	/**
 	 * Get occurrences for an event, grouped by past and upcoming.
 	 *
 	 * @param int                  $event_id Event ID.

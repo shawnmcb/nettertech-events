@@ -168,7 +168,26 @@ class CalendarShortcode {
 				 * @param string               $html Additional header HTML.
 				 * @param array<string, mixed>  $atts Shortcode attributes.
 				 */
-				echo wp_kses_post( apply_filters( 'nettertech_events_calendar_header_html', '', $atts ) );
+				$header_html = (string) apply_filters( Hooks::CALENDAR_HEADER_HTML, '', $atts );
+
+				/**
+				 * Filter the wp_kses allowlist applied to the header slot.
+				 *
+				 * Defaults to the 'post' allowlist, which strips form controls.
+				 * See {@see Hooks::CALENDAR_HEADER_ALLOWED_HTML}.
+				 *
+				 * @since 1.4.7
+				 *
+				 * @param array<string, array<string, bool>> $allowed Allowlist.
+				 * @param array<string, mixed>               $atts    Shortcode attributes.
+				 */
+				$header_allowed = apply_filters(
+					Hooks::CALENDAR_HEADER_ALLOWED_HTML,
+					wp_kses_allowed_html( 'post' ),
+					$atts
+				);
+
+				echo wp_kses( $header_html, is_array( $header_allowed ) ? $header_allowed : wp_kses_allowed_html( 'post' ) );
 				?>
 
 				<h2 class="nte-calendar__title" aria-live="polite">

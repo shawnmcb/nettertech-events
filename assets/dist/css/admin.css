@@ -1171,6 +1171,68 @@
 	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
+/* Order-notes badge (NTE-226): the accessibility badge's neutral sibling. */
+.nte-attendee-notes {
+	position: relative;
+	margin-top: 4px;
+	font-size: 12px;
+}
+
+.nte-attendee-notes__badge {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 1px 8px 1px 4px;
+	border: 1px solid #8c8f94;
+	border-radius: 999px;
+	color: #50575e;
+	background: #f6f7f7;
+	cursor: pointer;
+	list-style: none;
+	line-height: 1.6;
+	white-space: nowrap;
+}
+
+.nte-attendee-notes__badge::-webkit-details-marker {
+	display: none;
+}
+
+.nte-attendee-notes__badge:focus-visible {
+	outline: 2px solid #2271b1;
+	outline-offset: 1px;
+}
+
+.nte-attendee-notes__icon {
+	width: 16px;
+	height: 16px;
+	font-size: 16px;
+}
+
+.nte-attendee-notes[open] .nte-attendee-notes__badge {
+	background: #50575e;
+	color: #fff;
+}
+
+.nte-attendee-notes__text {
+	position: absolute;
+	top: 100%;
+	left: 0;
+	z-index: 20;
+	width: min(32em, 70vw);
+	margin: 4px 0 0;
+	padding: 8px 10px;
+	border: 1px solid #c3c4c7;
+	border-left: 3px solid #8c8f94;
+	border-radius: 2px;
+	background: #fff;
+	color: #1d2327;
+	font-size: 12px;
+	line-height: 1.5;
+	white-space: normal;
+	overflow-wrap: anywhere;
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
 /* Edit / Add Attendee dialogs (NTE-143 C5) — native <dialog>. */
 .nte-attendee-dialog {
 	min-width: 360px;
@@ -1384,4 +1446,60 @@
 .nte-attendees-table .nte-name-sort-mode a:focus-visible {
 	outline: 2px solid var(--wp-admin-theme-color, #2271b1);
 	outline-offset: 1px;
+}
+
+/* All Events list: per-date expansion. */
+
+.nte-dates-toggle {
+	display: inline-block;
+	margin-left: 6px;
+	white-space: nowrap;
+}
+
+.nte-dates-toggle__chevron {
+	display: inline-block;
+	font-size: 12px;
+	line-height: 1;
+	width: 10px;
+}
+
+/* A tint, not the zebra stripe: reusing #f6f7f7 here would make an
+   alternating parent row read as another date of the series above it. */
+.wp-list-table .nte-occurrence-row > td,
+.wp-list-table .nte-occurrence-row > th {
+	background: #f0f6fc;
+	border-top: 0;
+}
+
+.wp-list-table .nte-occurrence-row--first > td,
+.wp-list-table .nte-occurrence-row--first > th {
+	border-top: 1px solid #dcdcde;
+}
+
+/* Two classes so the indent outweighs the .wp-list-table td padding. */
+.nte-occurrence-row .nte-occurrence-row__date {
+	padding-left: 40px;
+	position: relative;
+}
+
+.nte-occurrence-row .nte-occurrence-row__date::before {
+	border-bottom: 1px solid #8c8f94;
+	border-left: 1px solid #8c8f94;
+	content: "";
+	height: 10px;
+	left: 16px;
+	position: absolute;
+	top: 2px;
+	width: 10px;
+}
+
+.nte-occurrence-row__when {
+	font-weight: 600;
+}
+
+/* The title column is narrow under table-layout: fixed, so the time takes
+   its own line rather than splitting the date mid-string. */
+.nte-occurrence-row__time {
+	color: #646970;
+	display: block;
 }

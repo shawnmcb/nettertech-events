@@ -29,6 +29,7 @@ When a query interpolates an identifier:
 - Admin attendee sorting uses `AttendeesPage::SORTABLE_COLUMNS` before building `ORDER BY`.
 - Repository list methods using request `orderby` normalize through allowlists and/or `sanitize_sql_orderby()` before interpolation.
 - Schema and migration SQL interpolate table names only from `Schema::table()` or known table-definition classes.
+- `ColumnExistenceContractTest` reads the `CREATE TABLE` statements in `includes/Database/Tables` and fails if any SQL string in `includes/` filters, orders, or selects by a name that is not a column of a table that file addresses. A wrong column name is not a PHP error: MySQL rejects the query, `$wpdb` swallows it, and the method returns null. Hand-built row fixtures cannot catch it.
 
 ## Review Checklist
 

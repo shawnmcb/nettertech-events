@@ -123,6 +123,7 @@ final readonly class NetterTechEventsSettings {
 			allow_custom_donation: ! isset( $s['allow_custom_donation'] ) || ! empty( $s['allow_custom_donation'] ),
 			max_donation: (int) ( $s['max_donation'] ?? 100 ),
 			donation_presets: is_array( $s['donation_presets'] ?? null ) ? $s['donation_presets'] : array( 5.0, 10.0, 25.0 ),
+			default_ticket_image_id: max( 0, (int) ( $s['default_ticket_image_id'] ?? 0 ) ),
 		);
 
 		$qr = new QRSettings(

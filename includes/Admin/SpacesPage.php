@@ -16,6 +16,7 @@ use NetterTechEvents\Admin\Spaces\Presenters\SpacesNoticesPresenter;
 use NetterTechEvents\Admin\Spaces\SpacesBulkActions;
 use NetterTechEvents\Catalog\AccessibilityFeature;
 use NetterTechEvents\Contracts\SpaceRepositoryInterface;
+use NetterTechEvents\Core\Hooks;
 use NetterTechEvents\Enums\SeatingModel;
 use NetterTechEvents\Models\Space;
 
@@ -34,6 +35,17 @@ class SpacesPage {
 	 * @var string
 	 */
 	public const PAGE_SLUG = 'nettertech-events-spaces';
+
+	/**
+	 * `action` values this screen understands.
+	 *
+	 * Anything else falls through to the list with a notice rather than
+	 * rendering the list silently, which reads as a soft 404. `-1` is WP's
+	 * "no bulk action selected" sentinel from the list-table form.
+	 *
+	 * @var string[]
+	 */
+	private const KNOWN_ACTIONS = array( 'list', 'add', 'edit', 'delete', '-1' );
 
 	/**
 	 * Space repository.
@@ -85,7 +97,9 @@ class SpacesPage {
 				$this->render_form( $action );
 				break;
 			default:
-				$this->render_list();
+				$this->render_list(
+					in_array( $action, self::KNOWN_ACTIONS, true ) ? null : 'unknown_action'
+				);
 				break;
 		}
 	}
@@ -146,9 +160,10 @@ class SpacesPage {
 	/**
 	 * Render the spaces list view.
 	 *
+	 * @param string|null $notice_key Notice to show instead of the URL's `message` flag.
 	 * @return void
 	 */
-	private function render_list(): void {
+	private function render_list( ?string $notice_key = null ): void {
 		$list_table = new SpacesListTable( $this->repo );
 		$list_table->prepare_items();
 
@@ -164,7 +179,7 @@ class SpacesPage {
 			</a>
 			<hr class="wp-header-end">
 
-			<?php $this->render_notices(); ?>
+			<?php $this->render_notices( $notice_key ); ?>
 
 			<form method="get">
 				<input type="hidden" name="page" value="<?php echo esc_attr( self::PAGE_SLUG ); ?>">
@@ -206,6 +221,24 @@ document.addEventListener("DOMContentLoaded", function() {
 	}
 
 	/**
+	 * Enable WordPress's postbox collapse/reorder behavior on the editor screen.
+	 *
+	 * Core's own fieldsets are plain `<h2>` sections, but add-on panels attached
+	 * to {@see Hooks::SPACE_EDITOR_PANELS} may render core postbox markup. This
+	 * loads the script that binds the toggles; the nonces printed in the form
+	 * are what let its AJAX save succeed.
+	 *
+	 * @return void
+	 */
+	private function enqueue_postbox_toggles(): void {
+		wp_enqueue_script( 'postbox' );
+		wp_add_inline_script(
+			'postbox',
+			'jQuery(function($){ if (window.postboxes) { postboxes.add_postbox_toggles(window.pagenow); } });'
+		);
+	}
+
+	/**
 	 * Render the add/edit form.
 	 *
 	 * @param string $action 'add' or 'edit'.
@@ -231,6 +264,7 @@ document.addEventListener("DOMContentLoaded", function() {
 		wp_enqueue_media();
 		wp_enqueue_style( 'nettertech-events-space-form' );
 		wp_enqueue_script( 'nettertech-events-space-form' );
+		$this->enqueue_postbox_toggles();
 
 		// Decode existing accessibility features and gallery for the JS bootstrap.
 		$existing_features = $space ? $space->get_accessibility_features() : array();
@@ -254,7 +288,21 @@ document.addEventListener("DOMContentLoaded", function() {
 			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 				<input type="hidden" name="action" value="nettertech_events_save_space">
 				<input type="hidden" name="space_id" value="<?php echo esc_attr( (string) ( $space->id ?? 0 ) ); ?>">
-				<?php wp_nonce_field( 'nettertech_events_space_save', '_nettertech_events_space_nonce' ); ?>
+				<?php
+				wp_nonce_field( 'nettertech_events_space_save', '_nettertech_events_space_nonce' );
+
+				/*
+				 * Postbox state nonces. WordPress's postbox script persists the
+				 * open/closed state of any `.postbox` on the screen through
+				 * `wp_ajax_closed-postboxes` / `wp_ajax_meta-box-order`, both of
+				 * which read these fields (see wp-admin/includes/ajax-actions.php).
+				 * Panels rendered on Hooks::SPACE_EDITOR_PANELS get persistent
+				 * collapse for free by using core postbox markup; without these
+				 * fields the AJAX save is rejected and the state resets on reload.
+				 */
+				wp_nonce_field( 'closedpostboxes', 'closedpostboxesnonce', false );
+				wp_nonce_field( 'meta-box-order', 'meta-box-order-nonce', false );
+				?>
 
 				<h2><?php esc_html_e( 'Basics', 'nettertech-events' ); ?></h2>
 				<table class="form-table" role="presentation">
@@ -412,6 +460,26 @@ document.addEventListener("DOMContentLoaded", function() {
 					</tr>
 				</table>
 
+				<h2><?php esc_html_e( 'Door Sales', 'nettertech-events' ); ?></h2>
+				<table class="form-table" role="presentation">
+					<tr>
+						<th scope="row"><?php esc_html_e( 'After online sales close', 'nettertech-events' ); ?></th>
+						<td>
+							<fieldset>
+								<legend class="screen-reader-text"><?php esc_html_e( 'After online sales close', 'nettertech-events' ); ?></legend>
+								<label for="space_door_sales">
+									<input type="checkbox" name="space_door_sales" id="space_door_sales" value="1"
+										<?php checked( ! empty( $space->door_sales ) ); ?>>
+									<?php esc_html_e( 'Tell visitors that tickets are still available at the door', 'nettertech-events' ); ?>
+								</label>
+								<p class="description">
+									<?php esc_html_e( 'Off by default. When on, an event in this space whose online ticket sales have closed says "Tickets are still available at the door until sold out." A sold-out event never offers door tickets, whatever this setting.', 'nettertech-events' ); ?>
+								</p>
+							</fieldset>
+						</td>
+					</tr>
+				</table>
+
 				<h2><?php esc_html_e( 'Accessibility', 'nettertech-events' ); ?></h2>
 				<p class="description" style="margin-bottom: 1em;">
 					<?php esc_html_e( 'Choose the features the space provides. Add a count when relevant (e.g., "8 wheelchair positions"). Use "Add custom feature" only when nothing in the preset list fits.', 'nettertech-events' ); ?>
@@ -445,6 +513,23 @@ document.addEventListener("DOMContentLoaded", function() {
 					</tr>
 				</table>
 
+				<?php
+				/**
+				 * Fires inside the Space editor form, after core's own fieldsets.
+				 *
+				 * Add-ons (Rentals, Seating) render their panels here. Fields
+				 * printed by a listener are inside this `<form>`, so they post
+				 * with core's nonce and can be persisted on
+				 * {@see Hooks::SPACE_SAVE_EXTRA}.
+				 *
+				 * @since 1.4.7
+				 *
+				 * @param object|null $space  The space being edited, or null when adding.
+				 * @param string      $action Editor action: 'add' or 'edit'.
+				 */
+				do_action( Hooks::SPACE_EDITOR_PANELS, $space, $action );
+				?>
+
 				<?php submit_button( $is_edit ? __( 'Update Space', 'nettertech-events' ) : __( 'Add Space', 'nettertech-events' ) ); ?>
 			</form>
 
@@ -458,14 +543,15 @@ document.addEventListener("DOMContentLoaded", function() {
 	/**
 	 * Render admin notices based on URL parameters.
 	 *
+	 * @param string|null $notice_key Notice key that overrides the URL's `message` flag.
 	 * @return void
 	 */
-	private function render_notices(): void {
-		if ( ! AdminRequest::has( 'message' ) ) {
+	private function render_notices( ?string $notice_key = null ): void {
+		if ( null === $notice_key && ! AdminRequest::has( 'message' ) ) {
 			return;
 		}
 
-		$message_key = AdminRequest::get_text( 'message' );
+		$message_key = $notice_key ?? AdminRequest::get_text( 'message' );
 		$error_text  = AdminRequest::has( 'error' ) ? AdminRequest::get_text( 'error' ) : null;
 
 		$presenter = new SpacesNoticesPresenter( $message_key, $error_text );

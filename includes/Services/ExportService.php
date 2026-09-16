@@ -64,17 +64,19 @@ class ExportService implements ExportServiceInterface {
 	/**
 	 * Generate CSV data for check-in list.
 	 *
-	 * @param int $occurrence_id Occurrence ID.
+	 * @param int  $occurrence_id     Occurrence ID.
+	 * @param bool $include_sensitive Include Art.9 columns (accessibility notes).
+	 *                                Only pass true from a capability-checked caller.
 	 * @return string CSV content.
 	 */
-	public function generate_csv( int $occurrence_id ): string {
+	public function generate_csv( int $occurrence_id, bool $include_sensitive = false ): string {
 		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen -- Using php://temp stream, not filesystem.
 		$output = fopen( 'php://temp', 'r+' );
 		if ( false === $output ) {
 			return '';
 		}
 
-		$this->write_csv_rows_to_stream( $output, $occurrence_id );
+		$this->write_csv_rows_to_stream( $output, $occurrence_id, $include_sensitive );
 
 		rewind( $output );
 		$csv = (string) stream_get_contents( $output );
@@ -92,41 +94,56 @@ class ExportService implements ExportServiceInterface {
 	 * handled by fputcsv() per RFC 4180; no HTML-escape is appropriate here
 	 * because the body is served with Content-Type: text/csv.
 	 *
-	 * @param resource $output        Open writable stream resource.
-	 * @param int      $occurrence_id Occurrence ID.
+	 * The accessibility-notes column carries GDPR Art.9 special-category data,
+	 * so it is opt-in: callers that are not behind a capability check get a CSV
+	 * without it (2026-09-03 audit Q-004).
+	 *
+	 * @param resource $output            Open writable stream resource.
+	 * @param int      $occurrence_id     Occurrence ID.
+	 * @param bool     $include_sensitive Include the accessibility-notes column.
 	 * @return void
 	 */
-	private function write_csv_rows_to_stream( $output, int $occurrence_id ): void {
+	private function write_csv_rows_to_stream( $output, int $occurrence_id, bool $include_sensitive ): void {
 		$attendees = $this->attendee_checkin->get_check_in_list( $occurrence_id );
+
+		$header = array(
+			__( 'Name', 'nettertech-events' ),
+			__( 'Email', 'nettertech-events' ),
+			__( 'Quantity', 'nettertech-events' ),
+			__( 'Checked In', 'nettertech-events' ),
+			__( 'Check-In Time', 'nettertech-events' ),
+			__( 'Ticket Type', 'nettertech-events' ),
+		);
+
+		if ( $include_sensitive ) {
+			$header[] = __( 'Accessibility Notes', 'nettertech-events' );
+		}
 
 		fputcsv(
 			$output,
-			array(
-				__( 'Name', 'nettertech-events' ),
-				__( 'Email', 'nettertech-events' ),
-				__( 'Quantity', 'nettertech-events' ),
-				__( 'Checked In', 'nettertech-events' ),
-				__( 'Check-In Time', 'nettertech-events' ),
-				__( 'Ticket Type', 'nettertech-events' ),
-				__( 'Accessibility Notes', 'nettertech-events' ),
-			),
+			$header,
 			',',
 			'"',
 			'\\' // PHP 8.4+ compatibility.
 		);
 
 		foreach ( $attendees as $attendee ) {
+			$row = array(
+				$this->sanitize_csv_value( $attendee['name'] ?? '' ),
+				$this->sanitize_csv_value( $attendee['email'] ?? '' ),
+				$attendee['quantity'] ?? 0,
+				$attendee['checked_in_count'] ?? 0,
+				$attendee['checked_in_at'] ?? '',
+				$this->sanitize_csv_value( $attendee['ticket_type'] ?? '' ),
+			);
+
+			if ( $include_sensitive ) {
+				$row[] = $this->sanitize_csv_value( $attendee['accessibility_notes'] ?? '' );
+			}
+
 			fputcsv(
 				$output,
-				array(
-					$this->sanitize_csv_value( $attendee['name'] ?? '' ),
-					$this->sanitize_csv_value( $attendee['email'] ?? '' ),
-					$attendee['quantity'] ?? 0,
-					$attendee['checked_in_count'] ?? 0,
-					$attendee['checked_in_at'] ?? '',
-					$this->sanitize_csv_value( $attendee['ticket_type'] ?? '' ),
-					$this->sanitize_csv_value( $attendee['accessibility_notes'] ?? '' ),
-				),
+				$row,
 				',',
 				'"',
 				'\\' // PHP 8.4+ compatibility.
@@ -176,11 +193,13 @@ class ExportService implements ExportServiceInterface {
 	 *
 	 * Outputs appropriate headers and the CSV content, then exits.
 	 *
-	 * @param int    $occurrence_id Occurrence ID.
-	 * @param string $event_title   Event title for filename.
+	 * @param int    $occurrence_id     Occurrence ID.
+	 * @param string $event_title       Event title for filename.
+	 * @param bool   $include_sensitive Include Art.9 columns (accessibility notes).
+	 *                                  Only pass true from a capability-checked caller.
 	 * @return void
 	 */
-	public function send_csv_download( int $occurrence_id, string $event_title ): void {
+	public function send_csv_download( int $occurrence_id, string $event_title, bool $include_sensitive = false ): void {
 		$filename = $this->get_csv_filename( $event_title );
 
 		header( 'Content-Type: text/csv; charset=utf-8' );
@@ -195,7 +214,7 @@ class ExportService implements ExportServiceInterface {
 			exit;
 		}
 
-		$this->write_csv_rows_to_stream( $output, $occurrence_id );
+		$this->write_csv_rows_to_stream( $output, $occurrence_id, $include_sensitive );
 
 		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- Closing PHP output stream.
 		fclose( $output );

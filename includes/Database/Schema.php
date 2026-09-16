@@ -56,7 +56,7 @@ class Schema {
 	 *
 	 * @var string
 	 */
-	public const DB_VERSION = '3.18.0';
+	public const DB_VERSION = '3.19.0';
 
 	/**
 	 * Table prefix for plugin tables.
@@ -237,6 +237,7 @@ class Schema {
 			'3.16.0' => 'migrate_to_3_16_0',
 			'3.17.0' => 'migrate_to_3_17_0',
 			'3.18.0' => 'migrate_to_3_18_0',
+			'3.19.0' => 'migrate_to_3_19_0',
 		);
 	}
 
@@ -1229,6 +1230,28 @@ class Schema {
 		$column_exists = $wpdb->get_results( "SHOW COLUMNS FROM {$events_table} LIKE 'waitlist_enabled'" );
 		if ( empty( $column_exists ) ) {
 			$wpdb->query( "ALTER TABLE {$events_table} ADD COLUMN waitlist_enabled tinyint(1) DEFAULT NULL AFTER reminders_enabled" );
+		}
+		// phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, PluginCheck.Security.DirectDB.UnescapedDBParameter
+	}
+
+	/**
+	 * Migrate to 3.19.0: add a per-space door-sales flag.
+	 *
+	 * Whether a venue sells at the door after online sales close is a property of
+	 * the room, not of any one event, so it lives on the space. Defaults off: a
+	 * venue must opt in before the public page promises door tickets.
+	 *
+	 * @return void
+	 */
+	private static function migrate_to_3_19_0(): void {
+		global $wpdb;
+
+		$spaces_table = self::table( 'spaces' );
+
+		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Table name cannot be parameterized; custom table schema migration.
+		$column_exists = $wpdb->get_results( "SHOW COLUMNS FROM {$spaces_table} LIKE 'door_sales'" );
+		if ( empty( $column_exists ) ) {
+			$wpdb->query( "ALTER TABLE {$spaces_table} ADD COLUMN door_sales tinyint(1) NOT NULL DEFAULT 0 AFTER seating_model" );
 		}
 		// phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, PluginCheck.Security.DirectDB.UnescapedDBParameter
 	}

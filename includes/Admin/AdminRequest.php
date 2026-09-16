@@ -93,6 +93,39 @@ final class AdminRequest {
 	}
 
 	/**
+	 * Get a capped list of unique positive integer IDs from a comma-separated $_GET value.
+	 *
+	 * Reads bookmarkable multi-row display state (e.g. which rows are expanded).
+	 * Zero and non-numeric segments are dropped rather than rejected wholesale so a
+	 * hand-edited or stale URL degrades to the rows it can still resolve; the cap
+	 * bounds the work a crafted URL can ask the page to do.
+	 *
+	 * @param string $key Parameter name.
+	 * @param int    $max Maximum number of IDs to return.
+	 * @return array<int, int>
+	 */
+	public static function get_id_list( string $key, int $max ): array {
+		$raw = self::get_request()[ $key ] ?? null;
+		if ( ! is_string( $raw ) || '' === $raw ) {
+			return array();
+		}
+
+		$ids = array();
+		foreach ( explode( ',', $raw ) as $segment ) {
+			$id = absint( $segment );
+			if ( $id > 0 ) {
+				$ids[] = $id;
+			}
+		}
+
+		if ( $max < 1 ) {
+			return array();
+		}
+
+		return array_slice( array_unique( $ids ), 0, $max );
+	}
+
+	/**
 	 * Get an allowlisted orderby key from $_GET.
 	 *
 	 * Returns $fallback unless the GET param matches one of $allowed.

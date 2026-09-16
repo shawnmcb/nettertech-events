@@ -51,6 +51,7 @@ class SpacesTable implements TableDefinitionInterface {
             sort_order int(11) DEFAULT 0,
             status varchar(20) DEFAULT 'active',
             seating_model varchar(20) NOT NULL DEFAULT 'free',
+            door_sales tinyint(1) NOT NULL DEFAULT 0,
             accessibility_features text,
             amenities text,
             gallery_image_ids text,

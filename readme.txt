@@ -3,7 +3,7 @@ Contributors: shawnmcburnie
 Tags: events, calendar, tickets, recurring events, rsvp
 Requires at least: 6.5
 Tested up to: 7.0
-Stable tag: 1.4.6
+Stable tag: 1.4.8
 Requires PHP: 8.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -83,7 +83,7 @@ No. WooCommerce is optional and only needed for paid ticketing. The plugin works
 
 = What's included in the free version? =
 
-The free version includes unlimited events, recurring event support, RSVP forms, manual attendee check-in by name or email search, all three display views (calendar, grid, carousel), SEO integration, and full GDPR tools. QR code check-in, volunteer check-in mode, and QR code generation for promotion are available in NetterTech Events Pro.
+The free version includes unlimited events, recurring event support, RSVP forms, manual attendee check-in by name or email search, all three display views (calendar, grid, carousel), SEO integration, and full GDPR tools. QR code check-in, front-of-house check-in (a no-login link for your door staff), and QR code generation for promotion are available in NetterTech Events Pro.
 
 = Can I import events from The Events Calendar? =
 
@@ -143,6 +143,20 @@ NetterTech Events uses its own custom tables and a dedicated URL namespace (`/ev
 10. Mobile single event page with ticket type selector and add-to-cart
 
 == Changelog ==
+
+= 1.4.8 =
+* Added: see every date of a recurring event without leaving the events list. The Type column carries an "N dates" link; open it and the event's dates appear beneath it, each with its date and time, tickets sold against that date's capacity, its own status, and links to edit the date or view its purchases. Dates open and close without a reload, several events can be open at once, and the address bar tracks what is open so a bookmarked or shared list link opens in the same state.
+
+= 1.4.7 =
+* Added: when every ticket type on a date has passed its sale end, the date says "Online ticket sales have closed." instead of showing nothing. A new per-space **Door Sales** setting (off by default) adds "Tickets are still available at the door until sold out." for events in that space; a sold-out date never offers door tickets.
+* Added: ticket and RSVP confirmation emails match your WooCommerce order emails. Colors follow WooCommerce's email design settings (the plugin's own accent color remains an override), each event shows its featured image, and the header carries your site logo.
+* Added: WooCommerce's own order emails show your site logo when WooCommerce has no header image of its own.
+* Added: buyers see the accessibility note they entered at checkout on the Order Received page, in both classic and block checkout. It still never appears in any email.
+* Added: attendees now carry the buyer's order notes, shown as a badge on the Attendees screen and in the CSV export's Notes column. Fill in existing attendees with `wp nettertech-events backfill-attendee-notes --execute` (dry run by default).
+* Added: ticket products show their real image in the cart and on order screens, and a new Default Ticket Product Image setting supplies one for tickets whose event has no image.
+* Added: `wp nettertech-events products audit` lists leftover ticket products from earlier versions, grouped by event with order counts, and `wp nettertech-events products prune` trashes the ones with no orders. Prune is a dry run until you pass `--confirm`.
+* Fixed: round-up donations made through the block checkout are now recorded on the order and no longer carry over into the next order.
+* Security: attendee accessibility notes are left out of check-in CSV exports unless the exporting screen explicitly asks for them from behind a permission check.
 
 = 1.4.6 =
 * Fixed: ticket product titles could grow by a repeated "event - date -" prefix on every import or re-sync when a product was adopted from another ticketing plugin; sync now composes titles from the bare tier name and never renames an adopted product. A `products normalize-titles` WP-CLI command repairs titles that already grew.

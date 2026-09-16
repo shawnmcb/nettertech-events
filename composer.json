@@ -39,6 +39,7 @@
 	"scripts": {
 		"phpcs": "phpcs",
 		"check:public-text": "bash scripts/check-public-text.sh",
+		"check:comments": "php scripts/check-comment-standard.php",
 		"phpcbf": "phpcbf",
 		"test": "phpunit --no-coverage",
 		"test:unit": "phpunit --testsuite=Unit --no-coverage",
@@ -96,10 +97,15 @@
 		],
 		"release:check": "bash scripts/release-gates.sh",
 		"sbom": "composer CycloneDX:make-sbom --output-format=JSON --output-file=build/nettertech-events.sbom.json --omit=dev",
-		"hooks:verify": "[ \"$(git config core.hooksPath)\" = \".githooks\" ] || { echo 'Git hooks NOT installed — run: composer hook:install' >&2; exit 1; }"
+		"hooks:verify": [
+			"[ \"$(git config core.hooksPath)\" = \".githooks\" ] || { echo 'Git hooks NOT installed — run: composer hook:install' >&2; exit 1; }",
+			"@verify:php-floor"
+		],
+		"verify:php-floor": "php -r 'if ( PHP_MAJOR_VERSION . \".\" . PHP_MINOR_VERSION !== \"8.2\" ) { fwrite( STDERR, \"hooks:verify: php is \" . PHP_VERSION . \"; the gates run on 8.2 — run through the git hook or put Local'\"'\"'s php 8.2 bin first on PATH\" . PHP_EOL ); exit( 1 ); }'"
 	},
 	"scripts-descriptions": {
 		"patch:infection": "Patch Infection IncludeInterceptor for PHP 8.5 (STREAM_OPEN_FOR_INCLUDE removed)",
+		"check:comments": "Reject comments that carry history, provenance, or a moment instead of a constraint",
 		"hooks:verify": "Fail unless git core.hooksPath points at .githooks (audit 2026-08-21 GAP-003)",
 		"test:all": "Unit+Performance suites plus Integration (was a byte-identical alias of test — audit GAP-008)"
 	},
@@ -109,6 +115,9 @@
 			"infection/extension-installer": true,
 			"cyclonedx/cyclonedx-php-composer": true
 		},
-		"process-timeout": 900
+		"process-timeout": 900,
+		"platform": {
+			"php": "8.2"
+		}
 	}
 }

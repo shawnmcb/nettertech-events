@@ -112,7 +112,7 @@ class EmailTemplateRenderer implements EmailTemplateRendererInterface {
 	 * {Event}" (real plural forms via _n()), or an order-scoped fallback when the
 	 * order spans more than one event.
 	 *
-	 * @since 1.4.6
+	 * @since 1.4.7
 	 *
 	 * @param \WC_Order                        $order   Order.
 	 * @param Ticket[]                         $tickets Tickets.
@@ -196,16 +196,19 @@ class EmailTemplateRenderer implements EmailTemplateRendererInterface {
 
 		// Build template data.
 		$data = array(
-			'order'               => $order,
-			'tickets'             => $tickets,
-			'grouped_tickets'     => $grouped,
-			'heading'             => $this->get_customer_email_heading( $order, $tickets, $grouped ),
-			'venue_logo'          => $settings['venue_logo'] ?? '',
-			'show_qr_codes'       => $settings['show_qr_codes'] ?? true,
-			'cancellation_policy' => $settings['cancellation_policy'] ?? '',
-			'accent_color'        => $settings['accent_color'] ?? '#333333',
-			'site_name'           => get_bloginfo( 'name' ),
-			'site_url'            => home_url(),
+			'order'                 => $order,
+			'tickets'               => $tickets,
+			'grouped_tickets'       => $grouped,
+			'heading'               => $this->get_customer_email_heading( $order, $tickets, $grouped ),
+			'venue_logo'            => $settings['venue_logo'] ?? '',
+			'show_qr_codes'         => $settings['show_qr_codes'] ?? true,
+			'cancellation_policy'   => $settings['cancellation_policy'] ?? '',
+			'accent_color'          => $settings['accent_color'] ?? '#333333',
+			'text_color'            => $settings['text_color'] ?? '#333333',
+			'background_color'      => $settings['background_color'] ?? '#f7f7f7',
+			'body_background_color' => $settings['body_background_color'] ?? '#ffffff',
+			'site_name'             => get_bloginfo( 'name' ),
+			'site_url'              => home_url(),
 		);
 
 		return $this->render_email_template( 'emails/customer-confirmation', $data );
@@ -298,16 +301,19 @@ class EmailTemplateRenderer implements EmailTemplateRendererInterface {
 		$event      = $occurrence ? $this->event_repo->find( $occurrence->event_id ) : null;
 
 		$data = array(
-			'ticket'              => $ticket,
-			'occurrence'          => $occurrence,
-			'event'               => $event,
-			'attendee_name'       => $attendee_name,
-			'venue_logo'          => $settings['venue_logo'] ?? '',
-			'show_qr_codes'       => $settings['show_qr_codes'] ?? true,
-			'cancellation_policy' => $settings['cancellation_policy'] ?? '',
-			'accent_color'        => $settings['accent_color'] ?? '#333333',
-			'site_name'           => get_bloginfo( 'name' ),
-			'site_url'            => home_url(),
+			'ticket'                => $ticket,
+			'occurrence'            => $occurrence,
+			'event'                 => $event,
+			'attendee_name'         => $attendee_name,
+			'venue_logo'            => $settings['venue_logo'] ?? '',
+			'show_qr_codes'         => $settings['show_qr_codes'] ?? true,
+			'cancellation_policy'   => $settings['cancellation_policy'] ?? '',
+			'accent_color'          => $settings['accent_color'] ?? '#333333',
+			'text_color'            => $settings['text_color'] ?? '#333333',
+			'background_color'      => $settings['background_color'] ?? '#f7f7f7',
+			'body_background_color' => $settings['body_background_color'] ?? '#ffffff',
+			'site_name'             => get_bloginfo( 'name' ),
+			'site_url'              => home_url(),
 		);
 
 		return $this->render_email_template( 'emails/rsvp-confirmation', $data );
@@ -492,7 +498,7 @@ class EmailTemplateRenderer implements EmailTemplateRendererInterface {
 	 * @since 0.9.0
 	 *
 	 * @param Ticket[] $tickets Tickets.
-	 * @return array<int, array{event: \NetterTechEvents\Models\Event|null, occurrence: \NetterTechEvents\Models\Occurrence|null, tickets: Ticket[], ticket_type: \NetterTechEvents\Models\TicketType|null}>
+	 * @return array<int, array{event: \NetterTechEvents\Models\Event|null, occurrence: \NetterTechEvents\Models\Occurrence|null, tickets: Ticket[], ticket_type: \NetterTechEvents\Models\TicketType|null, image_url: string}>
 	 */
 	public function group_tickets_by_event( array $tickets ): array {
 		$grouped = array();
@@ -510,6 +516,7 @@ class EmailTemplateRenderer implements EmailTemplateRendererInterface {
 					'occurrence'  => $occurrence,
 					'ticket_type' => $ticket_type,
 					'tickets'     => array(),
+					'image_url'   => $this->resolve_group_image_url( $occurrence, $event ),
 				);
 			}
 
@@ -517,5 +524,33 @@ class EmailTemplateRenderer implements EmailTemplateRendererInterface {
 		}
 
 		return $grouped;
+	}
+
+	/**
+	 * Resolve the image shown for a ticket group in the customer email.
+	 *
+	 * Same order ProductManager uses for the ticket product image: the
+	 * occurrence's own featured image, then the event's. Empty when
+	 * neither is set or the attachment is not an image.
+	 *
+	 * @since 1.4.7
+	 *
+	 * @param Occurrence|null $occurrence Occurrence, if resolved.
+	 * @param Event|null      $event      Event, if resolved.
+	 * @return string Absolute image URL, or empty string.
+	 */
+	private function resolve_group_image_url( ?Occurrence $occurrence, ?Event $event ): string {
+		$image_id = 0;
+		if ( $occurrence && $occurrence->featured_image_id ) {
+			$image_id = (int) $occurrence->featured_image_id;
+		} elseif ( $event && $event->featured_image_id ) {
+			$image_id = (int) $event->featured_image_id;
+		}
+
+		if ( ! $image_id ) {
+			return '';
+		}
+
+		return \NetterTechEvents\Utilities\ImageHelper::get_attachment_image_url( $image_id, 'large' ) ?? '';
 	}
 }

@@ -745,17 +745,25 @@
 	font-weight: 600;
 }
 
+/*
+ * Availability text sits on the tooltip's own surface (--nte-color-background,
+ * #fff by default). The shared status tokens are tuned for fills and borders,
+ * not body text: on white they measure 2.54:1 (success #10b981), 3.78:1 (error
+ * #ef4444) and 2.15:1 (warning #f59e0b) — all below the 4.5:1 WCAG 1.4.3
+ * minimum for this text size. These darkened variants measure 5.48:1, 6.47:1
+ * and 5.04:1 against the same background.
+ */
 .nte-calendar__tooltip-availability {
-	color: var(--nte-color-success);
+	color: var(--nte-color-success-text, #047857);
 	font-weight: 500;
 }
 
 .nte-calendar__tooltip-availability--sold-out {
-	color: var(--nte-color-error);
+	color: var(--nte-color-error-text, #b91c1c);
 }
 
 .nte-calendar__tooltip-availability--low-stock {
-	color: var(--nte-color-warning);
+	color: var(--nte-color-warning-text, #b45309);
 }
 
 .nte-calendar__tooltip-link {

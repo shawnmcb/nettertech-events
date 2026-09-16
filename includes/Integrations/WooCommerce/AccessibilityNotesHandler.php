@@ -162,4 +162,36 @@ class AccessibilityNotesHandler {
 		echo '<p style="margin: 0; white-space: pre-wrap;">' . esc_html( $notes ) . '</p>';
 		echo '</div>';
 	}
+
+	/**
+	 * Show the buyer their own accessibility note on the Order Received page.
+	 *
+	 * Runs on `woocommerce_order_details_after_order_table`, which both the
+	 * classic thank-you template and the block Order Confirmation render, so
+	 * it inherits WooCommerce's own order-key / logged-in gate untouched. The
+	 * note is Art. 9 data: this surface shows the data subject their own
+	 * submission only; nothing here changes the no-email, no-activity-log
+	 * rules from NTE-217, and nothing new is exposed to other roles.
+	 *
+	 * @since 1.4.7
+	 *
+	 * @param \WC_Order|mixed $order Order object.
+	 * @return void
+	 */
+	public function display_order_received( $order ): void {
+		if ( ! $order instanceof \WC_Order ) {
+			return;
+		}
+
+		$notes = $order->get_meta( MetaKeys::ACCESSIBILITY_NOTES, true );
+		if ( ! is_string( $notes ) || '' === trim( $notes ) ) {
+			return;
+		}
+
+		echo '<section class="woocommerce-column nte-accessibility-notes-received">';
+		echo '<h2 class="woocommerce-column__title">' . esc_html( AccessibilityNotesField::label() ) . '</h2>';
+		echo '<p class="nte-accessibility-notes-received__note" style="white-space: pre-wrap;">' . esc_html( $notes ) . '</p>';
+		echo '<p class="nte-accessibility-notes-received__purpose"><small>' . esc_html( AccessibilityNotesField::purpose_text() ) . '</small></p>';
+		echo '</section>';
+	}
 }

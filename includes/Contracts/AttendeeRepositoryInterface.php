@@ -78,6 +78,16 @@ interface AttendeeRepositoryInterface {
 	public function confirmed_guest_counts_for_events( array $event_ids ): array;
 
 	/**
+	 * Sum confirmed guest quantities per occurrence.
+	 *
+	 * @since 1.4.8
+	 *
+	 * @param array<int> $occurrence_ids Occurrence IDs to aggregate.
+	 * @return array<int, int> Map of occurrence_id => confirmed guest count (occurrences with none omitted).
+	 */
+	public function confirmed_guest_counts_for_occurrences( array $occurrence_ids ): array;
+
+	/**
 	 * Save an attendee (insert or update).
 	 *
 	 * @since 0.9.0

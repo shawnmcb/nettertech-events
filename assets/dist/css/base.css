@@ -41,6 +41,17 @@
 	--nte-color-text-disabled: #5a616e;
 
 	/*
+	 * Text-safe status colors. The fill tokens above are tuned for badges,
+	 * borders and icon fills; as body text on --nte-color-background (#fff by
+	 * default) they measure 2.54:1, 2.15:1 and 3.78:1 — below the 4.5:1 WCAG
+	 * 1.4.3 minimum. These darkened variants measure 5.48:1, 5.04:1 and 6.47:1
+	 * on the same background. Use them wherever a status color carries words.
+	 */
+	--nte-color-success-text: #047857;
+	--nte-color-warning-text: #b45309;
+	--nte-color-error-text: #b91c1c;
+
+	/*
 	 * Spacing - Fixed component-level scale.
 	 * NOT inherited from theme.json spacing presets, which are designed for
 	 * layout-level block gaps and can be 4-10x larger than component needs.

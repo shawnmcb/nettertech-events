@@ -159,7 +159,7 @@ class EmailSettingsSection implements SettingsSectionInterface {
 					<?php
 					printf(
 						/* translators: %s: the detected theme color hex value */
-						esc_html__( 'Used for headings, accents, and links in all email templates. Leave blank to use your theme primary color (%s).', 'nettertech-events' ),
+						esc_html__( 'Used for headings, accents, and links in all email templates. Leave blank to inherit the WooCommerce email base color, or your theme primary color when WooCommerce is not active (currently %s).', 'nettertech-events' ),
 						esc_html( $placeholder )
 					);
 					?>

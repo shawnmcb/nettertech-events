@@ -100,6 +100,16 @@ class Space {
 	public string $seating_model = 'free';
 
 	/**
+	 * Whether the venue sells tickets at the door once online sales close.
+	 *
+	 * Drives the public "still available at the door" line; a sold-out
+	 * occurrence never shows it regardless of this flag.
+	 *
+	 * @var bool
+	 */
+	public bool $door_sales = false;
+
+	/**
 	 * Accessibility features as a JSON-encoded array of `{key, count?, notes?, custom?}` entries.
 	 *
 	 * Stored as JSON text; consumers should decode via {@see self::get_accessibility_features()}.
@@ -164,6 +174,7 @@ class Space {
 		$space->sort_order             = (int) ( $row->sort_order ?? 0 );
 		$space->status                 = $row->status ?? 'active';
 		$space->seating_model          = $row->seating_model ?? 'free';
+		$space->door_sales             = ! empty( $row->door_sales );
 		$space->accessibility_features = $row->accessibility_features ?? null;
 		$space->amenities              = $row->amenities ?? null;
 		$space->gallery_image_ids      = $row->gallery_image_ids ?? null;
@@ -190,6 +201,7 @@ class Space {
 			'sort_order'             => $this->sort_order,
 			'status'                 => $this->status,
 			'seating_model'          => $this->seating_model,
+			'door_sales'             => $this->door_sales ? 1 : 0,
 			'accessibility_features' => $this->accessibility_features,
 			'amenities'              => $this->amenities,
 			'gallery_image_ids'      => $this->gallery_image_ids,
@@ -213,6 +225,7 @@ class Space {
 			'%d', // sort_order.
 			'%s', // status.
 			'%s', // seating_model.
+			'%d', // door_sales.
 			'%s', // accessibility_features.
 			'%s', // amenities.
 			'%s', // gallery_image_ids.

@@ -368,6 +368,15 @@ class Plugin {
 		);
 		add_action( 'wp_ajax_' . \NetterTechEvents\Core\Hooks::AJAX_EVENT_SKUS, array( $event_skus_handler, 'handle' ) );
 
+		// Register the All Events per-date row expansion handler (NTE-245). Read-only.
+		$occurrence_rows_handler = new \NetterTechEvents\Admin\Ajax\EventOccurrenceRowsAjaxHandler(
+			$this->container->get( \NetterTechEvents\Contracts\EventRepositoryInterface::class ),
+			$this->container->get( \NetterTechEvents\Contracts\OccurrenceQueryRepositoryInterface::class ),
+			$this->container->get( \NetterTechEvents\Contracts\AttendeeRepositoryInterface::class ),
+			$this->container->get( \NetterTechEvents\Contracts\TicketTypeRepositoryInterface::class )
+		);
+		add_action( 'wp_ajax_' . \NetterTechEvents\Core\Hooks::AJAX_EVENT_OCCURRENCE_ROWS, array( $occurrence_rows_handler, 'handle' ) );
+
 		// Register the Attendees screen check-in toggle (NTE-144). Logged-in only;
 		// Pro's volunteer check-in is token-authenticated and routed separately.
 		$attendee_check_in_handler = new \NetterTechEvents\Admin\Ajax\AttendeeCheckInAjaxHandler(
@@ -426,7 +435,8 @@ class Plugin {
 			$this->container->get( TicketTypeRepositoryInterface::class ),
 			$templates,
 			$this->container->get( \NetterTechEvents\Frontend\Shortcodes\RSVPFormShortcode::class ),
-			$this->container->get( OccurrenceRepositoryInterface::class )
+			$this->container->get( OccurrenceRepositoryInterface::class ),
+			$this->container->get( \NetterTechEvents\Contracts\SpaceRepositoryInterface::class )
 		);
 		$ical_button = new \NetterTechEvents\Frontend\ICalButton(
 			$this->container->get( CalendarLinkServiceInterface::class )
@@ -940,8 +950,19 @@ class Plugin {
 			\NetterTechEvents\Cli\NormalizeCreatedAtCommand::class
 		);
 
-		// NTE-235: collapse stacked "{event} - {date} - " prefixes on ticket products.
+		// NTE-228: orphaned ticket product audit and prune.
 		global $wpdb;
+		$product_auditor = new \NetterTechEvents\Integrations\WooCommerce\TicketProductAuditor( $wpdb );
+		\WP_CLI::add_command(
+			'nettertech-events products audit',
+			new \NetterTechEvents\Cli\ProductAuditCommand( $product_auditor )
+		);
+		\WP_CLI::add_command(
+			'nettertech-events products prune',
+			new \NetterTechEvents\Cli\ProductPruneCommand( $product_auditor )
+		);
+
+		// NTE-235: collapse stacked "{event} - {date} - " prefixes on ticket products.
 		\WP_CLI::add_command(
 			'nettertech-events products normalize-titles',
 			new \NetterTechEvents\Cli\ProductTitleNormalizeCommand(
@@ -951,6 +972,12 @@ class Plugin {
 					$this->container->get( EventRepositoryInterface::class )
 				)
 			)
+		);
+
+		// NTE-226: copy each order's customer note onto attendees created before notes were recorded.
+		\WP_CLI::add_command(
+			'nettertech-events backfill-attendee-notes',
+			new \NetterTechEvents\Cli\BackfillAttendeeNotesCommand( $wpdb )
 		);
 
 		// NTE-212: void attendees left confirmed by orders that never paid.

@@ -679,6 +679,176 @@ class TicketTypeQueryRepository implements TicketTypeQueryRepositoryInterface {
 	}
 
 	// =========================================================================
+	// Query Methods - Occurrence Capacity Aggregate
+	// =========================================================================
+
+	/**
+	 * Compute the house capacity of each occurrence in a batch.
+	 *
+	 * The date-grain denominator behind "sold against capacity" wherever a series
+	 * is broken out into its dates. Same shape as
+	 * {@see self::event_capacity_for_events()} so the two screens cannot disagree,
+	 * and the same house model: tiers sold against one date share one room, so
+	 * they collapse to the largest tier rather than summing. Event-scoped tiers
+	 * (series passes) are valid on every date of their event, so each date takes
+	 * the larger of its own house and the event-scoped house — the larger, not the
+	 * sum, because the pass usually describes the same room. The occurrence's own
+	 * capacity is the operator stating the room size, so it bounds the result
+	 * outright, including when a tier is otherwise unlimited.
+	 *
+	 * Bounded query count: two batched queries for the whole batch, never per-row.
+	 *
+	 * @since 1.4.8
+	 *
+	 * @param array<int> $occurrence_ids Occurrence IDs to aggregate.
+	 * @return array<int, array{capacity: ?int, has_unlimited: bool, configured: bool}>
+	 *         Map of occurrence_id => denominator data. `configured` is false when no
+	 *         sellable ticket type reaches the occurrence at all.
+	 */
+	public function occurrence_capacity_for_occurrences( array $occurrence_ids ): array {
+		$occurrence_ids = array_values( array_unique( array_filter( array_map( 'absint', $occurrence_ids ) ) ) );
+
+		if ( empty( $occurrence_ids ) ) {
+			return array();
+		}
+
+		$occurrences_table = Schema::table( 'occurrences' );
+		$placeholders      = implode( ',', array_fill( 0, count( $occurrence_ids ), '%d' ) );
+
+		// Query 1: the occurrences themselves, for their ceilings and their events.
+		/**
+		 * Occurrence rows; columns per the SELECT below.
+		 *
+		 * @var array<int, object{id: string, event_id: string, capacity: string|null}>|null $occ_rows
+		 */
+		$occ_rows = $this->db->get_results(
+			$this->db->prepare(
+				"SELECT id, event_id, capacity
+				FROM {$occurrences_table}
+				WHERE id IN ({$placeholders})", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name from trusted constant; occurrence IDs bound via prepare().
+				$occurrence_ids
+			)
+		);
+
+		$occ_rows = $occ_rows ? $occ_rows : array();
+
+		$event_ids = array();
+		foreach ( $occ_rows as $row ) {
+			$event_ids[] = (int) $row->event_id;
+		}
+		$event_ids = array_unique( $event_ids );
+
+		// Query 2: sellable tiers on those dates, plus the event-scoped tiers that
+		// reach every date of the same events.
+		$tt_rows = array();
+		if ( ! empty( $event_ids ) ) {
+			$event_placeholders = implode( ',', array_fill( 0, count( $event_ids ), '%d' ) );
+
+			/**
+			 * Sellable ticket-type rows; columns per the SELECT below.
+			 *
+			 * @var array<int, object{event_id: string|null, occurrence_id: string|null, capacity: string|null, capacity_type: string}>|null $rows
+			 */
+			$rows = $this->db->get_results(
+				$this->db->prepare(
+					"SELECT tt.event_id, tt.occurrence_id, tt.capacity, tt.capacity_type
+					FROM {$this->table} tt
+					WHERE tt.scope <> %s
+						AND tt.status = 'active'
+						AND (
+							tt.occurrence_id IN ({$placeholders})
+							OR ( tt.occurrence_id IS NULL AND tt.event_id IN ({$event_placeholders}) )
+						)", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name from trusted constant; values bound via prepare().
+					array_merge( array( TicketTypeScope::TEMPLATE->value ), $occurrence_ids, $event_ids )
+				)
+			);
+
+			$tt_rows = $rows ? $rows : array();
+		}
+
+		return $this->reduce_occurrence_capacity( $occurrence_ids, $occ_rows, $tt_rows );
+	}
+
+	/**
+	 * Reduce raw occurrence + ticket-type rows into per-occurrence denominators.
+	 *
+	 * Extracted for testability and to keep the query method focused on SQL.
+	 *
+	 * @param array<int>                                                                                                          $occurrence_ids Occurrence IDs being aggregated.
+	 * @param array<int, object{id: string, event_id: string, capacity: string|null}>                                             $occ_rows       Occurrence rows.
+	 * @param array<int, object{event_id: string|null, occurrence_id: string|null, capacity: string|null, capacity_type: string}> $tt_rows        Ticket-type rows.
+	 * @return array<int, array{capacity: ?int, has_unlimited: bool, configured: bool}>
+	 */
+	private function reduce_occurrence_capacity( array $occurrence_ids, array $occ_rows, array $tt_rows ): array {
+		$occ_capacity = array();
+		$occ_event    = array();
+		foreach ( $occ_rows as $row ) {
+			$occ_id                  = (int) $row->id;
+			$occ_capacity[ $occ_id ] = null !== $row->capacity ? (int) $row->capacity : null;
+			$occ_event[ $occ_id ]    = (int) $row->event_id;
+		}
+
+		$occ_tiers          = array();
+		$event_scoped_tiers = array();
+		foreach ( $tt_rows as $row ) {
+			$tier = array(
+				'capacity'      => null !== $row->capacity ? (int) $row->capacity : null,
+				'capacity_type' => $row->capacity_type,
+			);
+
+			if ( null === $row->occurrence_id ) {
+				$event_scoped_tiers[ (int) $row->event_id ][] = $tier;
+			} else {
+				$occ_tiers[ (int) $row->occurrence_id ][] = $tier;
+			}
+		}
+
+		$result = array();
+		foreach ( $occurrence_ids as $occurrence_id ) {
+			$event_id   = $occ_event[ $occurrence_id ] ?? 0;
+			$own_tiers  = $occ_tiers[ $occurrence_id ] ?? array();
+			$pass_tiers = $event_scoped_tiers[ $event_id ] ?? array();
+
+			if ( empty( $own_tiers ) && empty( $pass_tiers ) ) {
+				$result[ $occurrence_id ] = array(
+					'capacity'      => 0,
+					'has_unlimited' => false,
+					'configured'    => false,
+				);
+				continue;
+			}
+
+			$raw_ceiling   = $occ_capacity[ $occurrence_id ] ?? null;
+			$ceiling       = null === $raw_ceiling ? null : max( 0, $raw_ceiling );
+			$has_unlimited = false;
+
+			$own_house = HouseRule::house( $own_tiers, $ceiling );
+			if ( null === $own_house ) {
+				$has_unlimited = true;
+				$own_house     = 0;
+			}
+
+			// Event-scoped tiers share one house across the event and have no
+			// ceiling of their own to defer to.
+			$pass_house = HouseRule::house( $pass_tiers, null );
+			if ( null === $pass_house ) {
+				$has_unlimited = true;
+				$pass_house    = 0;
+			}
+
+			$unbounded = $has_unlimited ? null : max( $own_house, $pass_house );
+
+			$result[ $occurrence_id ] = array(
+				'capacity'      => HouseRule::bound( $ceiling, $unbounded ),
+				'has_unlimited' => $has_unlimited,
+				'configured'    => true,
+			);
+		}
+
+		return $result;
+	}
+
+	// =========================================================================
 	// Query Methods - Product Lookup
 	// =========================================================================
 

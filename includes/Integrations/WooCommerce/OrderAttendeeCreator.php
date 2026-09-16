@@ -11,6 +11,7 @@ namespace NetterTechEvents\Integrations\WooCommerce;
 
 defined( 'ABSPATH' ) || exit;
 
+use NetterTechEvents\Frontend\AccessibilityNotesField;
 use NetterTechEvents\Contracts\AttendeeOrderInterface;
 use NetterTechEvents\Contracts\AttendeeRepositoryInterface;
 use NetterTechEvents\Contracts\OccurrenceRepositoryInterface;
@@ -171,7 +172,7 @@ class OrderAttendeeCreator {
 	 * @since 1.1.0
 	 *
 	 * @param \WC_Order $order WooCommerce order object.
-	 * @return array{order: \WC_Order, order_id: int, billing_name: string, billing_email: string, billing_phone: string|null, accessibility_notes: string|null, custom_field_data: array<int, array<string, string>>, existing_occurrence_ids: array<int, bool>}
+	 * @return array{order: \WC_Order, order_id: int, billing_name: string, billing_email: string, billing_phone: string|null, accessibility_notes: string|null, notes: string|null, custom_field_data: array<int, array<string, string>>, existing_occurrence_ids: array<int, bool>}
 	 */
 	private function build_order_context( \WC_Order $order ): array {
 		$order_id = $order->get_id();
@@ -183,6 +184,9 @@ class OrderAttendeeCreator {
 
 		// Get accessibility notes from order meta (HPOS-compatible).
 		$accessibility_notes = $order->get_meta( MetaKeys::ACCESSIBILITY_NOTES, true );
+
+		// The buyer's checkout "Order notes" become each attendee's plain notes (NTE-226).
+		$notes = self::sanitize_customer_note( $order->get_customer_note() );
 
 		// Get custom field data from order meta (Phase 9).
 		$custom_field_json = $order->get_meta( MetaKeys::CUSTOM_FIELD_DATA, true );
@@ -202,6 +206,7 @@ class OrderAttendeeCreator {
 			'billing_email'           => $billing_email,
 			'billing_phone'           => $billing_phone ? $billing_phone : null,
 			'accessibility_notes'     => $accessibility_notes ? $accessibility_notes : null,
+			'notes'                   => $notes,
 			'custom_field_data'       => is_array( $custom_field_data ) ? $custom_field_data : array(),
 			'existing_occurrence_ids' => $existing_occurrence_ids,
 		);
@@ -214,9 +219,9 @@ class OrderAttendeeCreator {
 	 *
 	 * @since 1.1.0
 	 *
-	 * @param \WC_Order_Item_Product                                                                                                                                                                                                                             $item            Order item.
-	 * @param int                                                                                                                                                                                                                                                $ticket_type_id  Ticket type ID.
-	 * @param array{order: \WC_Order, order_id: int, billing_name: string, billing_email: string, billing_phone: string|null, accessibility_notes: string|null, custom_field_data: array<int, array<string, string>>, existing_occurrence_ids: array<int, bool>} $context         Order context.
+	 * @param \WC_Order_Item_Product                                                                                                                                                                                                                                                 $item            Order item.
+	 * @param int                                                                                                                                                                                                                                                                    $ticket_type_id  Ticket type ID.
+	 * @param array{order: \WC_Order, order_id: int, billing_name: string, billing_email: string, billing_phone: string|null, accessibility_notes: string|null, notes: string|null, custom_field_data: array<int, array<string, string>>, existing_occurrence_ids: array<int, bool>} $context         Order context.
 	 * @return void
 	 */
 	private function process_series_pass_item(
@@ -250,7 +255,8 @@ class OrderAttendeeCreator {
 				$context['billing_phone'],
 				$context['accessibility_notes'],
 				$context['order'],
-				true // is_series_pass.
+				true, // is_series_pass.
+				$context['notes']
 			);
 		}
 	}
@@ -262,9 +268,9 @@ class OrderAttendeeCreator {
 	 *
 	 * @since 1.1.0
 	 *
-	 * @param \WC_Order_Item_Product                                                                                                                                                                                                                             $item            Order item.
-	 * @param int                                                                                                                                                                                                                                                $ticket_type_id  Ticket type ID.
-	 * @param array{order: \WC_Order, order_id: int, billing_name: string, billing_email: string, billing_phone: string|null, accessibility_notes: string|null, custom_field_data: array<int, array<string, string>>, existing_occurrence_ids: array<int, bool>} $context         Order context.
+	 * @param \WC_Order_Item_Product                                                                                                                                                                                                                                                 $item            Order item.
+	 * @param int                                                                                                                                                                                                                                                                    $ticket_type_id  Ticket type ID.
+	 * @param array{order: \WC_Order, order_id: int, billing_name: string, billing_email: string, billing_phone: string|null, accessibility_notes: string|null, notes: string|null, custom_field_data: array<int, array<string, string>>, existing_occurrence_ids: array<int, bool>} $context         Order context.
 	 * @return void
 	 */
 	private function process_occurrence_item(
@@ -309,7 +315,8 @@ class OrderAttendeeCreator {
 			$context['billing_phone'],
 			$context['accessibility_notes'],
 			$context['order'],
-			false
+			false,
+			$context['notes']
 		);
 	}
 
@@ -321,11 +328,11 @@ class OrderAttendeeCreator {
 	 *
 	 * @since 3.6.0
 	 *
-	 * @param int                                                                                                                                                                                                                                                $occurrence_id  Occurrence ID.
-	 * @param int                                                                                                                                                                                                                                                $ticket_type_id Ticket type ID.
-	 * @param array{order: \WC_Order, order_id: int, billing_name: string, billing_email: string, billing_phone: string|null, accessibility_notes: string|null, custom_field_data: array<int, array<string, string>>, existing_occurrence_ids: array<int, bool>} $context        Order context.
-	 * @param \WC_Order_Item_Product                                                                                                                                                                                                                             $item           Order item.
-	 * @param array<int, array{name: string, email: string, phone?: string, custom_fields?: array<string, string>}>                                                                                                                                              $attendee_data  Per-attendee data array.
+	 * @param int                                                                                                                                                                                                                                                                    $occurrence_id  Occurrence ID.
+	 * @param int                                                                                                                                                                                                                                                                    $ticket_type_id Ticket type ID.
+	 * @param array{order: \WC_Order, order_id: int, billing_name: string, billing_email: string, billing_phone: string|null, accessibility_notes: string|null, notes: string|null, custom_field_data: array<int, array<string, string>>, existing_occurrence_ids: array<int, bool>} $context        Order context.
+	 * @param \WC_Order_Item_Product                                                                                                                                                                                                                                                 $item           Order item.
+	 * @param array<int, array{name: string, email: string, phone?: string, custom_fields?: array<string, string>}>                                                                                                                                                                  $attendee_data  Per-attendee data array.
 	 * @return void
 	 */
 	private function create_individual_attendees(
@@ -353,6 +360,7 @@ class OrderAttendeeCreator {
 			$attendee->quantity            = 1;
 			$attendee->status              = AttendeeStatus::CONFIRMED->value;
 			$attendee->accessibility_notes = $context['accessibility_notes'];
+			$attendee->notes               = $context['notes'];
 
 			try {
 				$this->attendee_repo->save( $attendee );
@@ -443,6 +451,7 @@ class OrderAttendeeCreator {
 	 * @param string|null            $accessibility_notes Accessibility notes.
 	 * @param \WC_Order              $order               Order object.
 	 * @param bool                   $is_series_pass      Whether this is from a series pass.
+	 * @param string|null            $notes               Buyer's order notes (NTE-226).
 	 * @return void
 	 */
 	private function create_attendee_for_occurrence(
@@ -455,7 +464,8 @@ class OrderAttendeeCreator {
 		?string $billing_phone,
 		?string $accessibility_notes,
 		\WC_Order $order,
-		bool $is_series_pass
+		bool $is_series_pass,
+		?string $notes = null
 	): void {
 		$attendee                      = new Attendee();
 		$attendee->occurrence_id       = $occurrence_id;
@@ -467,6 +477,7 @@ class OrderAttendeeCreator {
 		$attendee->quantity            = $item->get_quantity();
 		$attendee->status              = AttendeeStatus::CONFIRMED->value;
 		$attendee->accessibility_notes = $accessibility_notes ? $accessibility_notes : null;
+		$attendee->notes               = $notes;
 
 		try {
 			$this->attendee_repo->save( $attendee );
@@ -530,5 +541,34 @@ class OrderAttendeeCreator {
 		} catch ( \RuntimeException $e ) {
 			do_action( 'nettertech_events_attendee_creation_failed', $e, $order_id, $item );
 		}
+	}
+
+	/**
+	 * Normalize the buyer's checkout "Order notes" for storage on attendees.
+	 *
+	 * Plain text, trimmed, capped at the same length the accessibility field
+	 * uses; empty becomes null so the column stays a clean "no note" signal.
+	 *
+	 * @since 1.4.7
+	 *
+	 * @param mixed $raw Raw customer note.
+	 * @return string|null
+	 */
+	public static function sanitize_customer_note( $raw ): ?string {
+		if ( ! is_string( $raw ) ) {
+			return null;
+		}
+
+		// sanitize_textarea_field() already trims the ends.
+		$clean = sanitize_textarea_field( $raw );
+		if ( '' === $clean ) {
+			return null;
+		}
+
+		if ( mb_strlen( $clean ) > AccessibilityNotesField::MAX_LENGTH ) {
+			$clean = rtrim( mb_substr( $clean, 0, AccessibilityNotesField::MAX_LENGTH ) );
+		}
+
+		return $clean;
 	}
 }

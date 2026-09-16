@@ -83,7 +83,7 @@
 			this.close();
 
 			var dataRow = trigger.closest( 'tr' );
-			if ( ! dataRow ) {
+			if ( ! dataRow || dataRow.hasAttribute( 'data-occurrence-id' ) ) {
 				return;
 			}
 
@@ -138,6 +138,32 @@
 			}
 			this.activeRow = null;
 			this.activeDataRow = null;
+		},
+
+		/**
+		 * Drop an event's expanded date rows and reset its toggle.
+		 *
+		 * A quick edit re-renders the event row from the response; the date rows it
+		 * was showing were rendered against the pre-save event, so they are removed
+		 * rather than left to disagree with the row above them.
+		 *
+		 * @param {number|string} eventId The saved event's ID.
+		 */
+		collapseOccurrenceRows: function( eventId ) {
+			var selector = '[data-event-id="' + String( eventId ) + '"]';
+			var toggle = document.querySelector( '.nte-dates-toggle' + selector );
+
+			// The toggle script owns the closed state (rows, URL, announcement), so
+			// route through it; otherwise the address bar would still say the
+			// dates are open after the rows are gone.
+			if ( toggle && toggle.getAttribute( 'aria-expanded' ) === 'true' ) {
+				toggle.click();
+				return;
+			}
+
+			document.querySelectorAll( 'tr[data-occurrence-id]' + selector ).forEach( function( row ) {
+				row.remove();
+			} );
 		},
 
 		/**
@@ -205,6 +231,7 @@
 							statusCell.style.color = statusColors[ event.status ] || '#646970';
 						}
 
+						self.collapseOccurrenceRows( event.id );
 						self.close();
 					} else {
 						var msg = ( result.data && result.data.message ) ? result.data.message : 'Update failed.';
@@ -471,7 +498,7 @@
 			}
 
 			// Read per-page from visible row count.
-			var visibleRows = document.querySelectorAll( '#the-list tr[data-event-id]' );
+			var visibleRows = document.querySelectorAll( '#the-list tr[data-event-id]:not([data-occurrence-id])' );
 			var perPage = visibleRows.length || 20;
 
 			if ( totalItems <= perPage ) {

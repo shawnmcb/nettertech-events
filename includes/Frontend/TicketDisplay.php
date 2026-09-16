@@ -13,6 +13,7 @@ defined( 'ABSPATH' ) || exit;
 
 use NetterTechEvents\Contracts\CapacityServiceInterface;
 use NetterTechEvents\Contracts\OccurrenceRepositoryInterface;
+use NetterTechEvents\Contracts\SpaceRepositoryInterface;
 use NetterTechEvents\Contracts\TicketTypeRepositoryInterface;
 use NetterTechEvents\Core\Hooks;
 use NetterTechEvents\Enums\TicketTypeScope;
@@ -71,6 +72,14 @@ class TicketDisplay {
 	private static ?OccurrenceRepositoryInterface $occurrence_repo = null;
 
 	/**
+	 * Space repository, used to read the venue's door-sales flag once online
+	 * sales for a date have closed.
+	 *
+	 * @var SpaceRepositoryInterface|null
+	 */
+	private static ?SpaceRepositoryInterface $space_repo = null;
+
+	/**
 	 * Event IDs whose series-pass section has already rendered this request,
 	 * so a theme firing both after-content hooks cannot double-render it.
 	 *
@@ -89,6 +98,7 @@ class TicketDisplay {
 	 * @param Templates|null                     $templates        Templates service.
 	 * @param Shortcodes\RSVPFormShortcode|null  $rsvp_shortcode   RSVP form shortcode.
 	 * @param OccurrenceRepositoryInterface|null $occurrence_repo  Occurrence repository (series-pass anchor).
+	 * @param SpaceRepositoryInterface|null      $space_repo       Space repository (door-sales flag; no door line when null).
 	 * @return void
 	 */
 	public static function init(
@@ -96,13 +106,15 @@ class TicketDisplay {
 		TicketTypeRepositoryInterface $ticket_type_repo,
 		?Templates $templates = null,
 		?Shortcodes\RSVPFormShortcode $rsvp_shortcode = null,
-		?OccurrenceRepositoryInterface $occurrence_repo = null
+		?OccurrenceRepositoryInterface $occurrence_repo = null,
+		?SpaceRepositoryInterface $space_repo = null
 	): void {
 		self::$capacity_service = $capacity_service;
 		self::$ticket_type_repo = $ticket_type_repo;
 		self::$templates        = $templates ?? Templates::get_instance();
 		self::$rsvp_shortcode   = $rsvp_shortcode;
 		self::$occurrence_repo  = $occurrence_repo;
+		self::$space_repo       = $space_repo;
 		self::$pass_rendered    = array();
 		add_action( 'nettertech_events_single_occurrence_actions', array( self::class, 'render_occurrence_actions' ), 10, 2 );
 
@@ -165,10 +177,10 @@ jQuery(function($) {
 	 * Render ticket/RSVP actions for an occurrence.
 	 *
 	 * @param Occurrence $occurrence The occurrence.
-	 * @param Event      $event      The parent event (reserved for future use).
+	 * @param Event      $event      The parent event.
 	 * @return void
 	 */
-	public static function render_occurrence_actions( Occurrence $occurrence, Event $event ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.FoundAfterLastUsed -- required by WP shortcode/hook/filter API signature; cannot remove parameter.
+	public static function render_occurrence_actions( Occurrence $occurrence, Event $event ): void {
 		$ticket_type_repo = self::$ticket_type_repo;
 		if ( null === $ticket_type_repo || null === $occurrence->id ) {
 			return;
@@ -187,6 +199,7 @@ jQuery(function($) {
 		);
 
 		if ( empty( $ticket_types ) ) {
+			self::render_sales_closed_notice( $occurrence, $event );
 			return;
 		}
 
@@ -418,6 +431,101 @@ jQuery(function($) {
 
 		/** This action is documented in nettertech-events/includes/Frontend/TicketDisplay.php */
 		do_action( 'nettertech_events_after_ticket_form', $tiers, $next );
+	}
+
+	/**
+	 * Explain an empty ticket area when the reason is a closed sale window.
+	 *
+	 * A date with nothing on sale looks the same to a buyer whether it was never
+	 * ticketed, its tiers have not opened yet, or they have closed — and only the
+	 * last deserves a message. The first two stay silent. "Closed" means every
+	 * tier on this date is off sale, none is still to open, and at least one has
+	 * passed its sale end.
+	 *
+	 * Sold out is judged across every active tier the way the till judges it, so
+	 * a date that filled up before its window closed reads the same as one that
+	 * simply closed — except that a sold-out date is never offered at the door,
+	 * whatever the venue's flag says.
+	 *
+	 * @since 1.4.7
+	 *
+	 * @param Occurrence $occurrence The occurrence.
+	 * @param Event      $event      The parent event, for its space.
+	 * @return void
+	 */
+	private static function render_sales_closed_notice( Occurrence $occurrence, Event $event ): void {
+		$ticket_type_repo = self::$ticket_type_repo;
+		$capacity_service = self::$capacity_service;
+		if ( null === $ticket_type_repo || null === $capacity_service || null === $occurrence->id ) {
+			return;
+		}
+
+		$active = array_values(
+			array_filter(
+				$ticket_type_repo->get_active_for_occurrence( $occurrence->id ),
+				static fn( TicketType $type ) => TicketTypeScope::EVENT->value !== $type->scope
+			)
+		);
+
+		if ( empty( $active ) ) {
+			return;
+		}
+
+		if ( $occurrence->has_ended() ) {
+			echo '<span class="nte-occurrence-status nte-occurrence-status--past">' . esc_html__( 'Past Event', 'nettertech-events' ) . '</span>';
+			return;
+		}
+
+		$zone    = $occurrence->get_timezone();
+		$closed  = false;
+		$is_free = true;
+		foreach ( $active as $type ) {
+			if ( $type->sale_not_yet_open( $zone ) ) {
+				return;
+			}
+			if ( $type->sale_has_ended( $zone ) ) {
+				$closed = true;
+			}
+			if ( (float) $type->price > 0 ) {
+				$is_free = false;
+			}
+		}
+
+		if ( ! $closed ) {
+			return;
+		}
+
+		$presenter = new OccurrenceAvailabilityPresenter( $capacity_service, $ticket_type_repo );
+		$sold_out  = $presenter->is_sold_out( $active );
+		$at_door   = ! $sold_out && self::space_sells_at_door( $event );
+
+		$headline = $is_free
+			? __( 'Online RSVPs have closed.', 'nettertech-events' )
+			: __( 'Online ticket sales have closed.', 'nettertech-events' );
+
+		echo '<div class="nte-occurrence-status nte-occurrence-status--closed">';
+		echo '<p class="nte-occurrence-status__headline">' . esc_html( $headline ) . '</p>';
+		if ( $at_door ) {
+			echo '<p class="nte-occurrence-status__door">' . esc_html__( 'Tickets are still available at the door until sold out.', 'nettertech-events' ) . '</p>';
+		}
+		echo '</div>';
+	}
+
+	/**
+	 * Whether the event's venue has opted in to door sales.
+	 *
+	 * @param Event $event The event.
+	 * @return bool False when the event has no space, the space is unknown, or the flag is off.
+	 */
+	private static function space_sells_at_door( Event $event ): bool {
+		$space_repo = self::$space_repo;
+		if ( null === $space_repo || empty( $event->space_id ) ) {
+			return false;
+		}
+
+		$space = $space_repo->find( (int) $event->space_id );
+
+		return null !== $space && $space->door_sales;
 	}
 
 	/**
