@@ -107,6 +107,9 @@ class DateTimeMetaboxHandler {
 						<?php esc_html_e( 'This date seeds the recurrence pattern — changing it moves the pattern-generated dates.', 'nettertech-events' ); ?>
 					</p>
 				<?php endif; ?>
+				<?php if ( ! $is_recurring && null !== $occurrence && null !== $occurrence->id ) : ?>
+					<input type="hidden" name="nettertech_events_primary_occurrence_id" value="<?php echo esc_attr( (string) $occurrence->id ); ?>">
+				<?php endif; ?>
 				<?php require dirname( __DIR__, 3 ) . '/templates/admin/metaboxes/datetime-fields.php'; ?>
 
 				<div id="recurrence-box" class="nte-schedule-section" style="<?php echo $is_recurring ? '' : 'display: none;'; ?>">

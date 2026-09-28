@@ -3,7 +3,7 @@ Contributors: shawnmcburnie
 Tags: events, calendar, tickets, recurring events, rsvp
 Requires at least: 6.5
 Tested up to: 7.0
-Stable tag: 1.4.8
+Stable tag: 1.4.9
 Requires PHP: 8.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -143,6 +143,12 @@ NetterTech Events uses its own custom tables and a dedicated URL namespace (`/ev
 10. Mobile single event page with ticket type selector and add-to-cart
 
 == Changelog ==
+
+= 1.4.9 =
+* Fixed: saving a single event no longer creates a second copy of its date or loses its tickets. Saving a date from its own "Edit date" screen could leave the event without a main date, so the next Update on the main screen added a duplicate date at the same time and silently discarded ticket types entered there. The main screen now always saves the date it was showing, and an event already affected repairs itself on its next Update. If a ticket form ever belongs to a different date than the one saved, the tickets are named in an error instead of being dropped.
+* Fixed: "Add a date" skips a time the event already has and says so, instead of creating a duplicate date.
+* Fixed: duplicating a recurring event produces a single event, its copied ticket types start as drafts, and its date is set in the site's timezone.
+* Fixed: a rescheduled or postponed main date is updated in place on save rather than gaining a second date beside it.
 
 = 1.4.8 =
 * Added: see every date of a recurring event without leaving the events list. The Type column carries an "N dates" link; open it and the event's dates appear beneath it, each with its date and time, tickets sold against that date's capacity, its own status, and links to edit the date or view its purchases. Dates open and close without a reload, several events can be open at once, and the address bar tracks what is open so a bookmarked or shared list link opens in the same state.

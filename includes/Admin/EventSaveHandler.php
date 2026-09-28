@@ -26,6 +26,7 @@ use NetterTechEvents\Models\Occurrence;
 use NetterTechEvents\Admin\Metaboxes\AttendeeFieldsSaveHandler;
 use NetterTechEvents\Contracts\AttendeeFieldRepositoryInterface;
 use NetterTechEvents\Contracts\AttendeeFieldValueRepositoryInterface;
+use NetterTechEvents\Services\PrimaryOccurrence;
 use NetterTechEvents\Services\CheckInEmailSaver;
 use NetterTechEvents\Services\LayoutService;
 use NetterTechEvents\Services\OccurrenceTimeResolver;
@@ -476,7 +477,27 @@ class EventSaveHandler {
 			);
 		}
 
+		$taken = array();
+		$dates = empty( $collected['rows'] ) ? array() : $this->occurrence_repo->for_event( $event_id, array( 'limit' => PHP_INT_MAX ) );
+		foreach ( $dates as $existing ) {
+			if ( ! $existing->is_cancelled() ) {
+				$taken[ $existing->start_datetime ] = $existing->start_datetime;
+			}
+		}
+
 		foreach ( $collected['rows'] as $row ) {
+			$slot = $row['date'] . ' ' . $row['start'] . ':00';
+			if ( isset( $taken[ $slot ] ) ) {
+				$notices[] = sprintf(
+					/* translators: 1: the added date (Y-m-d); 2: its start time (H:i). */
+					__( 'Added date %1$s at %2$s was skipped because the event already has a date at that time.', 'nettertech-events' ),
+					$row['date'],
+					$row['start']
+				);
+				continue;
+			}
+			$taken[ $slot ] = $slot;
+
 			$report = $this->create_manual_occurrence( $event, $event_id, $row['date'], $row['start'], $row['end'] );
 
 			if ( ! empty( $row['derived'] ) ) {
@@ -704,33 +725,7 @@ class EventSaveHandler {
 			return;
 		}
 
-		// The primary occurrence is the earliest scheduled, non-override date — the
-		// one the main Date & Time fields produced. Hand-picked dates are overrides
-		// and never the binding target for buffered occurrence tickets.
-		$occurrences = $this->occurrence_repo->for_event(
-			$event_id,
-			array(
-				'status'  => 'scheduled',
-				'orderby' => 'start_datetime',
-				'order'   => 'ASC',
-			)
-		);
-
-		$primary = null;
-		foreach ( $occurrences as $occurrence ) {
-			if ( ! $occurrence->is_override ) {
-				$primary = $occurrence;
-				break;
-			}
-		}
-
-		// Fallback: with no non-override date — e.g. a single event whose only date was
-		// hand-picked — bind to the earliest occurrence of any kind rather than dropping the
-		// operator's buffered tiers (NTE-187; spec-001 edge case line 79: preserved or clearly
-		// reported). An override date is still a real date the event runs on.
-		if ( null === $primary && ! empty( $occurrences ) ) {
-			$primary = $occurrences[0];
-		}
+		$primary = PrimaryOccurrence::find( $this->occurrence_repo, $event_id );
 
 		if ( null === $primary || null === $primary->id ) {
 			// No occurrence exists to attach the tiers to. Report them by name instead of
@@ -787,6 +782,29 @@ class EventSaveHandler {
 		}
 
 		return $names;
+	}
+
+	/**
+	 * Tell the operator the posted ticket rows were not saved because they belong to another date.
+	 *
+	 * @param array<string, mixed> $post Unslashed POST data from the nonce-verified boundary.
+	 * @return void
+	 */
+	private function report_unbound_tiers( array $post ): void {
+		$names = $this->buffered_tier_names( $post );
+		if ( empty( $names ) ) {
+			return;
+		}
+
+		set_transient(
+			'nettertech_events_save_error_' . get_current_user_id(),
+			sprintf(
+				/* translators: %s: comma-separated ticket tier names. */
+				esc_html__( 'The event was saved, but ticket changes were not: the form was showing a different date from the one saved. Reload the event and re-check these tickets: %s.', 'nettertech-events' ),
+				esc_html( implode( ', ', $names ) )
+			),
+			60
+		);
 	}
 
 	/**
@@ -1083,7 +1101,8 @@ class EventSaveHandler {
 			$event,
 			$start_datetime,
 			$end_datetime,
-			$all_day
+			$all_day,
+			absint( $post['nettertech_events_primary_occurrence_id'] ?? 0 )
 		);
 
 		if ( ! $occurrence ) {
@@ -1100,6 +1119,12 @@ class EventSaveHandler {
 		$occurrence_id = $occurrence->id;
 		$event_id      = $event->id;
 		if ( null === $occurrence_id || null === $event_id ) {
+			return;
+		}
+
+		$form_occurrence_id = absint( $post['occurrence_id_for_tickets'] ?? 0 );
+		if ( $form_occurrence_id > 0 && $form_occurrence_id !== $occurrence_id ) {
+			$this->report_unbound_tiers( $post );
 			return;
 		}
 

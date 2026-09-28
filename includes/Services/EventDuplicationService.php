@@ -105,10 +105,11 @@ class EventDuplicationService {
 			__( '%s (Copy)', 'nettertech-events' ),
 			$source->title
 		);
-		$duplicate->description         = $source->description;
-		$duplicate->excerpt             = $source->excerpt;
-		$duplicate->featured_image_id   = $source->featured_image_id;
-		$duplicate->event_type          = $source->event_type;
+		$duplicate->description       = $source->description;
+		$duplicate->excerpt           = $source->excerpt;
+		$duplicate->featured_image_id = $source->featured_image_id;
+		// The copy gets one date and no rule, which a recurring event cannot be.
+		$duplicate->event_type          = 'recurring' === $source->event_type ? 'single' : $source->event_type;
 		$duplicate->venue_name          = $source->venue_name;
 		$duplicate->venue_address       = $source->venue_address;
 		$duplicate->recurrence_rule     = null; // Don't copy recurrence - single occurrence.
@@ -183,7 +184,7 @@ class EventDuplicationService {
 		$template_end   = new \DateTime( $template_occurrence->end_datetime );
 		$duration       = $template_start->diff( $template_end );
 
-		$new_start = new \DateTime( '+1 week' );
+		$new_start = new \DateTime( '+1 week', wp_timezone() );
 		$new_start->setTime(
 			(int) $template_start->format( 'H' ),
 			(int) $template_start->format( 'i' ),
@@ -242,7 +243,7 @@ class EventDuplicationService {
 			$new_tt->min_per_order   = $source_tt->min_per_order;
 			$new_tt->max_per_order   = $source_tt->max_per_order;
 			$new_tt->sort_order      = $sort_order++;
-			$new_tt->status          = 'active';
+			$new_tt->status          = 'draft';
 			$new_tt->wc_product_id   = null; // Clear WC links - new products will be created.
 			$new_tt->wc_variation_id = null;
 

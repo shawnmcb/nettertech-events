@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Identifiers such as `NTE-123` reference NetterTech's internal issue tracker and are included for traceability only.
 
+## [1.4.9]
+
+### Fixed
+
+- **Saving a single event no longer creates a second copy of its date or loses its tickets.** Saving a date from its own "Edit date" screen marked it as a hand-added extra date, even when nothing was changed. The next Update on the main event screen then found no main date, inserted a duplicate at the same time, and silently discarded any ticket types entered there; the event began showing as "Recurring (2 dates)". Per-date saves now leave a single event's own date as its main date, the main screen always saves the date it was showing, and an event already in this state repairs itself on its next Update. If a ticket form ever belongs to a different date than the one saved, the tickets are named in an error instead of being dropped. (NTE-247)
+- **"Add a date" skips a time the event already has.** An added date at the same start time as an existing date is left out and named in the save notice, instead of creating a duplicate that shares the date's web address. (NTE-247)
+- **Duplicating an event produces a consistent draft.** A copy of a recurring event is now a single event (it has one date and no pattern), its copied ticket types start as drafts like the copy itself, and its date is set one week out in the site's timezone. (NTE-247)
+- A rescheduled or postponed main date is now updated in place on save rather than gaining a second date beside it. (NTE-247)
+
 ## [1.4.8]
 
 ### Added

@@ -284,16 +284,12 @@ class OccurrenceSaveHandler {
 				case 'all':
 					$this->apply_all( $occurrence, $event, $fields );
 					break;
-				case 'this':
 				default:
-					$this->apply_this( $occurrence, $fields );
+					$this->apply_this( $occurrence, $event, $fields );
 					break;
 			}
 
 			$this->save_ticket_types( $occurrence, $event, $post );
-		} catch ( ValidationException $e ) {
-			set_transient( 'nettertech_events_save_error_' . get_current_user_id(), $e->getMessage(), 60 );
-			return $this->redirect_to_editor( $occurrence_id, 'error' );
 		} catch ( \RuntimeException $e ) {
 			set_transient( 'nettertech_events_save_error_' . get_current_user_id(), $e->getMessage(), 60 );
 			return $this->redirect_to_editor( $occurrence_id, 'error' );
@@ -339,13 +335,20 @@ class OccurrenceSaveHandler {
 	/**
 	 * Scope: this date only.
 	 *
+	 * Only a recurring event's date is flagged: there the flag keeps regeneration off the edited
+	 * row. On a single event it marks a hand-added extra date, and flagging the event's own date
+	 * would leave it without a primary date.
+	 *
 	 * @param Occurrence           $occurrence Occurrence being edited.
+	 * @param Event                $event      Its event.
 	 * @param array<string, mixed> $fields     Sanitized field values.
 	 * @return void
 	 */
-	private function apply_this( Occurrence $occurrence, array $fields ): void {
+	private function apply_this( Occurrence $occurrence, Event $event, array $fields ): void {
 		$this->apply_fields_to_occurrence( $occurrence, $fields );
-		$occurrence->is_override = true;
+		if ( $event->is_recurring() ) {
+			$occurrence->is_override = true;
+		}
 		$this->occurrence_repo->save( $occurrence );
 	}
 

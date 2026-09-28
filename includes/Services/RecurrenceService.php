@@ -590,47 +590,31 @@ class RecurrenceService {
 	/**
 	 * Create or update a single occurrence for a non-recurring event.
 	 *
-	 * Updates the event's *primary* occurrence — the earliest scheduled, non-override date, the same
-	 * rule EventSaveHandler::process_buffered_tickets uses. Selecting the earliest row of any kind
-	 * (the old behavior) clobbered a hand-picked override date whenever it sorted before the primary
-	 * one, moving the operator's added date onto the main Date & Time slot (NTE-185). When no
-	 * non-override occurrence exists, a new one is created rather than overwriting an override.
+	 * Updates the date the editor displayed: the posted `$target_occurrence_id` when it is a live
+	 * date of this event, else PrimaryOccurrence::find(). A new row is created only when the event
+	 * has no live date; inserting one beside an existing date duplicates it. The updated row
+	 * becomes the event's own date, so its hand-added flag is cleared.
 	 *
-	 * @param Event              $event      The event.
-	 * @param \DateTimeInterface $start_date Start date/time.
-	 * @param \DateTimeInterface $end_date   End date/time.
-	 * @param bool               $all_day    Whether it's an all-day event.
+	 * @param Event              $event                The event.
+	 * @param \DateTimeInterface $start_date           Start date/time.
+	 * @param \DateTimeInterface $end_date             End date/time.
+	 * @param bool               $all_day              Whether it's an all-day event.
+	 * @param int                $target_occurrence_id The date the editor displayed; 0 when the form posted none.
 	 * @return Occurrence|null
 	 */
 	public function create_single_occurrence(
 		Event $event,
 		\DateTimeInterface $start_date,
 		\DateTimeInterface $end_date,
-		bool $all_day = false
+		bool $all_day = false,
+		int $target_occurrence_id = 0
 	): ?Occurrence {
 		$event_id = $event->id;
 		if ( null === $event_id ) {
 			return null;
 		}
 
-		// Find the primary occurrence to update (preserves ID for ticket types): the earliest
-		// scheduled, non-override date. Hand-picked override dates are never the update target.
-		$existing = $this->occurrence_repo->for_event(
-			$event_id,
-			array(
-				'status'  => 'scheduled',
-				'orderby' => 'start_datetime',
-				'order'   => 'ASC',
-			)
-		);
-
-		$occurrence = null;
-		foreach ( $existing as $candidate ) {
-			if ( ! $candidate->is_override ) {
-				$occurrence = $candidate;
-				break;
-			}
-		}
+		$occurrence = $this->find_update_target( $event_id, $target_occurrence_id );
 
 		if ( null === $occurrence ) {
 			$occurrence           = new Occurrence();
@@ -638,6 +622,7 @@ class RecurrenceService {
 			$occurrence->status   = 'scheduled';
 		}
 
+		$occurrence->is_override    = false;
 		$occurrence->start_datetime = $start_date->format( 'Y-m-d H:i:s' );
 		$occurrence->end_datetime   = $end_date->format( 'Y-m-d H:i:s' );
 		$occurrence->all_day        = $all_day;
@@ -648,6 +633,24 @@ class RecurrenceService {
 			DebugLogger::exception( $e, 'RecurrenceService' );
 			return null;
 		}
+	}
+
+	/**
+	 * The existing date a non-recurring event's save should update, if any.
+	 *
+	 * @param int $event_id             Event id.
+	 * @param int $target_occurrence_id The date the editor displayed; 0 when none was posted.
+	 * @return Occurrence|null
+	 */
+	private function find_update_target( int $event_id, int $target_occurrence_id ): ?Occurrence {
+		if ( $target_occurrence_id > 0 ) {
+			$posted = $this->occurrence_repo->find( $target_occurrence_id );
+			if ( null !== $posted && $posted->event_id === $event_id && ! $posted->is_cancelled() && 'completed' !== $posted->status ) {
+				return $posted;
+			}
+		}
+
+		return PrimaryOccurrence::find( $this->occurrence_repo, $event_id );
 	}
 
 	/**

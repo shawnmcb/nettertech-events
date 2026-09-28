@@ -2,14 +2,14 @@
 # This file is distributed under the GPL v2 or later.
 msgid ""
 msgstr ""
-"Project-Id-Version: NetterTech Events 1.4.7\n"
+"Project-Id-Version: NetterTech Events 1.4.9\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/nettertech-events\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-09-14T23:38:45+00:00\n"
+"POT-Creation-Date: 2026-09-28T00:44:30+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: nettertech-events\n"
@@ -158,7 +158,7 @@ msgstr[1] ""
 #: includes/Admin/AdminMenu.php:226
 #: includes/Admin/AdminMenuRegistrar.php:139
 #: includes/Admin/AttendeesPage.php:414
-#: includes/Admin/EventEditor.php:172
+#: includes/Admin/EventEditor.php:173
 msgid "Edit Event"
 msgstr ""
 
@@ -285,7 +285,7 @@ msgstr ""
 #: includes/Admin/ListTables/EventsListTable.php:943
 #: includes/Admin/ListTables/EventsListTable.php:1172
 #: includes/Admin/ListTables/OccurrenceRowRenderer.php:307
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:344
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:347
 #: includes/Admin/Metaboxes/EventMetaboxContentRenderer.php:111
 #: includes/Core/Assets.php:654
 #: includes/Core/Assets.php:728
@@ -338,7 +338,7 @@ msgstr ""
 
 #: includes/Admin/AdminMenuRegistrar.php:83
 #: includes/Admin/AdminMenuRegistrar.php:84
-#: includes/Admin/EventEditor.php:172
+#: includes/Admin/EventEditor.php:173
 msgid "Add New Event"
 msgstr ""
 
@@ -540,7 +540,7 @@ msgstr ""
 #: includes/Admin/CategoryPage.php:126
 #: includes/Admin/EventActionHandler.php:100
 #: includes/Admin/EventActionHandler.php:143
-#: includes/Admin/EventSaveHandler.php:200
+#: includes/Admin/EventSaveHandler.php:201
 #: includes/Admin/OccurrenceSaveHandler.php:190
 #: includes/Admin/OccurrenceSaveHandler.php:253
 #: includes/Frontend/Shortcodes/RSVPFormShortcode.php:376
@@ -674,7 +674,7 @@ msgstr ""
 #: includes/Admin/AttendeesPage.php:401
 #: includes/Admin/AttendeesPage.php:1369
 #: includes/Admin/ListTables/EventsListTable.php:237
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:442
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:445
 #: includes/Enums/FieldType.php:49
 #: includes/Integrations/WooCommerce/CartPresenter.php:92
 #: includes/Services/PrivacyService.php:207
@@ -931,7 +931,7 @@ msgid "Alphabetize by first name"
 msgstr ""
 
 #: includes/Admin/AttendeesPage.php:953
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:875
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:878
 msgid "First"
 msgstr ""
 
@@ -940,7 +940,7 @@ msgid "Alphabetize by last name"
 msgstr ""
 
 #: includes/Admin/AttendeesPage.php:958
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:879
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:882
 msgid "Last"
 msgstr ""
 
@@ -997,7 +997,7 @@ msgstr ""
 #: includes/Admin/ListTables/EventsListTable.php:700
 #: includes/Admin/ListTables/OrganizerListTable.php:178
 #: includes/Admin/ListTables/SpacesListTable.php:214
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:350
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:353
 #: includes/Core/Plugin.php:514
 msgid "Edit"
 msgstr ""
@@ -1313,7 +1313,7 @@ msgstr ""
 
 #: includes/Admin/EventActionHandler.php:95
 #: includes/Admin/EventActionHandler.php:138
-#: includes/Admin/EventSaveHandler.php:194
+#: includes/Admin/EventSaveHandler.php:195
 #: includes/Admin/OccurrenceSaveHandler.php:180
 #: includes/Admin/OccurrenceSaveHandler.php:247
 #: includes/Admin/OrganizerSaveHandler.php:59
@@ -1322,7 +1322,7 @@ msgstr ""
 msgid "You do not have permission to do this."
 msgstr ""
 
-#: includes/Admin/EventEditor.php:197
+#: includes/Admin/EventEditor.php:201
 #: includes/Admin/EventsPage.php:254
 #: includes/Admin/QRGeneratorPage.php:312
 #: includes/Admin/SettingsPage.php:122
@@ -1330,32 +1330,32 @@ msgstr ""
 msgid "Skip to main content"
 msgstr ""
 
-#: includes/Admin/EventEditor.php:203
+#: includes/Admin/EventEditor.php:207
 #: includes/Admin/OccurrenceEditor.php:333
 msgid "← Back to Events"
 msgstr ""
 
-#: includes/Admin/EventEditor.php:233
+#: includes/Admin/EventEditor.php:237
 msgid "Event Title"
 msgstr ""
 
-#: includes/Admin/EventEditor.php:237
+#: includes/Admin/EventEditor.php:241
 msgid "Enter event title"
 msgstr ""
 
-#: includes/Admin/EventEditor.php:243
+#: includes/Admin/EventEditor.php:247
 msgid "Slug:"
 msgstr ""
 
-#: includes/Admin/EventEditor.php:254
+#: includes/Admin/EventEditor.php:258
 msgid "Event Description"
 msgstr ""
 
-#: includes/Admin/EventEditor.php:271
+#: includes/Admin/EventEditor.php:275
 msgid "Excerpt"
 msgstr ""
 
-#: includes/Admin/EventEditor.php:280
+#: includes/Admin/EventEditor.php:284
 msgid "A short summary displayed in event listings."
 msgstr ""
 
@@ -1382,32 +1382,38 @@ msgstr ""
 msgid "Event updated."
 msgstr ""
 
-#: includes/Admin/EventSaveHandler.php:424
+#: includes/Admin/EventSaveHandler.php:425
 msgid "Choose how this event repeats before saving it as a recurring event. If you only want one more date, leave it as a single event and use \"Add a date\" on the Dates box instead."
 msgstr ""
 
 #. translators: %d: number of added-date rows skipped for having no date.
-#: includes/Admin/EventSaveHandler.php:469
+#: includes/Admin/EventSaveHandler.php:470
 #, php-format
 msgid "%d added-date row was skipped because it had no date."
 msgid_plural "%d added-date rows were skipped because they had no date."
 msgstr[0] ""
 msgstr[1] ""
 
+#. translators: 1: the added date (Y-m-d); 2: its start time (H:i).
+#: includes/Admin/EventSaveHandler.php:493
+#, php-format
+msgid "Added date %1$s at %2$s was skipped because the event already has a date at that time."
+msgstr ""
+
 #. translators: 1: the added date (Y-m-d); 2: comma-separated field labels (e.g. "end time").
-#: includes/Admin/EventSaveHandler.php:485
+#: includes/Admin/EventSaveHandler.php:506
 #, php-format
 msgid "Added date %1$s: used the default %2$s."
 msgstr ""
 
 #. translators: 1: the added date (Y-m-d); 2: comma-separated ticket tier names.
-#: includes/Admin/EventSaveHandler.php:495
+#: includes/Admin/EventSaveHandler.php:516
 #, php-format
 msgid "Added date %1$s: created ticket tiers %2$s from the event templates."
 msgstr ""
 
 #. translators: %d: number of WooCommerce products created.
-#: includes/Admin/EventSaveHandler.php:503
+#: includes/Admin/EventSaveHandler.php:524
 #, php-format
 msgid "%d WooCommerce product was created for the added date."
 msgid_plural "%d WooCommerce products were created for the added date."
@@ -1415,17 +1421,23 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %s: comma-separated ticket tier names.
-#: includes/Admin/EventSaveHandler.php:744
+#: includes/Admin/EventSaveHandler.php:739
 #, php-format
 msgid "These ticket tiers could not be saved because the event has no date to attach them to: %s. Add a date, then re-enter them."
 msgstr ""
 
-#: includes/Admin/EventSaveHandler.php:1022
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:566
+#. translators: %s: comma-separated ticket tier names.
+#: includes/Admin/EventSaveHandler.php:803
+#, php-format
+msgid "The event was saved, but ticket changes were not: the form was showing a different date from the one saved. Reload the event and re-check these tickets: %s."
+msgstr ""
+
+#: includes/Admin/EventSaveHandler.php:1040
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:569
 msgid "Capacity must be a positive number or left empty for unlimited."
 msgstr ""
 
-#: includes/Admin/EventSaveHandler.php:1044
+#: includes/Admin/EventSaveHandler.php:1062
 msgid "A recurrence rule is required for recurring events."
 msgstr ""
 
@@ -1719,7 +1731,7 @@ msgid "Required"
 msgstr ""
 
 #: includes/Admin/Metaboxes/AttendeeFieldsMetaboxHandler.php:169
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:354
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:357
 #: includes/Admin/Metaboxes/EventMetaboxContentRenderer.php:426
 #: includes/Admin/Metaboxes/Presenters/AttendeeFieldRowPresenter.php:180
 #: includes/Admin/Metaboxes/Presenters/TicketRowHeaderPresenter.php:96
@@ -1766,79 +1778,79 @@ msgstr ""
 msgid "This date seeds the recurrence pattern — changing it moves the pattern-generated dates."
 msgstr ""
 
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:114
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:117
 msgid "Recurrence Pattern"
 msgstr ""
 
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:123
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:126
 msgid "Edit pattern"
 msgstr ""
 
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:124
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:127
 msgid "Collapse"
 msgstr ""
 
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:137
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:140
 msgid "Dates"
 msgstr ""
 
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:203
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:206
 msgid "Time suggestions"
 msgstr ""
 
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:204
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:207
 msgid "No matching times — any valid time can still be typed"
 msgstr ""
 
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:205
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:208
 msgid "am"
 msgstr ""
 
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:206
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:209
 msgid "pm"
 msgstr ""
 
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:207
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:210
 msgid "hr"
 msgstr ""
 
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:208
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:211
 msgid "hrs"
 msgstr ""
 
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:209
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:212
 msgid "min"
 msgstr ""
 
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:210
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:213
 msgid "mins"
 msgstr ""
 
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:220
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:223
 msgid "Enter a valid time, for example 7:30 pm."
 msgstr ""
 
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:221
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:224
 msgid "End time must be after the start time."
 msgstr ""
 
 #. translators: 1: pattern description, 2: number of occurrences
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:248
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:251
 #, php-format
 msgid "%1$s (%2$d occurrence)"
 msgid_plural "%1$s (%2$d occurrences)"
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:312
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:315
 msgid "No upcoming dates yet."
 msgstr ""
 
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:347
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:350
 msgid "Edited or added outside the pattern — regenerating the pattern will not change this date."
 msgstr ""
 
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:347
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:350
 #: includes/Admin/Metaboxes/Presenters/QRLogoOptionsPresenter.php:213
 #: includes/Admin/Metaboxes/QRCodeMetaboxHandler.php:196
 #: includes/Admin/Metaboxes/QRCodeMetaboxHandler.php:203
@@ -1849,190 +1861,190 @@ msgstr ""
 msgid "Custom"
 msgstr ""
 
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:396
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:399
 msgid "Add a date"
 msgstr ""
 
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:400
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:403
 msgid "A date added here sits outside the recurrence pattern, and saving the pattern again will not remove it."
 msgstr ""
 
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:409
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:412
 msgid "+ Add another date"
 msgstr ""
 
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:418
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:421
 msgid "Dates are added when you update the event."
 msgstr ""
 
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:454
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:457
 msgid "Start"
 msgstr ""
 
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:464
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:467
 msgid "End"
 msgstr ""
 
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:476
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:479
 msgid "Remove this date"
 msgstr ""
 
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:565
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:568
 #: includes/Services/OccurrenceTimeResolver.php:114
 msgid "Event must be at least 10 minutes long. Please adjust the end time."
 msgstr ""
 
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:786
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:830
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:789
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:833
 msgid "day(s)"
 msgstr ""
 
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:787
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:790
 msgid "week(s)"
 msgstr ""
 
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:788
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:791
 msgid "month(s)"
 msgstr ""
 
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:789
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:792
 msgid "year(s)"
 msgstr ""
 
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:798
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:801
 msgid "Repeat:"
 msgstr ""
 
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:800
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:803
 msgid "Select pattern..."
 msgstr ""
 
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:808
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:811
 msgid "Custom..."
 msgstr ""
 
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:815
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:818
 msgid "Frequency:"
 msgstr ""
 
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:817
-#: includes/Services/RecurrenceService.php:773
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:820
+#: includes/Services/RecurrenceService.php:776
 msgid "Daily"
 msgstr ""
 
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:818
-#: includes/Services/RecurrenceService.php:777
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:821
+#: includes/Services/RecurrenceService.php:780
 msgid "Weekly"
 msgstr ""
 
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:819
-#: includes/Services/RecurrenceService.php:785
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:822
+#: includes/Services/RecurrenceService.php:788
 msgid "Monthly"
 msgstr ""
 
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:820
-#: includes/Services/RecurrenceService.php:789
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:823
+#: includes/Services/RecurrenceService.php:792
 msgid "Yearly"
 msgstr ""
 
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:826
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:829
 msgid "Every:"
 msgstr ""
 
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:834
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:837
 msgid "On days:"
 msgstr ""
 
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:838
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:841
 msgid "Mon"
 msgstr ""
 
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:839
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:842
 msgid "Tue"
 msgstr ""
 
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:840
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:843
 msgid "Wed"
 msgstr ""
 
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:841
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:844
 msgid "Thu"
 msgstr ""
 
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:842
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:845
 msgid "Fri"
 msgstr ""
 
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:843
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:846
 msgid "Sat"
 msgstr ""
 
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:844
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:847
 msgid "Sun"
 msgstr ""
 
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:857
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:860
 msgid "Monthly pattern:"
 msgstr ""
 
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:861
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:864
 msgid "Same day of month (from start date)"
 msgstr ""
 
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:867
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:870
 msgid "Specific weekdays of the month"
 msgstr ""
 
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:871
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:874
 msgid "On the:"
 msgstr ""
 
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:876
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:879
 msgid "Second"
 msgstr ""
 
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:877
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:880
 msgid "Third"
 msgstr ""
 
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:878
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:881
 msgid "Fourth"
 msgstr ""
 
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:889
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:892
 msgid "Weekday(s):"
 msgstr ""
 
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:899
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:902
 msgid "Example: Check First and Third under \"On the\" and Mon under \"Weekday(s)\" for \"first and third Monday of each month\"."
 msgstr ""
 
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:908
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:911
 msgid "End recurrence:"
 msgstr ""
 
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:913
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:916
 msgid "One year (maximum)"
 msgstr ""
 
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:919
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:922
 msgid "After"
 msgstr ""
 
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:922
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:925
 msgid "occurrences"
 msgstr ""
 
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:928
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:931
 msgid "On date:"
 msgstr ""
 
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:936
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:939
 msgid "Current pattern:"
 msgstr ""
 
 #. translators: %d: number of occurrences
-#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:944
+#: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:947
 #, php-format
 msgid "%d occurrence generated"
 msgid_plural "%d occurrences generated"
@@ -2875,13 +2887,13 @@ msgid "That date cannot be removed, because %1$s has already sold tickets (%2$d 
 msgstr ""
 
 #. translators: %s: comma-separated list of dates.
-#: includes/Admin/OccurrenceSaveHandler.php:517
+#: includes/Admin/OccurrenceSaveHandler.php:524
 #, php-format
 msgid "These hand-picked dates kept their own time and capacity: %s."
 msgstr ""
 
 #. translators: 1: original event title, 2: cutoff date
-#: includes/Admin/OccurrenceSaveHandler.php:635
+#: includes/Admin/OccurrenceSaveHandler.php:642
 #, php-format
 msgid "%1$s (through %2$s)"
 msgstr ""
@@ -7036,23 +7048,23 @@ msgstr ""
 msgid "This event cannot become a single date, because these dates have already sold tickets: %s. Cancel and refund them first, or leave the event recurring."
 msgstr ""
 
-#: includes/Services/RecurrenceService.php:781
+#: includes/Services/RecurrenceService.php:784
 msgid "Every 2 weeks"
 msgstr ""
 
-#: includes/Services/RecurrenceService.php:793
+#: includes/Services/RecurrenceService.php:796
 msgid "Every weekday (Mon-Fri)"
 msgstr ""
 
-#: includes/Services/RecurrenceService.php:797
+#: includes/Services/RecurrenceService.php:800
 msgid "Every weekend (Sat-Sun)"
 msgstr ""
 
-#: includes/Services/RecurrenceService.php:801
+#: includes/Services/RecurrenceService.php:804
 msgid "First Monday of month"
 msgstr ""
 
-#: includes/Services/RecurrenceService.php:805
+#: includes/Services/RecurrenceService.php:808
 msgid "Last Friday of month"
 msgstr ""
 

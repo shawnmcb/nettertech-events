@@ -22,6 +22,7 @@ use NetterTechEvents\Models\Event;
 use NetterTechEvents\Contracts\RevisionRepositoryInterface;
 use NetterTechEvents\Contracts\SpaceRepositoryInterface;
 use NetterTechEvents\Services\LayoutService;
+use NetterTechEvents\Services\PrimaryOccurrence;
 use NetterTechEvents\Services\RecurrenceService;
 
 /**
@@ -171,11 +172,14 @@ class EventEditor {
 		$is_new = 0 === $this->event_id;
 		$title  = $is_new ? __( 'Add New Event', 'nettertech-events' ) : __( 'Edit Event', 'nettertech-events' );
 
-		// Get the first occurrence for existing events (all types).
+		// A recurring event's date fields seed the pattern from its first row; any other event's
+		// show the row the save will write back to.
 		$occurrence = null;
-		if ( ! $is_new ) {
+		if ( $this->event->is_recurring() ) {
 			$occurrences = $this->occurrence_repo->for_event( $this->event_id, array( 'limit' => 1 ) );
 			$occurrence  = $occurrences[0] ?? null;
+		} elseif ( ! $is_new ) {
+			$occurrence = PrimaryOccurrence::find_for_display( $this->occurrence_repo, $this->event_id );
 		}
 
 		// Check for save errors.
