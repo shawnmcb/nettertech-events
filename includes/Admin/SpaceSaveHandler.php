@@ -58,7 +58,7 @@ class SpaceSaveHandler {
 	 */
 	public function handle_save(): void {
 		// Check permissions first (before nonce to avoid timing attacks).
-		if ( ! current_user_can( AdminMenu::CAPABILITY ) ) {
+		if ( ! ScreenAccess::can_open( SpacesPage::PAGE_SLUG ) ) {
 			wp_die( esc_html__( 'You do not have permission to do this.', 'nettertech-events' ) );
 		}
 
@@ -76,21 +76,34 @@ class SpaceSaveHandler {
 		$post = wp_unslash( $_POST );
 
 		$space_id = $this->get_posted_space_id( $post );
-		$data     = $this->build_space_data( $space_id, $post );
 
-		try {
-			$saved_id = $this->repo->save( $data );
-			$message  = $space_id > 0 ? 'updated' : 'created';
-		} catch ( \RuntimeException $e ) {
-			$this->redirect_to_error( $space_id, $e );
+		if ( ScreenAccess::can_manage_core() ) {
+			$data = $this->build_space_data( $space_id, $post );
+
+			try {
+				$saved_id = $this->repo->save( $data );
+				$message  = $space_id > 0 ? 'updated' : 'created';
+			} catch ( \RuntimeException $e ) {
+				$this->redirect_to_error( $space_id, $e );
+			}
+		} else {
+			// Someone let in by an add-on's capability changes only that
+			// add-on's panel: core's fields are view-only for them, and a
+			// space they cannot create must already exist.
+			if ( $space_id <= 0 || null === $this->repo->find( $space_id ) ) {
+				wp_die( esc_html__( 'Only a site administrator can add spaces.', 'nettertech-events' ) );
+			}
+			$saved_id = $space_id;
+			$message  = 'updated';
 		}
 
 		/**
 		 * Fires after a space is successfully saved from core's Space editor.
 		 *
 		 * Add-ons persist the fields they rendered on
-		 * {@see Hooks::SPACE_EDITOR_PANELS} here. Core has already checked the
-		 * capability and verified the nonce before this fires.
+		 * {@see Hooks::SPACE_EDITOR_PANELS} here. Core has verified the nonce
+		 * and that the user may open the Spaces screen, which an add-on's
+		 * capability can grant, so each listener must check its own.
 		 *
 		 * @since 1.4.7
 		 *

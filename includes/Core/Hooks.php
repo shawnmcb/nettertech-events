@@ -1026,8 +1026,9 @@ final class Hooks {
 	 * Add-ons render their own panels here. The hook fires INSIDE the `<form>`
 	 * element, so any field printed by a listener submits with core's nonce to
 	 * `admin-post.php?action=nettertech_events_save_space`; persist those fields
-	 * on {@see self::SPACE_SAVE_EXTRA}. Listeners must escape their own output
-	 * and must not print core's field names.
+	 * on {@see self::SPACE_SAVE_EXTRA}. Listeners must escape their own output,
+	 * must not print core's field names, and must check their own capability:
+	 * the screen may be open to another add-on's.
 	 *
 	 * @since 1.4.8
 	 *
@@ -1040,9 +1041,11 @@ final class Hooks {
 	 * Fires after a space is successfully saved from core's Space editor.
 	 *
 	 * Fired at the end of {@see \NetterTechEvents\Admin\SpaceSaveHandler::handle_save()}
-	 * for both create and update, with the resulting space ID. Core has already
-	 * checked the capability and verified the nonce before this fires; listeners
-	 * should still re-check their own capability if they require a different one.
+	 * for both create and update, with the resulting space ID. Core has verified
+	 * the nonce and that the user may open the Spaces screen. Since an add-on's
+	 * capability can open that screen (see {@see self::ADMIN_SCREEN_CAPABILITIES}),
+	 * every listener must check its own capability. For such a user core saves
+	 * none of its own fields and fires this for existing spaces only.
 	 *
 	 * @since 1.4.8
 	 *
@@ -1088,6 +1091,22 @@ final class Hooks {
 	 * @param string $action Editor action: 'add' or 'edit'.
 	 */
 	public const SPACE_EDITOR_ASSETS = 'nettertech_events_space_editor_assets';
+
+	/**
+	 * Filters the capabilities, besides core's, that open the Spaces screen.
+	 *
+	 * An add-on whose editor panel is gated on its own capability returns that
+	 * capability here so a holder can reach the panel. Such a user sees the
+	 * screen without core's create, delete or field-editing rights; those stay
+	 * with {@see \NetterTechEvents\Admin\AdminMenu::CAPABILITY}. Non-string and
+	 * empty entries are dropped.
+	 *
+	 * @since 1.5.1
+	 *
+	 * @param string[] $capabilities Capabilities that open the screen. Default empty.
+	 * @param string   $screen       Screen slug.
+	 */
+	public const ADMIN_SCREEN_CAPABILITIES = 'nettertech_events_admin_screen_capabilities';
 
 	/**
 	 * Filters the empty-state message shown when no events match.
@@ -1266,6 +1285,21 @@ final class Hooks {
 	 * @return array
 	 */
 	public const SETTINGS_TABS = 'nettertech_events_settings_tabs';
+
+	/**
+	 * Filters the capability each extension settings tab requires.
+	 *
+	 * Keyed by tab slug. A tab left out requires
+	 * {@see \NetterTechEvents\Admin\AdminMenu::CAPABILITY}, and entries for
+	 * core's own tabs are ignored, so this can open an add-on's tab to its own
+	 * capability but never open a core tab. A user holding only a declared
+	 * capability sees the Settings screen with just the tabs they may use.
+	 *
+	 * @since 1.5.1
+	 *
+	 * @param array<string, string> $capabilities Tab slug => capability. Default empty.
+	 */
+	public const SETTINGS_TAB_CAPABILITIES = 'nettertech_events_settings_tab_capabilities';
 
 	/**
 	 * Fired when rendering a settings page extension tab.

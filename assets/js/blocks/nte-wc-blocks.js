@@ -341,6 +341,276 @@
 		);
 	};
 
+	// =========================================================================
+	// Checkout: Donation Picker
+	// =========================================================================
+
+	/**
+	 * The cart's order total as display text, or '' when it cannot be formatted.
+	 *
+	 * @param {Object} totals Store API cart totals.
+	 * @return {string} Formatted total.
+	 */
+	function formatOrderTotal( totals ) {
+		const priceFormat = window.wc && window.wc.priceFormat;
+		if ( ! totals || ! priceFormat ) {
+			return '';
+		}
+		return priceFormat.formatPrice( totals.total_price, priceFormat.getCurrencyFromPriceResponse( totals ) );
+	}
+
+	/**
+	 * Announce a message to screen readers.
+	 *
+	 * @param {string} message    Text to announce.
+	 * @param {string} politeness 'polite' or 'assertive'.
+	 */
+	function announce( message, politeness ) {
+		if ( window.wp.a11y && window.wp.a11y.speak ) {
+			window.wp.a11y.speak( message, politeness || 'polite' );
+		}
+	}
+
+	/**
+	 * Donation picker for Block checkout: the block counterpart of
+	 * DonationHandler::render_donation_field(), with the same classes so one
+	 * stylesheet themes both.
+	 *
+	 * Everything it shows comes from the cart's Store API extension data
+	 * (DonationHandler::get_store_api_data), refreshed with every cart response:
+	 * it appears only for carts with tickets, and the round-up label is the
+	 * server's figure for the current totals, never worked out here. A choice is
+	 * sent with extensionCartUpdate, which recalculates the cart.
+	 *
+	 * @param {Object} props Slot fill props: cart, extensions, context.
+	 * @return {Object|null} Element, or null when the cart cannot take a donation.
+	 */
+	const DonationPicker = function ( props ) {
+		const pendingChoice = element.useState( null );
+		const customText = element.useState( null );
+		const errorText = element.useState( '' );
+		const busy = element.useState( false );
+
+		const cart = props.cart || {};
+		const cartExtensions = props.extensions || cart.extensions || {};
+		const donation = cartExtensions[ NAMESPACE ];
+
+		// The order meta slot also renders in the Cart block. Ask once, at
+		// checkout, like the classic picker.
+		if ( 'woocommerce/checkout' !== props.context || ! donation || ! donation.available ) {
+			return null;
+		}
+
+		const fieldId = 'nte-wc-blocks-donation';
+		const causeId = fieldId + '-cause';
+		const customId = fieldId + '-custom-amount';
+		const errorId = fieldId + '-error';
+		const choice = pendingChoice[ 0 ] || donation.selected;
+		const customValue = null !== customText[ 0 ]
+			? customText[ 0 ]
+			: ( 'custom' === donation.selected ? String( donation.amount ) : '' );
+
+		async function send( option, amount ) {
+			if ( ! blocksCheckout.extensionCartUpdate ) {
+				return;
+			}
+			busy[ 1 ]( true );
+			errorText[ 1 ]( '' );
+
+			try {
+				await blocksCheckout.extensionCartUpdate( {
+					namespace: NAMESPACE,
+					data: {
+						donation_option: option,
+						donation_amount: amount,
+					},
+				} );
+			} catch ( error ) {
+				busy[ 1 ]( false );
+				pendingChoice[ 1 ]( null );
+				const failure = error && error.message
+					? decodeEntities( error.message )
+					: __( 'Your donation could not be updated. Please try again.', 'nettertech-events' );
+				errorText[ 1 ]( failure );
+				announce( failure, 'assertive' );
+				return;
+			}
+
+			busy[ 1 ]( false );
+			pendingChoice[ 1 ]( null );
+			customText[ 1 ]( null );
+			const cartStore = window.wp.data && window.wp.data.select( 'wc/store/cart' );
+			const total = cartStore ? formatOrderTotal( cartStore.getCartTotals() ) : '';
+			if ( total ) {
+				/* translators: %s: order total */
+				announce( i18n.sprintf( __( 'Donation updated. Order total: %s', 'nettertech-events' ), total ) );
+			} else {
+				announce( __( 'Donation updated.', 'nettertech-events' ) );
+			}
+		}
+
+		/**
+		 * The custom amount as a number, or an error message when it is out of range.
+		 *
+		 * @return {Object} { amount } or { error }.
+		 */
+		function readCustomAmount() {
+			const amount = parseFloat( customValue );
+			if ( ! isFinite( amount ) || amount < 1 ) {
+				/* translators: %s: smallest amount, with currency symbol */
+				return { error: i18n.sprintf( __( 'Enter an amount of at least %s.', 'nettertech-events' ), donation.currency_symbol + '1' ) };
+			}
+			if ( amount > donation.max ) {
+				/* translators: %s: largest amount, with currency symbol */
+				return { error: i18n.sprintf( __( 'Enter an amount no more than %s.', 'nettertech-events' ), donation.currency_symbol + donation.max ) };
+			}
+			return { amount: amount };
+		}
+
+		function submitCustom() {
+			if ( '' === customValue ) {
+				return;
+			}
+			const result = readCustomAmount();
+			if ( result.error ) {
+				errorText[ 1 ]( result.error );
+				announce( result.error, 'assertive' );
+				return;
+			}
+			if ( 'custom' === donation.selected && Math.abs( donation.amount - result.amount ) < 0.01 ) {
+				return;
+			}
+			send( 'custom', result.amount );
+		}
+
+		function radioOption( key, value, amount, label, checked ) {
+			return createElement(
+				'label',
+				{ key: key, className: 'nte-donation-field__option' },
+				createElement( 'input', {
+					type: 'radio',
+					name: fieldId + '-option',
+					className: 'nte-donation-option',
+					value: value,
+					checked: checked,
+					onChange: function () {
+						pendingChoice[ 1 ]( value );
+						send( value, amount );
+					},
+				} ),
+				createElement( 'span', { className: 'nte-donation-field__label' }, label )
+			);
+		}
+
+		const options = [
+			radioOption( 'roundup', 'roundup', 0, donation.roundup_label, 'roundup' === choice ),
+		];
+
+		( donation.presets || [] ).forEach( function ( preset, index ) {
+			options.push(
+				radioOption(
+					'preset-' + index,
+					'fixed',
+					preset.amount,
+					preset.label,
+					'fixed' === choice && Math.abs( donation.amount - preset.amount ) < 0.01
+				)
+			);
+		} );
+
+		if ( donation.allow_custom ) {
+			const hasError = '' !== errorText[ 0 ];
+			options.push(
+				createElement(
+					'label',
+					{ key: 'custom', className: 'nte-donation-field__option nte-donation-field__option--custom' },
+					createElement( 'input', {
+						type: 'radio',
+						name: fieldId + '-option',
+						className: 'nte-donation-option',
+						value: 'custom',
+						checked: 'custom' === choice,
+						onChange: function () {
+							pendingChoice[ 1 ]( 'custom' );
+							const input = document.getElementById( customId );
+							if ( input ) {
+								input.focus();
+							}
+							if ( '' !== customValue ) {
+								submitCustom();
+							}
+						},
+					} ),
+					createElement( 'span', { className: 'nte-donation-field__label' }, __( 'Other:', 'nettertech-events' ) ),
+					createElement( 'span', { className: 'nte-donation-field__currency', 'aria-hidden': 'true' }, donation.currency_symbol ),
+					createElement( 'input', {
+						id: customId,
+						type: 'number',
+						className: 'nte-donation-custom-amount',
+						inputMode: 'decimal',
+						min: 1,
+						max: donation.max,
+						step: 1,
+						value: customValue,
+						'aria-label': __( 'Donation amount', 'nettertech-events' ),
+						'aria-invalid': hasError ? 'true' : undefined,
+						'aria-describedby': hasError ? errorId : undefined,
+						onFocus: function () {
+							pendingChoice[ 1 ]( 'custom' );
+						},
+						onChange: function ( event ) {
+							customText[ 1 ]( event.target.value );
+							errorText[ 1 ]( '' );
+						},
+						onBlur: submitCustom,
+						onKeyDown: function ( event ) {
+							// Enter applies the amount; it must not place the order.
+							if ( 'Enter' === event.key ) {
+								event.preventDefault();
+								submitCustom();
+							}
+						},
+					} )
+				)
+			);
+		}
+
+		options.push(
+			radioOption( 'none', 'none', 0, __( 'No thanks', 'nettertech-events' ), 'none' === choice || '' === choice )
+		);
+
+		// The outer element takes the spacing WooCommerce gives every order
+		// summary slot item, so the picker's own box keeps its padding.
+		return createElement(
+			'div',
+			{ className: 'nte-donation-field-slot' },
+			createElement(
+				'div',
+				{ className: 'nte-donation-field nte-donation-field--block' + ( busy[ 0 ] ? ' nte-loading' : '' ) },
+				createElement(
+					'fieldset',
+					{
+						className: 'nte-donation-field__fieldset',
+						'aria-describedby': donation.cause ? causeId : undefined,
+					},
+					createElement(
+						'legend',
+						{ className: 'nte-donation-field__title' },
+						createElement( 'span', { className: 'nte-donation-field__heart', 'aria-hidden': 'true' }, '❤' ),
+						__( 'Add a Donation', 'nettertech-events' )
+					),
+					donation.cause
+						? createElement( 'p', { className: 'nte-donation-field__cause', id: causeId }, donation.cause )
+						: null,
+					createElement( 'div', { className: 'nte-donation-field__options' }, options ),
+					'' !== errorText[ 0 ]
+						? createElement( 'p', { className: 'nte-donation-field__error', id: errorId }, errorText[ 0 ] )
+						: null
+				)
+			)
+		);
+	};
+
 	/**
 	 * Register the ExperimentalOrderMeta slot fill.
 	 */
@@ -361,6 +631,7 @@
 			registerPlugin( 'nettertech-events-checkout-fields', {
 				render: function () {
 					return createElement( ExperimentalOrderMeta, null,
+						createElement( DonationPicker, {} ),
 						createElement( CustomFieldsComponent, {} ),
 						createElement( AccessibilityNotesField, {} )
 					);

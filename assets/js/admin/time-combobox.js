@@ -3,8 +3,10 @@
  *
  * Upgrades input[type=time][data-nte-time-combobox] into an APG combobox:
  * an editable field with a listbox of 15-minute suggestions that filters as
- * the operator types. Suggestions guide, they never constrain — any parseable
- * time (including off-increment values like 7:05 PM) is accepted verbatim.
+ * the operator types. A field can set its own spacing and window with
+ * data-nte-step-minutes and data-nte-suggest-from / -until. Suggestions guide,
+ * they never constrain — any parseable time (including off-increment values
+ * like 7:05 PM) is accepted verbatim.
  * With this script absent the native time input keeps working unchanged.
  *
  * Upgrade is lazy via focusin delegation, so rows cloned after page load
@@ -206,7 +208,12 @@
 			}
 		}
 		const wrapLabel = this.timeInput.closest( 'label' );
-		return wrapLabel ? wrapLabel.textContent.trim() : '';
+		if ( wrapLabel ) {
+			return wrapLabel.textContent.trim();
+		}
+		// Rows in a grid (e.g. opening hours) name each field by aria-label
+		// because a visible label per cell would repeat the column header.
+		return ( this.timeInput.getAttribute( 'aria-label' ) || '' ).trim();
 	};
 
 	/**
@@ -224,15 +231,42 @@
 		return source ? parseTime( source.value ) : null;
 	};
 
+	/**
+	 * This field's suggestion spacing and window.
+	 *
+	 * data-nte-step-minutes overrides the page-wide spacing, and
+	 * data-nte-suggest-from / -until (HH:MM) bound the list. They shape the
+	 * suggestions only; any parseable time can still be typed.
+	 *
+	 * @return {{step: number, from: number, until: number}} Minutes since midnight.
+	 */
+	TimeCombobox.prototype._suggestionWindow = function() {
+		const data = this.timeInput.dataset;
+		const step = parseInt( data.nteStepMinutes, 10 );
+		const from = parseTime( data.nteSuggestFrom || '' );
+		const until = parseTime( data.nteSuggestUntil || '' );
+
+		return {
+			step: step > 0 ? step : STEP_MINUTES,
+			from: null === from ? 0 : from,
+			until: null === until ? 1439 : until,
+		};
+	};
+
 	TimeCombobox.prototype._buildOptions = function( filterText ) {
 		const base = this._durationBase();
-		const startAt = null === base ? 0 : ( base + STEP_MINUTES );
+		const windowed = this._suggestionWindow();
+		const step = windowed.step;
+		const startAt = null === base ? windowed.from : ( base + step );
 		const filter = String( filterText || '' ).trim().toLowerCase();
 		const options = [];
 
-		for ( let cursor = 0; cursor < 1440; cursor += STEP_MINUTES ) {
+		for ( let cursor = 0; cursor < 1440; cursor += step ) {
 			const minutes = ( startAt + cursor ) % 1440;
 			if ( null !== base && minutes <= base ) {
+				continue;
+			}
+			if ( minutes < windowed.from || minutes > windowed.until ) {
 				continue;
 			}
 			let label = formatMinutes( minutes );
@@ -370,8 +404,26 @@
 		this._close();
 	};
 
+	/**
+	 * Match the visible field to the native one's disabled state, so a
+	 * field the page switches off (a closed day, say) cannot be typed into.
+	 */
+	TimeCombobox.prototype._syncDisabled = function() {
+		this.display.disabled = this.timeInput.disabled;
+		if ( this.display.disabled ) {
+			this._close();
+		}
+	};
+
 	TimeCombobox.prototype._bind = function() {
 		this.timeInput.addEventListener( 'change', () => this._syncFromNative() );
+
+		// Pages toggle `disabled` without firing an event, so watch the attribute.
+		this._syncDisabled();
+		if ( 'function' === typeof window.MutationObserver ) {
+			new window.MutationObserver( () => this._syncDisabled() )
+				.observe( this.timeInput, { attributes: true, attributeFilter: [ 'disabled' ] } );
+		}
 
 		this.display.addEventListener( 'keydown', ( e ) => this._handleKeydown( e ) );
 

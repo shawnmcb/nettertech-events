@@ -11,6 +11,8 @@ namespace NetterTechEvents\Admin\Settings;
 
 defined( 'ABSPATH' ) || exit;
 
+use NetterTechEvents\Admin\AdminMenu;
+use NetterTechEvents\Admin\ScreenAccess;
 use NetterTechEvents\Admin\SettingsSanitizer;
 use NetterTechEvents\Core\Hooks;
 
@@ -27,13 +29,6 @@ use NetterTechEvents\Core\Hooks;
  * @internal
  */
 class SettingsSaveHandler {
-
-	/**
-	 * Capability required to manage settings.
-	 *
-	 * @var string
-	 */
-	private const CAPABILITY = 'manage_options';
 
 	/**
 	 * Boolean fields on the general tab (not yet extracted to sections).
@@ -118,8 +113,9 @@ class SettingsSaveHandler {
 
 		// Capability FIRST, then nonce — project standard (cheapest rejection
 		// for unauthorized callers, and consistent with save_settings()).
-		// Audit 2026-06-10 CSRF-1.
-		if ( ! current_user_can( self::CAPABILITY ) ) {
+		// Audit 2026-06-10 CSRF-1. The per-tab check waits for the nonce,
+		// because the tab is read from the request.
+		if ( ! ScreenAccess::can_open( AdminMenu::SUBMENU_SETTINGS ) ) {
 			return;
 		}
 
@@ -149,11 +145,20 @@ class SettingsSaveHandler {
 	 * @return void
 	 */
 	public function save_settings(): void {
-		if ( ! current_user_can( self::CAPABILITY ) ) {
+		if ( ! ScreenAccess::can_open( AdminMenu::SUBMENU_SETTINGS ) ) {
 			return;
 		}
 
 		if ( ! check_admin_referer( 'nettertech_events_settings', 'nettertech_events_settings_nonce' ) ) {
+			return;
+		}
+
+		// Identify active tab once — only fields on this tab should be updated.
+		$active_tab = isset( $_POST['nettertech_events_active_tab'] )
+			? sanitize_key( wp_unslash( $_POST['nettertech_events_active_tab'] ) )
+			: 'general';
+
+		if ( ! current_user_can( ScreenAccess::settings_tab_capability( $active_tab ) ) ) {
 			return;
 		}
 
@@ -174,12 +179,25 @@ class SettingsSaveHandler {
 			$input['_email_settings_post'] = map_deep( wp_unslash( $_POST['nettertech_events_email_settings'] ), 'sanitize_textarea_field' );
 		}
 
-		$current_settings = get_option( 'nettertech_events_settings', array() );
+		// Core's option is written only by a core manager: an add-on tab opened
+		// to another capability must not carry core fields in with its post.
+		if ( ScreenAccess::can_manage_core() ) {
+			$this->save_core_settings( $input, $active_tab );
+		}
 
-		// Identify active tab once — only fields on this tab should be updated.
-		$active_tab = isset( $_POST['nettertech_events_active_tab'] )
-			? sanitize_key( wp_unslash( $_POST['nettertech_events_active_tab'] ) )
-			: 'general';
+		$this->fire_extension_save_action( $active_tab );
+		$this->redirect_after_save( $active_tab );
+	}
+
+	/**
+	 * Persist core's settings option.
+	 *
+	 * @param array<string, mixed> $input      Boundary-sanitized form input.
+	 * @param string               $active_tab Active tab slug.
+	 * @return void
+	 */
+	private function save_core_settings( array $input, string $active_tab ): void {
+		$current_settings = get_option( 'nettertech_events_settings', array() );
 
 		$settings = $this->build_settings( $input, $current_settings, $active_tab );
 
@@ -202,9 +220,6 @@ class SettingsSaveHandler {
 			 */
 			do_action( Hooks::SETTINGS_UPDATED, $changed_keys );
 		}
-
-		$this->fire_extension_save_action( $active_tab );
-		$this->redirect_after_save( $active_tab );
 	}
 
 	/**

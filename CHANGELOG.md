@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Identifiers such as `NTE-123` reference NetterTech's internal issue tracker and are included for traceability only.
 
+## [1.5.1]
+
+### Added
+
+- **Add-ons can open Spaces and Settings to their own permission.** An add-on whose space panel or settings tab needs its own permission can now let someone who holds that permission, but is not a site administrator, reach the panel or tab. Such a user sees only the add-on's settings tabs, and on Spaces can open an existing space to change the add-on's settings for it, with the space's own details shown but locked. They cannot add or delete spaces. Core's own settings and space details stay with administrators. Administrators see no change. Developers: `nettertech_events_admin_screen_capabilities` and `nettertech_events_settings_tab_capabilities`. (NTE-280)
+
+## [1.5.0]
+
+### Added
+
+- **The block checkout offers a donation.** With donations on, buyers using WooCommerce's block checkout (the default) never saw the donation options; only the classic checkout had them. The block checkout now shows the same choices in its order summary: a round-up of the order total, the preset amounts, an amount of the buyer's own, or no thanks. Each choice updates the total at once and is announced to screen readers; an amount over the maximum is explained next to the field. The options appear at checkout only, never on the cart, and only when the cart holds tickets. (NTE-302)
+- **Developers can read each order's donation, refunds included.** `DonationLedgerInterface`, resolved from the service container, returns an order's donation (amount, refunded, net, type) or every donation on orders in a date range. The donation's fee line on the order is now tagged, so it is found reliably even when its name is translated or edited. (NTE-300)
+- **A time field can set its own suggestions.** `data-nte-step-minutes` sets the spacing of a field's suggested times, and `data-nte-suggest-from` / `data-nte-suggest-until` (HH:MM) limit them to a window. Typing any other time is still accepted. Fields without these attributes behave as before. (NTE-296)
+
+### Changed
+
+- **The order screen shows refunded and net donation amounts.** Once a donation is refunded through its fee line, the order's Donation box shows what was donated, what was refunded and the net amount. (NTE-300)
+- **The donation options follow your theme's colors** on both checkouts. A chosen option takes the theme's primary color, and the focused option shows a visible outline for keyboard users. (NTE-221)
+
+### Fixed
+
+- **Round-up now rounds what the buyer actually pays.** It rounded the item subtotal, so with a coupon, promo code, tax or shipping the label and the charge disagreed with the order total. It now rounds the order total before the donation and updates whenever the total changes. (NTE-303)
+- The classic checkout's donation options are now one labelled group for screen readers, and the custom amount field has a label of its own.
+- **Calendar feeds and "Add to calendar" files now open in calendar apps.** The events feed and each date's .ics download were sent as a quoted, JSON-encoded string, which calendar apps could not read. They are now sent as plain iCal. (NTE-310)
+- Time fields that add-ons place through shortcode output keep the time picker instead of falling back to a plain field. (NTE-299)
+- The time picker's list of suggestions no longer picks up the theme's list indentation on public pages. (NTE-299)
+- The time picker takes its name for screen readers from a field's `aria-label` when the field has no visible label, and stops accepting input when the page disables the field.
+
 ## [1.4.9]
 
 ### Fixed

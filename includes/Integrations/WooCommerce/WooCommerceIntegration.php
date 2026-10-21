@@ -184,6 +184,13 @@ class WooCommerceIntegration {
 	private \NetterTechEvents\Services\RateLimitService $rate_limit_service;
 
 	/**
+	 * Donation reader passed to the donation handler; null lets it build its own.
+	 *
+	 * @var \NetterTechEvents\Contracts\DonationLedgerInterface|null
+	 */
+	private ?\NetterTechEvents\Contracts\DonationLedgerInterface $donation_ledger;
+
+	/**
 	 * Attendee field service.
 	 *
 	 * @var AttendeeFieldService
@@ -200,20 +207,21 @@ class WooCommerceIntegration {
 	/**
 	 * Constructor.
 	 *
-	 * @param TicketTypeRepositoryInterface               $ticket_type_repo    Ticket type repository.
-	 * @param CapacityServiceInterface                    $capacity_service    Capacity service.
-	 * @param OccurrenceRepositoryInterface               $occurrence_repo     Occurrence repository.
-	 * @param AttendeeRepositoryInterface                 $attendee_repo       Attendee repository.
-	 * @param TicketRepositoryInterface                   $ticket_repo         Ticket repository.
-	 * @param TicketCodeGeneratorInterface                $code_generator      Ticket code generator.
-	 * @param EmailServiceInterface                       $email_service       Email service.
-	 * @param ProductManager                              $product_manager     Product manager.
-	 * @param PaletteResolver                             $palette_resolver    Palette resolver for checkout assets.
-	 * @param ActivityLogServiceInterface                 $activity_log        Activity log service.
-	 * @param AttendeeFieldService                        $field_service       Attendee field service.
-	 * @param EventRepositoryInterface                    $event_repo           Event repository.
-	 * @param AttendeeFieldRepositoryInterface            $attendee_field_repo  Attendee field repository.
-	 * @param \NetterTechEvents\Services\RateLimitService $rate_limit_service Rate limit service.
+	 * @param TicketTypeRepositoryInterface                            $ticket_type_repo    Ticket type repository.
+	 * @param CapacityServiceInterface                                 $capacity_service    Capacity service.
+	 * @param OccurrenceRepositoryInterface                            $occurrence_repo     Occurrence repository.
+	 * @param AttendeeRepositoryInterface                              $attendee_repo       Attendee repository.
+	 * @param TicketRepositoryInterface                                $ticket_repo         Ticket repository.
+	 * @param TicketCodeGeneratorInterface                             $code_generator      Ticket code generator.
+	 * @param EmailServiceInterface                                    $email_service       Email service.
+	 * @param ProductManager                                           $product_manager     Product manager.
+	 * @param PaletteResolver                                          $palette_resolver    Palette resolver for checkout assets.
+	 * @param ActivityLogServiceInterface                              $activity_log        Activity log service.
+	 * @param AttendeeFieldService                                     $field_service       Attendee field service.
+	 * @param EventRepositoryInterface                                 $event_repo           Event repository.
+	 * @param AttendeeFieldRepositoryInterface                         $attendee_field_repo  Attendee field repository.
+	 * @param \NetterTechEvents\Services\RateLimitService              $rate_limit_service Rate limit service.
+	 * @param \NetterTechEvents\Contracts\DonationLedgerInterface|null $donation_ledger Donation reader.
 	 */
 	public function __construct(
 		TicketTypeRepositoryInterface $ticket_type_repo,
@@ -229,7 +237,8 @@ class WooCommerceIntegration {
 		AttendeeFieldService $field_service,
 		EventRepositoryInterface $event_repo,
 		AttendeeFieldRepositoryInterface $attendee_field_repo,
-		\NetterTechEvents\Services\RateLimitService $rate_limit_service
+		\NetterTechEvents\Services\RateLimitService $rate_limit_service,
+		?\NetterTechEvents\Contracts\DonationLedgerInterface $donation_ledger = null
 	) {
 		$this->ticket_type_repo    = $ticket_type_repo;
 		$this->capacity_service    = $capacity_service;
@@ -245,6 +254,7 @@ class WooCommerceIntegration {
 		$this->event_repo          = $event_repo;
 		$this->attendee_field_repo = $attendee_field_repo;
 		$this->rate_limit_service  = $rate_limit_service;
+		$this->donation_ledger     = $donation_ledger;
 		$this->is_active           = $this->check_woocommerce_active();
 	}
 
@@ -295,7 +305,7 @@ class WooCommerceIntegration {
 			$this->field_service
 		);
 
-		$this->donation_handler        = new DonationHandler( $this->cart_handler, $this->rate_limit_service );
+		$this->donation_handler        = new DonationHandler( $this->cart_handler, $this->rate_limit_service, $this->donation_ledger );
 		$this->accessibility_handler   = new AccessibilityNotesHandler( $this->cart_handler );
 		$this->attendee_fields_handler = new AttendeeFieldsCheckoutHandler(
 			$this->cart_handler,
@@ -410,11 +420,14 @@ class WooCommerceIntegration {
 
 		// Donation hooks.
 		add_action( 'woocommerce_after_order_notes', array( $this->donation_handler, 'render_donation_field' ), 20 );
-		add_action( 'woocommerce_cart_calculate_fees', array( $this->donation_handler, 'calculate_donation_fee' ) );
+		add_action( 'woocommerce_cart_calculate_fees', array( $this->donation_handler, 'calculate_donation_fee' ), DonationHandler::FEE_PRIORITY );
+		add_filter( 'woocommerce_update_order_review_fragments', array( $this->donation_handler, 'add_roundup_label_fragment' ) );
+		add_action( 'woocommerce_checkout_create_order_fee_item', array( $this->donation_handler, 'tag_donation_fee_item' ), 10, 2 );
 		add_action( 'woocommerce_checkout_update_order_meta', array( $this->donation_handler, 'save_donation_meta' ), 20 );
 		add_action( 'wp_ajax_nettertech_events_update_donation', array( $this->donation_handler, 'handle_ajax_update' ) );
 		add_action( 'wp_ajax_nopriv_nettertech_events_update_donation', array( $this->donation_handler, 'handle_ajax_update' ) );
 		add_action( 'woocommerce_admin_order_data_after_billing_address', array( $this->donation_handler, 'display_donation_admin' ), 20 );
+		add_action( 'admin_enqueue_scripts', array( $this->donation_handler, 'enqueue_admin_styles' ) );
 
 		// Enqueue checkout assets.
 		add_action( 'wp_enqueue_scripts', array( $this, 'maybe_enqueue_checkout_assets' ) );
@@ -433,11 +446,10 @@ class WooCommerceIntegration {
 			'woocommerce_blocks_loaded',
 			function (): void {
 				// Extend Store API cart items with ticket metadata + custom fields.
-				$store_api = new StoreApiExtension( $this->product_manager, $this->field_service );
+				$store_api = new StoreApiExtension( $this->product_manager, $this->field_service, $this->donation_handler );
 				$store_api->register();
 
-				$donations_enabled = $this->donation_handler->is_enabled();
-				$integration       = new BlockIntegration( $donations_enabled );
+				$integration = new BlockIntegration();
 
 				// Register for both Cart and Checkout blocks.
 				add_action(
@@ -456,7 +468,9 @@ class WooCommerceIntegration {
 			}
 		);
 
-		// Register update callback for accessibility notes from Block checkout.
+		// Register the update callback for Block checkout fields: accessibility
+		// notes, custom attendee fields and the donation picker. WooCommerce keeps
+		// one callback per namespace, so all three share this one.
 		add_action(
 			'woocommerce_blocks_loaded',
 			function (): void {
@@ -464,6 +478,10 @@ class WooCommerceIntegration {
 					array(
 						'namespace' => StoreApiExtension::NAMESPACE,
 						'callback'  => function ( array $data ): void {
+							if ( isset( $data['donation_option'] ) ) {
+								$this->donation_handler->handle_store_api_update( $data );
+							}
+
 							if ( isset( $data['accessibility_notes'] ) ) {
 								// Same sanitizer as the classic checkout and the RSVP form,
 								// so all three surfaces store the same shape (NTE-217).
@@ -515,8 +533,8 @@ class WooCommerceIntegration {
 			$order->update_meta_data( MetaKeys::CUSTOM_FIELD_DATA, $custom_field_data );
 		}
 
-		// Donations are charged as a cart fee under Block checkout but were
-		// never recorded on the order (2026-09-03 audit Q-001).
+		// Block checkout skips the classic order-meta hook, so the donation
+		// meta is written from here.
 		$this->donation_handler->save_donation_meta_from_store_api( $order );
 	}
 

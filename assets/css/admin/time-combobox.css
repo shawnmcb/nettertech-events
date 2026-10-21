@@ -38,7 +38,9 @@
 	border-color: #b32d2e;
 }
 
-.nte-time-combobox__listbox {
+/* Scoped under the wrapper so theme content rules such as `.entry-content ul`
+   cannot indent the list on public pages. */
+.nte-time-combobox .nte-time-combobox__listbox {
 	position: absolute;
 	z-index: 100;
 	top: 100%;
@@ -56,7 +58,7 @@
 	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
-.nte-time-combobox__option {
+.nte-time-combobox .nte-time-combobox__option {
 	margin: 0;
 	padding: 4px 10px;
 	min-height: 24px;

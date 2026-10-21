@@ -270,10 +270,19 @@ final class ShortcodeOutput {
 				'inputmode'    => true,
 				'autocomplete' => true,
 			),
+			// Markers the time picker reads (assets/js/admin/time-combobox.js);
+			// add-ons embed it in output that passes through this allowlist.
+			array(
+				'data-nte-time-combobox' => true,
+				'data-nte-duration-from' => true,
+				'data-nte-step-minutes'  => true,
+				'data-nte-suggest-from'  => true,
+				'data-nte-suggest-until' => true,
+			),
 			$nte_data_attrs,
 			$aria_attrs
 		);
-		$allowed['label']  = array(
+		$allowed['label'] = array(
 			'for'   => true,
 			'class' => true,
 			'id'    => true,

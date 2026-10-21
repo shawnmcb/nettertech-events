@@ -73,9 +73,12 @@ class SettingsPage {
 	/**
 	 * Core tab definitions for settings page.
 	 *
+	 * Public so {@see ScreenAccess} can refuse an add-on's attempt to open a
+	 * core tab to another capability.
+	 *
 	 * @var array<string, string>
 	 */
-	private const CORE_TABS = array(
+	public const CORE_TABS = array(
 		'general'   => 'General',
 		'display'   => 'Display',
 		'ticketing' => 'Ticketing',
@@ -101,6 +104,22 @@ class SettingsPage {
 	}
 
 	/**
+	 * Tabs the current user may open, in registration order.
+	 *
+	 * @return array<string, string> Tab slug => label.
+	 */
+	private function get_visible_tabs(): array {
+		$visible = array();
+		foreach ( $this->get_tabs() as $slug => $label ) {
+			if ( current_user_can( ScreenAccess::settings_tab_capability( (string) $slug ) ) ) {
+				$visible[ $slug ] = $label;
+			}
+		}
+
+		return $visible;
+	}
+
+	/**
 	 * Render the settings page.
 	 *
 	 * @return void
@@ -111,10 +130,17 @@ class SettingsPage {
 		$settings       = get_option( 'nettertech_events_settings', array() );
 		$email_settings = get_option( 'nettertech_events_email_settings', array() );
 
-		$all_tabs   = $this->get_tabs();
-		$active_tab = AdminRequest::get_key( 'tab', 'general' );
+		$all_tabs = $this->get_visible_tabs();
+		if ( empty( $all_tabs ) ) {
+			wp_die( esc_html__( 'You do not have sufficient permissions to access this page.', 'nettertech-events' ) );
+		}
+
+		// A user who is not a core manager may hold only add-on tabs, so the
+		// fallback is the first tab they can open rather than General.
+		$default_tab = array_key_exists( 'general', $all_tabs ) ? 'general' : (string) array_key_first( $all_tabs );
+		$active_tab  = AdminRequest::get_key( 'tab', $default_tab );
 		if ( ! array_key_exists( $active_tab, $all_tabs ) ) {
-			$active_tab = 'general';
+			$active_tab = $default_tab;
 		}
 
 		?>
@@ -201,7 +227,7 @@ class SettingsPage {
 	 */
 	private function render_tabs( string $active_tab ): void {
 		$base_url = admin_url( 'admin.php?page=nettertech-events-settings' );
-		$all_tabs = $this->get_tabs();
+		$all_tabs = $this->get_visible_tabs();
 		?>
 		<nav class="nav-tab-wrapper" aria-label="<?php esc_attr_e( 'Settings sections', 'nettertech-events' ); ?>">
 			<?php foreach ( $all_tabs as $tab_slug => $tab_label ) : ?>
@@ -393,7 +419,7 @@ class SettingsPage {
 				return $this->get_sections_for_tab( $tab );
 			},
 			function (): array {
-				return $this->get_tabs();
+				return $this->get_visible_tabs();
 			}
 		);
 	}

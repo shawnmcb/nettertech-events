@@ -35,9 +35,9 @@
 	--nte-color-border: var(--wp--preset--color--tertiary, #82858c);
 	--nte-color-background: var(--wp--preset--color--base, var(--wp--preset--color--white, #fff));
 	--nte-color-background-alt: var(--wp--preset--color--secondary-background, #f9fafb);
-	--nte-color-success: #10b981;
-	--nte-color-warning: #f59e0b;
-	--nte-color-error: #ef4444;
+	--nte-color-success: var(--wp--preset--color--success, #10b981);
+	--nte-color-warning: var(--wp--preset--color--warning, #f59e0b);
+	--nte-color-error: var(--wp--preset--color--error, #ef4444);
 	--nte-color-text-disabled: #5a616e;
 
 	/*

@@ -16,6 +16,8 @@ namespace NetterTechEvents\Integrations\WooCommerce\Blocks;
 defined( 'ABSPATH' ) || exit;
 
 use Automattic\WooCommerce\StoreApi\Schemas\V1\CartItemSchema;
+use Automattic\WooCommerce\StoreApi\Schemas\V1\CartSchema;
+use NetterTechEvents\Integrations\WooCommerce\DonationHandler;
 use NetterTechEvents\Integrations\WooCommerce\ProductManager;
 use NetterTechEvents\Services\AttendeeFieldService;
 
@@ -64,14 +66,23 @@ class StoreApiExtension {
 	private ?AttendeeFieldService $field_service;
 
 	/**
+	 * Donation handler supplying the block checkout picker's cart data.
+	 *
+	 * @var DonationHandler|null
+	 */
+	private ?DonationHandler $donation_handler;
+
+	/**
 	 * Constructor.
 	 *
-	 * @param ProductManager            $product_manager Product manager.
-	 * @param AttendeeFieldService|null $field_service   Attendee field service.
+	 * @param ProductManager            $product_manager  Product manager.
+	 * @param AttendeeFieldService|null $field_service    Attendee field service.
+	 * @param DonationHandler|null      $donation_handler Donation handler; without it the cart carries no donation data.
 	 */
-	public function __construct( ProductManager $product_manager, ?AttendeeFieldService $field_service = null ) {
-		$this->product_manager = $product_manager;
-		$this->field_service   = $field_service;
+	public function __construct( ProductManager $product_manager, ?AttendeeFieldService $field_service = null, ?DonationHandler $donation_handler = null ) {
+		$this->product_manager  = $product_manager;
+		$this->field_service    = $field_service;
+		$this->donation_handler = $donation_handler;
 	}
 
 	/**
@@ -91,6 +102,20 @@ class StoreApiExtension {
 				'schema_type'     => ARRAY_A,
 			)
 		);
+
+		if ( null !== $this->donation_handler ) {
+			// Per-cart rather than page-load data: whether the picker shows depends
+			// on the cart holding tickets, and the round-up label on its totals.
+			woocommerce_store_api_register_endpoint_data(
+				array(
+					'endpoint'        => CartSchema::IDENTIFIER,
+					'namespace'       => self::NAMESPACE,
+					'data_callback'   => array( $this->donation_handler, 'get_store_api_data' ),
+					'schema_callback' => array( $this->donation_handler, 'get_store_api_schema' ),
+					'schema_type'     => ARRAY_A,
+				)
+			);
+		}
 	}
 
 	/**

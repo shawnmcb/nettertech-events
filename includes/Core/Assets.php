@@ -222,11 +222,13 @@ class Assets {
 			)
 		);
 
-		// Checkout assets (WooCommerce donations).
+		// Checkout assets (WooCommerce donations). Base defines the --nte-color-*
+		// tokens and carries the theme palette overrides; without it the picker
+		// falls back to the plugin's default colors on every theme.
 		wp_register_style(
 			'nettertech-events-checkout',
 			NETTERTECH_EVENTS_PLUGIN_URL . 'assets/dist/css/checkout.css',
-			array(),
+			array( 'nettertech-events-base' ),
 			NETTERTECH_EVENTS_VERSION
 		);
 

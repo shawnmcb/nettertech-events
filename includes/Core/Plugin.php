@@ -652,7 +652,8 @@ class Plugin {
 			$this->container->get( \NetterTechEvents\Services\AttendeeFieldService::class ),
 			$this->container->get( EventRepositoryInterface::class ),
 			$this->container->get( \NetterTechEvents\Contracts\AttendeeFieldRepositoryInterface::class ),
-			$this->container->get( RateLimitService::class )
+			$this->container->get( RateLimitService::class ),
+			$this->container->get( \NetterTechEvents\Contracts\DonationLedgerInterface::class )
 		);
 		$wc_integration->init();
 		$this->wc_integration = $wc_integration;

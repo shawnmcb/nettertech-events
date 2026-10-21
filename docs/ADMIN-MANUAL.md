@@ -347,6 +347,14 @@ Add optional donation prompts during WooCommerce checkout.
 
 **Example cause:** "Support our arts education programs for local youth."
 
+The donation options appear at checkout, only when the cart holds tickets. They work on both the WooCommerce block checkout (the default) and the classic checkout. Buyers choose a round-up of their order total, a preset amount, an amount of their own up to the maximum, or no thanks. The round-up option names the rounded total and what it adds, and follows any coupon, promo code, tax or shipping in the order.
+
+#### Where donations appear
+
+- **On the order.** A donation is a "Donation" fee line on the WooCommerce order. The order screen also has a Donation box showing the amount and its type (round-up, preset or custom). Refund a donation by refunding that fee line; the box then shows what was refunded and the net amount.
+- **In Reports (NetterTech Events Pro).** Events › Reports › Donations lists donations for a date range: donated, refunded and net totals, orders with a donation, the average gift, the share of ticket orders that donated, totals by type, one row per order, and each order's donation split across its events by ticket value (marked as allocated). Export CSV downloads the order rows. Donations are dated by the order, not by the event.
+- **In grant reports (NetterTech Grant Reporter).** The Donations Received metric reports net donations on orders placed in the reporting period, separately from Program Revenue.
+
 ### QR Codes
 
 Customize the appearance of QR codes on tickets and check-in passes.

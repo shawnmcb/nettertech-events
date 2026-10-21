@@ -80,7 +80,7 @@ class SpacesPage {
 	 * @return void
 	 */
 	public function render(): void {
-		if ( ! current_user_can( AdminMenu::CAPABILITY ) ) {
+		if ( ! ScreenAccess::can_open( self::PAGE_SLUG ) ) {
 			wp_die( esc_html__( 'You do not have sufficient permissions to access this page.', 'nettertech-events' ) );
 		}
 
@@ -93,6 +93,13 @@ class SpacesPage {
 
 		switch ( $action ) {
 			case 'add':
+				// A new space appears in event pickers and public listings
+				// beyond any add-on's reach, so creating one stays with core.
+				if ( ! ScreenAccess::can_manage_core() ) {
+					wp_die( esc_html__( 'Only a site administrator can add spaces. Ask one to add the space; you can then set it up here.', 'nettertech-events' ) );
+				}
+				$this->render_form( $action );
+				break;
 			case 'edit':
 				$this->render_form( $action );
 				break;
@@ -174,9 +181,11 @@ class SpacesPage {
 		<div class="wrap">
 			<?php Branding::render_header(); ?>
 			<h1 class="wp-heading-inline"><?php esc_html_e( 'Spaces', 'nettertech-events' ); ?></h1>
-			<a href="<?php echo esc_url( add_query_arg( 'action', 'add', $page_url ) ); ?>" class="page-title-action">
-				<?php esc_html_e( 'Add New', 'nettertech-events' ); ?>
-			</a>
+			<?php if ( ScreenAccess::can_manage_core() ) : ?>
+				<a href="<?php echo esc_url( add_query_arg( 'action', 'add', $page_url ) ); ?>" class="page-title-action">
+					<?php esc_html_e( 'Add New', 'nettertech-events' ); ?>
+				</a>
+			<?php endif; ?>
 			<hr class="wp-header-end">
 
 			<?php $this->render_notices( $notice_key ); ?>
@@ -257,8 +266,9 @@ document.addEventListener("DOMContentLoaded", function() {
 			}
 		}
 
-		$is_edit = null !== $space;
-		$title   = $is_edit ? __( 'Edit Space', 'nettertech-events' ) : __( 'Add New Space', 'nettertech-events' );
+		$is_edit       = null !== $space;
+		$title         = $is_edit ? __( 'Edit Space', 'nettertech-events' ) : __( 'Add New Space', 'nettertech-events' );
+		$can_edit_core = ScreenAccess::can_manage_core();
 
 		// Enqueue Media Library for image pickers.
 		wp_enqueue_media();
@@ -303,6 +313,20 @@ document.addEventListener("DOMContentLoaded", function() {
 				wp_nonce_field( 'closedpostboxes', 'closedpostboxesnonce', false );
 				wp_nonce_field( 'meta-box-order', 'meta-box-order-nonce', false );
 				?>
+
+				<?php if ( ! $can_edit_core ) : ?>
+					<div class="notice notice-info inline">
+						<p id="nte-space-core-view-only"><?php esc_html_e( 'Only a site administrator can change these details. The settings you can change are further down the page.', 'nettertech-events' ); ?></p>
+					</div>
+				<?php endif; ?>
+
+				<?php
+				// Disabled controls are not submitted, and SpaceSaveHandler writes
+				// none of these fields for a user who is not a core manager.
+				?>
+				<fieldset class="nte-space-form__core"
+					<?php echo $can_edit_core ? '' : 'disabled aria-describedby="nte-space-core-view-only"'; ?>>
+				<legend class="screen-reader-text"><?php esc_html_e( 'Space details', 'nettertech-events' ); ?></legend>
 
 				<h2><?php esc_html_e( 'Basics', 'nettertech-events' ); ?></h2>
 				<table class="form-table" role="presentation">
@@ -512,6 +536,7 @@ document.addEventListener("DOMContentLoaded", function() {
 						</td>
 					</tr>
 				</table>
+				</fieldset>
 
 				<?php
 				/**

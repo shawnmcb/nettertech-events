@@ -161,6 +161,44 @@ class ICalController extends WP_REST_Controller {
 				),
 			)
 		);
+
+		add_filter( 'rest_pre_serve_request', array( $this, 'serve_ical' ), 10, 4 );
+	}
+
+	/**
+	 * Send this controller's iCal bodies as they are.
+	 *
+	 * The REST server JSON-encodes whatever a route returns, so without this
+	 * a calendar app receives a quoted string with escaped line breaks and
+	 * cannot parse it. The server has already sent the response's headers,
+	 * including text/calendar, by the time this filter runs. Error bodies and
+	 * the import result are arrays and stay JSON.
+	 *
+	 * @param bool                       $served  Whether the request has already been served.
+	 * @param WP_REST_Response|mixed     $result  Result to send.
+	 * @param WP_REST_Request            $request The request being answered.
+	 * @param WP_REST_Server|object|null $server  Server instance.
+	 * @phpstan-param WP_REST_Request<array<string, mixed>> $request
+	 * @return bool Whether the request has been served.
+	 */
+	public function serve_ical( $served, $result, $request, $server ): bool { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.FoundAfterLastUsed -- Filter signature.
+		if ( $served || ! $result instanceof WP_REST_Response ) {
+			return (bool) $served;
+		}
+
+		if ( ! str_starts_with( (string) $request->get_route(), '/' . $this->namespace . '/' . $this->rest_base . '/' ) ) {
+			return false;
+		}
+
+		$body = $result->get_data();
+		if ( ! is_string( $body ) ) {
+			return false;
+		}
+
+		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- text/calendar body, escaped for RFC 5545 by ICalService; HTML escaping would corrupt it.
+		echo $body;
+
+		return true;
 	}
 
 	/**

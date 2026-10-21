@@ -15,9 +15,11 @@ use NetterTechEvents\Core\Container;
 use NetterTechEvents\Core\ServiceProviderInterface;
 
 use NetterTechEvents\Contracts\CategoryRepositoryInterface;
+use NetterTechEvents\Contracts\DonationLedgerInterface;
 use NetterTechEvents\Contracts\OccurrenceRepositoryInterface;
 use NetterTechEvents\Contracts\TicketTypeRepositoryInterface;
 use NetterTechEvents\Integrations\WooCommerce\CategoryProductCatMapper;
+use NetterTechEvents\Integrations\WooCommerce\DonationLedger;
 use NetterTechEvents\Integrations\WooCommerce\ProductManager;
 
 /**
@@ -59,6 +61,11 @@ class IntegrationServiceProvider implements ServiceProviderInterface {
 					$c->get( \NetterTechEvents\Contracts\EventRepositoryInterface::class )
 				);
 			}
+		);
+
+		$container->singleton(
+			DonationLedgerInterface::class,
+			static fn(): DonationLedger => new DonationLedger()
 		);
 	}
 }

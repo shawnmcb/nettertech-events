@@ -97,12 +97,12 @@ class AdminMenuRegistrar {
 			array( $this->admin_menu, 'render_organizers_page' )
 		);
 
-		// Spaces submenu.
+		// Spaces submenu. Add-ons may open it to their own capability; see ScreenAccess.
 		add_submenu_page(
 			AdminMenu::MENU_SLUG,
 			__( 'Spaces', 'nettertech-events' ),
 			__( 'Spaces', 'nettertech-events' ),
-			AdminMenu::CAPABILITY,
+			ScreenAccess::menu_capability( SpacesPage::PAGE_SLUG ),
 			SpacesPage::PAGE_SLUG,
 			array( $this->admin_menu, 'render_spaces_page' )
 		);
@@ -207,12 +207,12 @@ class AdminMenuRegistrar {
 			array( $this->admin_menu, 'render_activity_log_page' )
 		);
 
-		// Settings submenu.
+		// Settings submenu. Add-on tabs may open it to their own capability; see ScreenAccess.
 		add_submenu_page(
 			AdminMenu::MENU_SLUG,
 			__( 'Settings', 'nettertech-events' ),
 			__( 'Settings', 'nettertech-events' ),
-			AdminMenu::CAPABILITY,
+			ScreenAccess::menu_capability( AdminMenu::SUBMENU_SETTINGS ),
 			AdminMenu::SUBMENU_SETTINGS,
 			array( $this->admin_menu, 'render_settings_page' )
 		);

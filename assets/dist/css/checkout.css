@@ -20,6 +20,19 @@
 	pointer-events: none;
 }
 
+/* In the block order summary the slot wrapper supplies the spacing. */
+.nte-donation-field--block {
+	margin: 0;
+}
+
+/* Block checkout wraps the options in a fieldset; drop its default frame. */
+.nte-donation-field__fieldset {
+	min-width: 0;
+	margin: 0;
+	padding: 0;
+	border: 0;
+}
+
 /* Title */
 .nte-donation-field__title {
 	display: flex;
@@ -36,8 +49,8 @@
 	font-size: 1.2em;
 }
 
-/* Cause/message text */
-.nte-donation-field__cause {
+/* Cause/message text; scoped deeper so theme paragraph margins don't win. */
+.nte-donation-field .nte-donation-field__cause {
 	margin: 0 0 16px 0;
 	font-size: 0.95em;
 	color: var(--nte-color-text-muted, #5a616e);
@@ -69,8 +82,14 @@
 }
 
 .nte-donation-field__option:has(input:checked) {
-	border-color: var(--nte-color-success, #10b981);
-	background-color: color-mix(in srgb, var(--nte-color-success, #10b981) 15%, var(--nte-color-background, #fff));
+	border-color: var(--nte-color-primary, #2563eb);
+	background-color: color-mix(in srgb, var(--nte-color-primary, #2563eb) 12%, var(--nte-color-background, #fff));
+}
+
+/* The radio itself is hidden, so its focus shows on the option. */
+.nte-donation-field__option:has(input[type="radio"]:focus-visible) {
+	outline: 2px solid var(--nte-color-primary, #2563eb);
+	outline-offset: 2px;
 }
 
 /* Hide default radio */
@@ -95,8 +114,8 @@
 }
 
 .nte-donation-field__option:has(input:checked)::before {
-	border-color: var(--nte-color-success, #10b981);
-	background: var(--nte-color-success, #10b981);
+	border-color: var(--nte-color-primary, #2563eb);
+	background: var(--nte-color-primary, #2563eb);
 	box-shadow: inset 0 0 0 3px var(--nte-color-background, #fff);
 }
 
@@ -121,7 +140,9 @@
 .nte-donation-custom-amount {
 	width: 80px;
 	padding: 6px 10px;
-	border: 1px solid var(--nte-color-border, #82858c);
+
+	/* Muted text, not the border token: an input outline needs 3:1. */
+	border: 1px solid var(--nte-color-text-muted, #5a616e);
 	border-radius: 4px;
 	font-size: 0.95em;
 	text-align: right;
@@ -129,13 +150,23 @@
 
 .nte-donation-custom-amount:focus {
 	outline: none;
-	border-color: var(--nte-color-success, #10b981);
-	box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+	border-color: var(--nte-color-primary, #2563eb);
+	box-shadow: 0 0 0 2px color-mix(in srgb, var(--nte-color-primary, #2563eb) 20%, transparent);
 }
 
 .nte-donation-custom-amount:focus-visible {
 	outline: 2px solid var(--nte-color-primary, #2563eb);
 	outline-offset: 2px;
+}
+
+.nte-donation-custom-amount[aria-invalid="true"] {
+	border-color: var(--nte-color-error-text, #b91c1c);
+}
+
+.nte-donation-field .nte-donation-field__error {
+	margin: 10px 0 0;
+	font-size: 0.95em;
+	color: var(--nte-color-error-text, #b91c1c);
 }
 
 .nte-donation-custom-amount:disabled {
@@ -167,7 +198,7 @@
 /* WooCommerce cart/checkout fee display styling */
 .woocommerce-checkout-review-order-table .fee .amount,
 .woocommerce-cart-form .fee .amount {
-	color: var(--nte-color-success, #10b981);
+	color: var(--nte-color-success-text, #047857);
 }
 
 /* Print styles */

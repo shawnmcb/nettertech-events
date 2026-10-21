@@ -3,7 +3,7 @@ Contributors: shawnmcburnie
 Tags: events, calendar, tickets, recurring events, rsvp
 Requires at least: 6.5
 Tested up to: 7.0
-Stable tag: 1.4.9
+Stable tag: 1.5.1
 Requires PHP: 8.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -143,6 +143,22 @@ NetterTech Events uses its own custom tables and a dedicated URL namespace (`/ev
 10. Mobile single event page with ticket type selector and add-to-cart
 
 == Changelog ==
+
+= 1.5.1 =
+* Added: an add-on can let people who hold its own permission, but are not administrators, reach its panel on Events › Spaces and its tabs on Events › Settings. They see only that add-on's settings tabs, and on Spaces they can open an existing space with its own details shown but locked. They cannot add or delete spaces, and core settings stay with administrators. Administrators see no change.
+
+= 1.5.0 =
+* Added: the WooCommerce block checkout offers a donation, with the same round-up, preset, custom and no-thanks choices as the classic checkout. It appears at checkout only, when the cart holds tickets.
+* Added: developers can read each order's donation, refunds included, through `DonationLedgerInterface`.
+* Changed: the order screen shows refunded and net donation amounts once a donation is refunded.
+* Changed: the donation options follow your theme's colors, and the focused option is outlined for keyboard users.
+* Fixed: round-up now rounds the order total after coupons, promo codes, tax and shipping, so the label matches the charge.
+* Fixed: the classic checkout's donation options are one labelled group for screen readers, and the custom amount field has its own label.
+* Fixed: calendar feeds and "Add to calendar" files now open in calendar apps. They were sent as a quoted, JSON-encoded string; they are now plain iCal.
+* Added: a time field can set its own suggestion spacing and window with `data-nte-step-minutes`, `data-nte-suggest-from` and `data-nte-suggest-until`. Typing any other time is still accepted.
+* Fixed: time fields that add-ons place through shortcode output keep the time picker.
+* Fixed: the time picker's suggestion list no longer picks up the theme's list indentation on public pages.
+* Fixed: the time picker takes its screen-reader name from a field's aria-label when there is no visible label, and stops accepting input when the page disables the field.
 
 = 1.4.9 =
 * Fixed: saving a single event no longer creates a second copy of its date or loses its tickets. Saving a date from its own "Edit date" screen could leave the event without a main date, so the next Update on the main screen added a duplicate date at the same time and silently discarded ticket types entered there. The main screen now always saves the date it was showing, and an event already affected repairs itself on its next Update. If a ticket form ever belongs to a different date than the one saved, the tickets are named in an error instead of being dropped.

@@ -97,3 +97,26 @@
 .nte-a11y-row .button-link-delete {
 	margin-left: auto;
 }
+
+/*
+ * Core's own fields, grouped so they can be shown view-only to a user who
+ * may open the editor for an add-on's panel but not change the space.
+ */
+.nte-space-form__core {
+	min-width: 0;
+	margin: 0;
+	padding: 0;
+	border: 0;
+}
+
+/*
+ * WordPress greys disabled fields to about 2.6:1, and fades disabled selects
+ * to 70% opacity on top. These are being read, not skipped, so keep them at a
+ * readable contrast (about 6:1 on #f0f0f0).
+ */
+.nte-space-form__core input:disabled,
+.nte-space-form__core select:disabled,
+.nte-space-form__core textarea:disabled {
+	color: #50575e;
+	opacity: 1;
+}

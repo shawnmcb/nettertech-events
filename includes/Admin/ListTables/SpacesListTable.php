@@ -12,6 +12,7 @@ namespace NetterTechEvents\Admin\ListTables;
 defined( 'ABSPATH' ) || exit;
 
 use NetterTechEvents\Admin\AdminRequest;
+use NetterTechEvents\Admin\ScreenAccess;
 use NetterTechEvents\Admin\SpacesPage;
 use NetterTechEvents\Contracts\SpaceRepositoryInterface;
 use NetterTechEvents\Core\Hooks;
@@ -65,6 +66,11 @@ class SpacesListTable extends \WP_List_Table {
 			'status'   => __( 'Status', 'nettertech-events' ),
 		);
 
+		// The checkbox only selects rows for bulk delete, which is core's alone.
+		if ( ! ScreenAccess::can_manage_core() ) {
+			unset( $columns['cb'] );
+		}
+
 		/**
 		 * Filters the columns of the Spaces list table.
 		 *
@@ -98,6 +104,10 @@ class SpacesListTable extends \WP_List_Table {
 	 * @return array<string, string>
 	 */
 	public function get_bulk_actions(): array {
+		if ( ! ScreenAccess::can_manage_core() ) {
+			return array();
+		}
+
 		return array(
 			'delete' => __( 'Delete', 'nettertech-events' ),
 		);
@@ -220,6 +230,10 @@ class SpacesListTable extends \WP_List_Table {
 				__( 'Delete', 'nettertech-events' )
 			),
 		);
+
+		if ( ! ScreenAccess::can_manage_core() ) {
+			unset( $actions['delete'] );
+		}
 
 		$title = sprintf(
 			'<strong><a href="%s" class="row-title">%s</a></strong>',

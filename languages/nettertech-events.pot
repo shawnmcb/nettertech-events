@@ -2,14 +2,14 @@
 # This file is distributed under the GPL v2 or later.
 msgid ""
 msgstr ""
-"Project-Id-Version: NetterTech Events 1.4.9\n"
+"Project-Id-Version: NetterTech Events 1.5.1\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/nettertech-events\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-09-28T00:44:30+00:00\n"
+"POT-Creation-Date: 2026-10-21T04:36:42+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: nettertech-events\n"
@@ -137,7 +137,7 @@ msgstr ""
 #: includes/Admin/CategoryPage.php:250
 #: includes/Admin/CategoryPage.php:417
 #: includes/Admin/Metaboxes/TicketFormRenderer.php:267
-#: includes/Admin/SpacesPage.php:341
+#: includes/Admin/SpacesPage.php:365
 #: templates/admin/occurrence-edit.php:150
 msgid "Description"
 msgstr ""
@@ -255,7 +255,7 @@ msgstr ""
 #: includes/Admin/ListTables/EventsListTable.php:939
 #: includes/Admin/ListTables/EventsListTable.php:1171
 #: includes/Admin/Metaboxes/EventMetaboxContentRenderer.php:108
-#: includes/Core/Assets.php:653
+#: includes/Core/Assets.php:655
 #: includes/Enums/EventStatus.php:36
 msgid "Published"
 msgstr ""
@@ -270,7 +270,7 @@ msgstr ""
 #: includes/Admin/ListTables/EventsListTable.php:935
 #: includes/Admin/ListTables/EventsListTable.php:1170
 #: includes/Admin/Metaboxes/EventMetaboxContentRenderer.php:105
-#: includes/Core/Assets.php:652
+#: includes/Core/Assets.php:654
 #: includes/Enums/EventStatus.php:35
 msgid "Draft"
 msgstr ""
@@ -287,8 +287,8 @@ msgstr ""
 #: includes/Admin/ListTables/OccurrenceRowRenderer.php:307
 #: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:347
 #: includes/Admin/Metaboxes/EventMetaboxContentRenderer.php:111
-#: includes/Core/Assets.php:654
-#: includes/Core/Assets.php:728
+#: includes/Core/Assets.php:656
+#: includes/Core/Assets.php:730
 #: includes/Enums/AttendeeStatus.php:38
 #: includes/Enums/EventStatus.php:37
 #: includes/Enums/OccurrenceStatus.php:36
@@ -310,7 +310,7 @@ msgstr ""
 #: includes/Admin/ListTables/EventsListTable.php:1173
 #: includes/Admin/ListTables/OccurrenceRowRenderer.php:311
 #: includes/Admin/Metaboxes/EventMetaboxContentRenderer.php:114
-#: includes/Core/Assets.php:655
+#: includes/Core/Assets.php:657
 #: includes/Enums/EventStatus.php:38
 #: includes/Enums/OccurrenceStatus.php:37
 msgid "Postponed"
@@ -325,7 +325,7 @@ msgid "For more information:"
 msgstr ""
 
 #: includes/Admin/AdminMenu.php:309
-#: includes/Admin/SettingsPage.php:126
+#: includes/Admin/SettingsPage.php:152
 msgid "NetterTech Events Settings"
 msgstr ""
 
@@ -351,7 +351,7 @@ msgstr ""
 
 #: includes/Admin/AdminMenuRegistrar.php:103
 #: includes/Admin/AdminMenuRegistrar.php:104
-#: includes/Admin/SpacesPage.php:176
+#: includes/Admin/SpacesPage.php:183
 msgid "Spaces"
 msgstr ""
 
@@ -406,7 +406,7 @@ msgstr ""
 #: includes/Admin/OrganizerPage.php:125
 #: includes/Admin/OrganizerSaveHandler.php:65
 #: includes/Admin/SpaceSaveHandler.php:69
-#: includes/Admin/SpacesPage.php:143
+#: includes/Admin/SpacesPage.php:150
 msgid "Security check failed."
 msgstr ""
 
@@ -493,7 +493,7 @@ msgstr ""
 #: includes/API/EventsAdminController.php:246
 #: includes/API/EventsAdminController.php:346
 #: includes/API/EventsAdminController.php:417
-#: includes/API/ICalController.php:220
+#: includes/API/ICalController.php:258
 #: includes/API/WaitlistRestController.php:226
 #: includes/Frontend/Shortcodes/RSVPFormShortcode.php:203
 msgid "Event not found."
@@ -584,6 +584,7 @@ msgstr ""
 
 #: includes/Admin/Attendees/Presenters/AttendeesFiltersPresenter.php:111
 #: includes/Enums/AttendeeStatus.php:39
+#: includes/Integrations/WooCommerce/DonationHandler.php:777
 msgid "Refunded"
 msgstr ""
 
@@ -618,8 +619,8 @@ msgstr ""
 #: includes/Admin/AttendeesPage.php:1346
 #: includes/Admin/ListTables/EventsListTable.php:240
 #: includes/Admin/ListTables/EventsListTable.php:592
-#: includes/Admin/ListTables/SpacesListTable.php:65
-#: includes/Admin/SpacesPage.php:349
+#: includes/Admin/ListTables/SpacesListTable.php:66
+#: includes/Admin/SpacesPage.php:373
 #: includes/Services/PrivacyService.php:343
 #: templates/admin/occurrence-edit.php:119
 msgid "Status"
@@ -639,7 +640,7 @@ msgid "All Attendees"
 msgstr ""
 
 #: includes/Admin/Attendees/Presenters/AttendeesFiltersPresenter.php:258
-#: includes/Admin/SpacesPage.php:483
+#: includes/Admin/SpacesPage.php:507
 #: templates/single-space.php:141
 msgid "Accessibility"
 msgstr ""
@@ -829,8 +830,8 @@ msgstr ""
 #: includes/Admin/ListTables/EventsListTable.php:716
 #: includes/Admin/ListTables/OrganizerListTable.php:94
 #: includes/Admin/ListTables/OrganizerListTable.php:184
-#: includes/Admin/ListTables/SpacesListTable.php:102
-#: includes/Admin/ListTables/SpacesListTable.php:220
+#: includes/Admin/ListTables/SpacesListTable.php:112
+#: includes/Admin/ListTables/SpacesListTable.php:230
 #: includes/Admin/Metaboxes/EventMetaboxContentRenderer.php:201
 msgid "Delete"
 msgstr ""
@@ -914,9 +915,9 @@ msgstr ""
 #: includes/Admin/CategoryPage.php:248
 #: includes/Admin/CategoryPage.php:398
 #: includes/Admin/ListTables/OrganizerListTable.php:69
-#: includes/Admin/ListTables/SpacesListTable.php:63
+#: includes/Admin/ListTables/SpacesListTable.php:64
 #: includes/Admin/OrganizerPage.php:241
-#: includes/Admin/SpacesPage.php:311
+#: includes/Admin/SpacesPage.php:335
 #: includes/Frontend/Shortcodes/RSVPFormShortcode.php:284
 #: includes/Services/ExportService.php:110
 #: includes/Services/PrivacyService.php:91
@@ -968,26 +969,26 @@ msgid "Order notes"
 msgstr ""
 
 #: includes/Admin/AttendeesPage.php:1210
-#: includes/Core/Assets.php:593
+#: includes/Core/Assets.php:595
 msgid "Undo"
 msgstr ""
 
 #: includes/Admin/AttendeesPage.php:1211
-#: includes/Core/Assets.php:592
+#: includes/Core/Assets.php:594
 #: templates/ticket/scan-result.php:201
 msgid "Check In"
 msgstr ""
 
 #. translators: %s: attendee name.
 #: includes/Admin/AttendeesPage.php:1215
-#: includes/Core/Assets.php:597
+#: includes/Core/Assets.php:599
 #, php-format
 msgid "Undo check-in for %s"
 msgstr ""
 
 #. translators: %s: attendee name.
 #: includes/Admin/AttendeesPage.php:1218
-#: includes/Core/Assets.php:595
+#: includes/Core/Assets.php:597
 #, php-format
 msgid "Check in %s"
 msgstr ""
@@ -996,14 +997,14 @@ msgstr ""
 #: includes/Admin/CategoryPage.php:287
 #: includes/Admin/ListTables/EventsListTable.php:700
 #: includes/Admin/ListTables/OrganizerListTable.php:178
-#: includes/Admin/ListTables/SpacesListTable.php:214
+#: includes/Admin/ListTables/SpacesListTable.php:224
 #: includes/Admin/Metaboxes/DateTimeMetaboxHandler.php:353
 #: includes/Core/Plugin.php:514
 msgid "Edit"
 msgstr ""
 
 #: includes/Admin/AttendeesPage.php:1302
-#: includes/Core/Assets.php:619
+#: includes/Core/Assets.php:621
 msgid "Re-send Email"
 msgstr ""
 
@@ -1082,20 +1083,21 @@ msgstr ""
 
 #: includes/Admin/CategoryPage.php:73
 #: includes/Admin/OrganizerPage.php:68
+#: includes/Admin/SettingsPage.php:135
 #: includes/Admin/SpacesPage.php:84
 msgid "You do not have sufficient permissions to access this page."
 msgstr ""
 
 #: includes/Admin/CategoryPage.php:109
 #: includes/Admin/OrganizerPage.php:111
-#: includes/Admin/SpacesPage.php:129
+#: includes/Admin/SpacesPage.php:136
 msgid "You do not have sufficient permissions."
 msgstr ""
 
 #: includes/Admin/CategoryPage.php:236
 #: includes/Admin/EventsPage.php:260
 #: includes/Admin/OrganizerPage.php:159
-#: includes/Admin/SpacesPage.php:178
+#: includes/Admin/SpacesPage.php:186
 msgid "Add New"
 msgstr ""
 
@@ -1106,7 +1108,7 @@ msgstr ""
 #: includes/Admin/CategoryPage.php:249
 #: includes/Admin/CategoryPage.php:407
 #: includes/Admin/OrganizerPage.php:250
-#: includes/Admin/SpacesPage.php:320
+#: includes/Admin/SpacesPage.php:344
 msgid "Slug"
 msgstr ""
 
@@ -1116,7 +1118,7 @@ msgstr ""
 
 #: includes/Admin/CategoryPage.php:252
 #: includes/Admin/CategoryPage.php:447
-#: includes/Admin/SpacesPage.php:364
+#: includes/Admin/SpacesPage.php:388
 msgid "Sort Order"
 msgstr ""
 
@@ -1138,7 +1140,7 @@ msgstr ""
 
 #: includes/Admin/CategoryPage.php:412
 #: includes/Admin/OrganizerPage.php:255
-#: includes/Admin/SpacesPage.php:325
+#: includes/Admin/SpacesPage.php:349
 msgid "Leave empty to auto-generate from name."
 msgstr ""
 
@@ -1325,7 +1327,7 @@ msgstr ""
 #: includes/Admin/EventEditor.php:201
 #: includes/Admin/EventsPage.php:254
 #: includes/Admin/QRGeneratorPage.php:312
-#: includes/Admin/SettingsPage.php:122
+#: includes/Admin/SettingsPage.php:148
 #: templates/admin/occurrence-edit.php:45
 msgid "Skip to main content"
 msgstr ""
@@ -1594,7 +1596,7 @@ msgid "Clear all filters"
 msgstr ""
 
 #: includes/Admin/ListTables/EventsListTable.php:1137
-#: includes/Core/Assets.php:723
+#: includes/Core/Assets.php:725
 #: includes/Frontend/Shortcodes/EventListShortcode.php:689
 #: templates/parts/empty-state.php:43
 msgid "No events found."
@@ -1631,7 +1633,7 @@ msgid "Scheduled"
 msgstr ""
 
 #: includes/Admin/ListTables/OccurrenceRowRenderer.php:315
-#: includes/Core/Assets.php:729
+#: includes/Core/Assets.php:731
 #: includes/Enums/OccurrenceStatus.php:38
 #: templates/parts/event-card.php:173
 msgid "Completed"
@@ -1660,33 +1662,33 @@ msgstr ""
 msgid "Add New Organizer"
 msgstr ""
 
-#: includes/Admin/ListTables/SpacesListTable.php:64
+#: includes/Admin/ListTables/SpacesListTable.php:65
 #: includes/Admin/Metaboxes/TicketFormRenderer.php:119
-#: includes/Admin/SpacesPage.php:425
-#: includes/Admin/SpacesPage.php:429
+#: includes/Admin/SpacesPage.php:449
+#: includes/Admin/SpacesPage.php:453
 #: templates/admin/occurrence-edit.php:133
 #: templates/single-space.php:101
 msgid "Capacity"
 msgstr ""
 
 #. translators: %d: space ID
-#: includes/Admin/ListTables/SpacesListTable.php:169
+#: includes/Admin/ListTables/SpacesListTable.php:179
 #, php-format
 msgid "Select space %d"
 msgstr ""
 
 #. translators: %s: space name
-#: includes/Admin/ListTables/SpacesListTable.php:172
+#: includes/Admin/ListTables/SpacesListTable.php:182
 #, php-format
 msgid "Select %s"
 msgstr ""
 
-#: includes/Admin/ListTables/SpacesListTable.php:297
+#: includes/Admin/ListTables/SpacesListTable.php:311
 msgid "No spaces found."
 msgstr ""
 
-#: includes/Admin/ListTables/SpacesListTable.php:301
-#: includes/Admin/SpacesPage.php:261
+#: includes/Admin/ListTables/SpacesListTable.php:315
+#: includes/Admin/SpacesPage.php:270
 msgid "Add New Space"
 msgstr ""
 
@@ -1737,7 +1739,7 @@ msgstr ""
 #: includes/Admin/Metaboxes/Presenters/TicketRowHeaderPresenter.php:96
 #: includes/Admin/Settings/ImageDisplaySettingsSection.php:326
 #: includes/Admin/Settings/QRSettingsSection.php:523
-#: includes/Admin/SpacesPage.php:393
+#: includes/Admin/SpacesPage.php:417
 msgid "Remove"
 msgstr ""
 
@@ -1857,7 +1859,7 @@ msgstr ""
 #: includes/Admin/QRGenerator/Presenters/QRColorPalettePresenter.php:85
 #: includes/Admin/Settings/QRSettingsSection.php:210
 #: includes/Admin/Settings/QRSettingsSection.php:216
-#: includes/Integrations/WooCommerce/DonationHandler.php:459
+#: includes/Integrations/WooCommerce/DonationHandler.php:758
 msgid "Custom"
 msgstr ""
 
@@ -2133,7 +2135,7 @@ msgid "New tag names are created and assigned automatically on save."
 msgstr ""
 
 #: includes/Admin/Metaboxes/EventMetaboxContentRenderer.php:410
-#: includes/Admin/SpacesPage.php:378
+#: includes/Admin/SpacesPage.php:402
 msgid "Featured Image"
 msgstr ""
 
@@ -2887,13 +2889,13 @@ msgid "That date cannot be removed, because %1$s has already sold tickets (%2$d 
 msgstr ""
 
 #. translators: %s: comma-separated list of dates.
-#: includes/Admin/OccurrenceSaveHandler.php:524
+#: includes/Admin/OccurrenceSaveHandler.php:520
 #, php-format
 msgid "These hand-picked dates kept their own time and capacity: %s."
 msgstr ""
 
 #. translators: 1: original event title, 2: cutoff date
-#: includes/Admin/OccurrenceSaveHandler.php:642
+#: includes/Admin/OccurrenceSaveHandler.php:638
 #, php-format
 msgid "%1$s (through %2$s)"
 msgstr ""
@@ -3322,6 +3324,7 @@ msgstr ""
 #: includes/Admin/Settings/ArchiveSettingsSection.php:175
 #: includes/Integrations/BeaverBuilder/BeaverBuilderIntegration.php:84
 #: includes/Integrations/BeaverBuilder/BeaverBuilderIntegration.php:219
+#: blocks/event-grid/build/index.js:1
 #: blocks/event-grid/index.js:90
 #: blocks/event-grid/src/index.jsx:60
 msgid "Columns"
@@ -3334,6 +3337,7 @@ msgstr ""
 #: includes/Admin/Settings/ArchiveSettingsSection.php:207
 #: includes/Admin/Settings/Presenters/GeneralSettingsPresenter.php:97
 #: includes/Integrations/BeaverBuilder/BeaverBuilderIntegration.php:232
+#: blocks/event-grid/build/index.js:1
 #: blocks/event-grid/index.js:80
 #: blocks/event-grid/src/index.jsx:52
 msgid "Events Per Page"
@@ -3553,7 +3557,7 @@ msgid "Default Ticket Product Image"
 msgstr ""
 
 #: includes/Admin/Settings/ImageDisplaySettingsSection.php:323
-#: includes/Admin/SpacesPage.php:390
+#: includes/Admin/SpacesPage.php:414
 msgid "Choose image"
 msgstr ""
 
@@ -3774,6 +3778,7 @@ msgstr ""
 #: includes/Admin/Settings/Presenters/GeneralSettingsPresenter.php:42
 #: includes/Frontend/Shortcodes/CalendarShortcode.php:206
 #: includes/Integrations/BeaverBuilder/BeaverBuilderIntegration.php:414
+#: blocks/calendar/build/index.js:1
 #: blocks/calendar/index.js:41
 #: blocks/calendar/src/index.jsx:23
 msgid "Month"
@@ -3782,6 +3787,7 @@ msgstr ""
 #: includes/Admin/Settings/Presenters/GeneralSettingsPresenter.php:43
 #: includes/Frontend/Shortcodes/CalendarShortcode.php:215
 #: includes/Integrations/BeaverBuilder/BeaverBuilderIntegration.php:415
+#: blocks/calendar/build/index.js:1
 #: blocks/calendar/index.js:45
 #: blocks/calendar/src/index.jsx:24
 msgid "Week"
@@ -3791,6 +3797,7 @@ msgstr ""
 #: includes/Frontend/Shortcodes/CalendarShortcode.php:224
 #: includes/Integrations/BeaverBuilder/BeaverBuilderIntegration.php:416
 #: templates/parts/regulars-table.php:50
+#: blocks/calendar/build/index.js:1
 #: blocks/calendar/index.js:49
 #: blocks/calendar/src/index.jsx:25
 msgid "Day"
@@ -3798,6 +3805,7 @@ msgstr ""
 
 #: includes/Admin/Settings/Presenters/GeneralSettingsPresenter.php:45
 #: includes/Integrations/BeaverBuilder/BeaverBuilderIntegration.php:213
+#: blocks/event-grid/build/index.js:1
 #: blocks/event-grid/index.js:67
 #: blocks/event-grid/src/index.jsx:46
 msgid "List"
@@ -3896,8 +3904,8 @@ msgstr ""
 msgid "Sample QR with current settings"
 msgstr ""
 
-#: includes/Admin/Settings/SettingsSaveHandler.php:330
-#: includes/Admin/SettingsPage.php:231
+#: includes/Admin/Settings/SettingsSaveHandler.php:345
+#: includes/Admin/SettingsPage.php:257
 msgid "Settings saved."
 msgstr ""
 
@@ -3937,7 +3945,7 @@ msgstr ""
 msgid "This is the site default. Each event can turn the waitlist on or off for itself under its ticket settings."
 msgstr ""
 
-#: includes/Admin/SettingsPage.php:206
+#: includes/Admin/SettingsPage.php:232
 msgid "Settings sections"
 msgstr ""
 
@@ -4027,118 +4035,134 @@ msgstr ""
 msgid "That screen does not exist. Showing all spaces instead."
 msgstr ""
 
-#: includes/Admin/SpacesPage.php:202
+#: includes/Admin/SpaceSaveHandler.php:94
+msgid "Only a site administrator can add spaces."
+msgstr ""
+
+#: includes/Admin/SpacesPage.php:99
+msgid "Only a site administrator can add spaces. Ask one to add the space; you can then set it up here."
+msgstr ""
+
+#: includes/Admin/SpacesPage.php:211
 msgid "Are you sure you want to delete this space?"
 msgstr ""
 
-#: includes/Admin/SpacesPage.php:256
+#: includes/Admin/SpacesPage.php:265
 msgid "Space not found."
 msgstr ""
 
-#: includes/Admin/SpacesPage.php:261
+#: includes/Admin/SpacesPage.php:270
 msgid "Edit Space"
 msgstr ""
 
-#: includes/Admin/SpacesPage.php:307
+#: includes/Admin/SpacesPage.php:319
+msgid "Only a site administrator can change these details. The settings you can change are further down the page."
+msgstr ""
+
+#: includes/Admin/SpacesPage.php:329
+msgid "Space details"
+msgstr ""
+
+#: includes/Admin/SpacesPage.php:331
 msgid "Basics"
 msgstr ""
 
-#: includes/Admin/SpacesPage.php:330
+#: includes/Admin/SpacesPage.php:354
 msgid "Tagline"
 msgstr ""
 
-#: includes/Admin/SpacesPage.php:336
+#: includes/Admin/SpacesPage.php:360
 msgid "Optional short subtitle, e.g. \"Main Hall — 400 Seats — Premium\"."
 msgstr ""
 
-#: includes/Admin/SpacesPage.php:369
+#: includes/Admin/SpacesPage.php:393
 msgid "Lower numbers appear first in lists."
 msgstr ""
 
-#: includes/Admin/SpacesPage.php:374
+#: includes/Admin/SpacesPage.php:398
 msgid "Imagery"
 msgstr ""
 
-#: includes/Admin/SpacesPage.php:396
+#: includes/Admin/SpacesPage.php:420
 msgid "Hero image for the public space detail page."
 msgstr ""
 
-#: includes/Admin/SpacesPage.php:401
+#: includes/Admin/SpacesPage.php:425
 msgid "Gallery"
 msgstr ""
 
-#: includes/Admin/SpacesPage.php:415
+#: includes/Admin/SpacesPage.php:439
 msgid "Choose images"
 msgstr ""
 
-#: includes/Admin/SpacesPage.php:418
+#: includes/Admin/SpacesPage.php:442
 msgid "Clear all"
 msgstr ""
 
-#: includes/Admin/SpacesPage.php:434
+#: includes/Admin/SpacesPage.php:458
 msgid "Maximum occupancy."
 msgstr ""
 
-#: includes/Admin/SpacesPage.php:439
+#: includes/Admin/SpacesPage.php:463
 #: templates/single-space.php:115
 msgid "Square Footage"
 msgstr ""
 
-#: includes/Admin/SpacesPage.php:448
+#: includes/Admin/SpacesPage.php:472
 msgid "Seating Model"
 msgstr ""
 
-#: includes/Admin/SpacesPage.php:463
+#: includes/Admin/SpacesPage.php:487
 msgid "Door Sales"
 msgstr ""
 
-#: includes/Admin/SpacesPage.php:466
-#: includes/Admin/SpacesPage.php:469
+#: includes/Admin/SpacesPage.php:490
+#: includes/Admin/SpacesPage.php:493
 msgid "After online sales close"
 msgstr ""
 
-#: includes/Admin/SpacesPage.php:473
+#: includes/Admin/SpacesPage.php:497
 msgid "Tell visitors that tickets are still available at the door"
 msgstr ""
 
-#: includes/Admin/SpacesPage.php:476
+#: includes/Admin/SpacesPage.php:500
 msgid "Off by default. When on, an event in this space whose online ticket sales have closed says \"Tickets are still available at the door until sold out.\" A sold-out event never offers door tickets, whatever this setting."
 msgstr ""
 
-#: includes/Admin/SpacesPage.php:485
+#: includes/Admin/SpacesPage.php:509
 msgid "Choose the features the space provides. Add a count when relevant (e.g., \"8 wheelchair positions\"). Use \"Add custom feature\" only when nothing in the preset list fits."
 msgstr ""
 
-#: includes/Admin/SpacesPage.php:495
+#: includes/Admin/SpacesPage.php:519
 msgid "Add feature"
 msgstr ""
 
-#: includes/Admin/SpacesPage.php:498
+#: includes/Admin/SpacesPage.php:522
 msgid "Add custom feature"
 msgstr ""
 
-#: includes/Admin/SpacesPage.php:503
+#: includes/Admin/SpacesPage.php:527
 msgid "Other amenities"
 msgstr ""
 
-#: includes/Admin/SpacesPage.php:507
+#: includes/Admin/SpacesPage.php:531
 #: templates/single-space.php:130
 msgid "Amenities"
 msgstr ""
 
-#: includes/Admin/SpacesPage.php:511
+#: includes/Admin/SpacesPage.php:535
 msgid "Free-form list of non-accessibility amenities (lighting, sound, projection, etc.). Comma-separated or JSON."
 msgstr ""
 
-#: includes/Admin/SpacesPage.php:533
+#: includes/Admin/SpacesPage.php:558
 msgid "Update Space"
 msgstr ""
 
-#: includes/Admin/SpacesPage.php:533
+#: includes/Admin/SpacesPage.php:558
 msgid "Add Space"
 msgstr ""
 
-#: includes/Admin/SpacesPage.php:537
+#: includes/Admin/SpacesPage.php:562
 msgid "Back to Spaces"
 msgstr ""
 
@@ -4355,7 +4379,7 @@ msgstr ""
 
 #: includes/API/EventsAdminController.php:575
 #: includes/API/EventsAdminController.php:750
-#: includes/Integrations/WooCommerce/Blocks/StoreApiExtension.php:217
+#: includes/Integrations/WooCommerce/Blocks/StoreApiExtension.php:242
 msgid "Event title."
 msgstr ""
 
@@ -4383,7 +4407,7 @@ msgstr ""
 
 #: includes/API/EventsAdminController.php:607
 #: includes/API/EventsAdminController.php:782
-#: includes/Integrations/WooCommerce/Blocks/StoreApiExtension.php:202
+#: includes/Integrations/WooCommerce/Blocks/StoreApiExtension.php:227
 msgid "Venue name."
 msgstr ""
 
@@ -4468,7 +4492,7 @@ msgid "Start date must be before or equal to end date."
 msgstr ""
 
 #: includes/API/EventsController.php:251
-#: includes/API/ICalController.php:274
+#: includes/API/ICalController.php:312
 msgid "Occurrence not found."
 msgstr ""
 
@@ -4519,36 +4543,36 @@ msgstr ""
 msgid "Invalid date format for %s."
 msgstr ""
 
-#: includes/API/ICalController.php:230
-#: includes/API/ICalController.php:286
+#: includes/API/ICalController.php:268
+#: includes/API/ICalController.php:324
 msgid "Event is not published."
 msgstr ""
 
-#: includes/API/ICalController.php:242
+#: includes/API/ICalController.php:280
 msgid "No occurrences found for this event."
 msgstr ""
 
-#: includes/API/ICalController.php:298
+#: includes/API/ICalController.php:336
 msgid "Failed to export occurrence."
 msgstr ""
 
-#: includes/API/ICalController.php:322
+#: includes/API/ICalController.php:360
 msgid "iCal content is required."
 msgstr ""
 
-#: includes/API/ICalController.php:424
+#: includes/API/ICalController.php:462
 msgid "Whether the import completed without fatal errors."
 msgstr ""
 
-#: includes/API/ICalController.php:430
+#: includes/API/ICalController.php:468
 msgid "Number of events successfully imported."
 msgstr ""
 
-#: includes/API/ICalController.php:436
+#: includes/API/ICalController.php:474
 msgid "Number of events skipped (e.g. duplicates when skip_duplicates is true)."
 msgstr ""
 
-#: includes/API/ICalController.php:442
+#: includes/API/ICalController.php:480
 msgid "Array of error messages encountered during import."
 msgstr ""
 
@@ -4596,7 +4620,7 @@ msgid "Parent template ID."
 msgstr ""
 
 #: includes/API/TicketTypesAdminController.php:650
-#: includes/Integrations/WooCommerce/Blocks/StoreApiExtension.php:207
+#: includes/Integrations/WooCommerce/Blocks/StoreApiExtension.php:232
 msgid "Ticket type name."
 msgstr ""
 
@@ -4825,114 +4849,114 @@ msgstr ""
 msgid "NetterTech Events requires WordPress %1$s or higher. You are running WordPress %2$s."
 msgstr ""
 
-#: includes/Core/Assets.php:556
+#: includes/Core/Assets.php:558
 msgid "SKU copied to clipboard."
 msgstr ""
 
-#: includes/Core/Assets.php:557
+#: includes/Core/Assets.php:559
 msgid "All SKUs copied to clipboard."
 msgstr ""
 
-#: includes/Core/Assets.php:558
+#: includes/Core/Assets.php:560
 msgid "This event has no ticket SKUs yet."
 msgstr ""
 
-#: includes/Core/Assets.php:559
+#: includes/Core/Assets.php:561
 msgid "Could not load SKUs. Please try again."
 msgstr ""
 
-#: includes/Core/Assets.php:560
+#: includes/Core/Assets.php:562
 msgid "Copy failed. Select the text and copy manually."
 msgstr ""
 
-#: includes/Core/Assets.php:561
+#: includes/Core/Assets.php:563
 msgid "(none)"
 msgstr ""
 
-#: includes/Core/Assets.php:577
+#: includes/Core/Assets.php:579
 msgid "Attendee saved."
 msgstr ""
 
-#: includes/Core/Assets.php:578
+#: includes/Core/Assets.php:580
 msgid "Attendee added."
 msgstr ""
 
-#: includes/Core/Assets.php:579
+#: includes/Core/Assets.php:581
 msgid "Could not save. Please try again."
 msgstr ""
 
-#: includes/Core/Assets.php:598
+#: includes/Core/Assets.php:600
 msgid "Attendee checked in."
 msgstr ""
 
-#: includes/Core/Assets.php:599
+#: includes/Core/Assets.php:601
 msgid "Check-in undone."
 msgstr ""
 
-#: includes/Core/Assets.php:600
+#: includes/Core/Assets.php:602
 msgid "Could not update check-in status. Please try again."
 msgstr ""
 
-#: includes/Core/Assets.php:620
+#: includes/Core/Assets.php:622
 msgid "Click again to confirm"
 msgstr ""
 
-#: includes/Core/Assets.php:621
+#: includes/Core/Assets.php:623
 msgid "Sending…"
 msgstr ""
 
-#: includes/Core/Assets.php:622
+#: includes/Core/Assets.php:624
 msgid "Email sent."
 msgstr ""
 
-#: includes/Core/Assets.php:623
+#: includes/Core/Assets.php:625
 msgid "Could not re-send the email. Please try again."
 msgstr ""
 
 #. translators: %d: number of dates shown.
-#: includes/Core/Assets.php:644
+#: includes/Core/Assets.php:646
 #, php-format
 msgid "%d dates shown."
 msgstr ""
 
-#: includes/Core/Assets.php:645
+#: includes/Core/Assets.php:647
 msgid "Dates hidden."
 msgstr ""
 
 #. translators: %d: total number of matching events
-#: includes/Core/Assets.php:666
+#: includes/Core/Assets.php:668
 #, php-format
 msgid "All %d matching events on all pages?"
 msgstr ""
 
-#: includes/Core/Assets.php:667
+#: includes/Core/Assets.php:669
 msgid "Select All"
 msgstr ""
 
 #. translators: %d: total number of selected events
-#: includes/Core/Assets.php:669
+#: includes/Core/Assets.php:671
 #, php-format
 msgid "All %d matching events selected."
 msgstr ""
 
-#: includes/Core/Assets.php:722
+#: includes/Core/Assets.php:724
 msgid "Loading..."
 msgstr ""
 
-#: includes/Core/Assets.php:724
+#: includes/Core/Assets.php:726
 #: templates/parts/ticket-form.php:84
 msgid "Sold Out"
 msgstr ""
 
-#: includes/Core/Assets.php:725
+#: includes/Core/Assets.php:727
 msgid "Available"
 msgstr ""
 
-#: includes/Core/Assets.php:726
+#: includes/Core/Assets.php:728
 msgid "Limited Availability"
 msgstr ""
 
-#: includes/Core/Assets.php:727
+#: includes/Core/Assets.php:729
 #: includes/Frontend/OccurrenceAvailabilityPresenter.php:141
 #: includes/Models/TicketType.php:469
 msgid "Free"
@@ -4993,6 +5017,7 @@ msgstr ""
 #: includes/Core/BlockPatterns.php:178
 #: includes/Frontend/Shortcodes/CalendarShortcode.php:135
 #: includes/Integrations/BeaverBuilder/Modules/EventCalendar/event-calendar.php:29
+#: blocks/calendar/build/index.js:1
 #: blocks/calendar/index.js:100
 #: blocks/calendar/src/index.jsx:48
 msgid "Event Calendar"
@@ -5392,7 +5417,8 @@ msgstr ""
 
 #: includes/Frontend/Shortcodes/RSVPFormShortcode.php:367
 #: includes/Frontend/TicketCartAjax.php:92
-#: includes/Integrations/WooCommerce/DonationHandler.php:390
+#: includes/Integrations/WooCommerce/DonationHandler.php:529
+#: includes/Integrations/WooCommerce/DonationHandler.php:610
 #: includes/Services/RateLimitService.php:267
 msgid "Too many requests. Please try again later."
 msgstr ""
@@ -5556,6 +5582,7 @@ msgid "General"
 msgstr ""
 
 #: includes/Integrations/BeaverBuilder/BeaverBuilderIntegration.php:78
+#: blocks/carousel/build/index.js:1
 #: blocks/carousel/index.js:49
 #: blocks/carousel/src/index.jsx:37
 msgid "Number of Events"
@@ -5592,6 +5619,7 @@ msgid "6 Columns"
 msgstr ""
 
 #: includes/Integrations/BeaverBuilder/BeaverBuilderIntegration.php:97
+#: blocks/carousel/build/index.js:1
 #: blocks/carousel/index.js:133
 #: blocks/carousel/src/index.jsx:92
 msgid "Autoplay"
@@ -5602,30 +5630,35 @@ msgid "Autoplay Interval (ms)"
 msgstr ""
 
 #: includes/Integrations/BeaverBuilder/BeaverBuilderIntegration.php:112
+#: blocks/carousel/build/index.js:1
 #: blocks/carousel/index.js:156
 #: blocks/carousel/src/index.jsx:112
 msgid "Playback Mode"
 msgstr ""
 
 #: includes/Integrations/BeaverBuilder/BeaverBuilderIntegration.php:115
+#: blocks/carousel/build/index.js:1
 #: blocks/carousel/index.js:160
 #: blocks/carousel/src/index.jsx:115
 msgid "Play and rewind"
 msgstr ""
 
 #: includes/Integrations/BeaverBuilder/BeaverBuilderIntegration.php:116
+#: blocks/carousel/build/index.js:1
 #: blocks/carousel/index.js:167
 #: blocks/carousel/src/index.jsx:116
 msgid "Continuous loop"
 msgstr ""
 
 #: includes/Integrations/BeaverBuilder/BeaverBuilderIntegration.php:118
+#: blocks/carousel/build/index.js:1
 #: blocks/carousel/index.js:177
 #: blocks/carousel/src/index.jsx:119
 msgid "Rewind snaps back to start; loop advances seamlessly. Reduced-motion users always see rewind."
 msgstr ""
 
 #: includes/Integrations/BeaverBuilder/BeaverBuilderIntegration.php:122
+#: blocks/carousel/build/index.js:1
 #: blocks/carousel/index.js:117
 #: blocks/carousel/src/index.jsx:83
 msgid "Max Tags Per Card"
@@ -5637,8 +5670,10 @@ msgstr ""
 
 #: includes/Integrations/BeaverBuilder/BeaverBuilderIntegration.php:129
 #: includes/Integrations/BeaverBuilder/BeaverBuilderIntegration.php:302
+#: blocks/carousel/build/index.js:1
 #: blocks/carousel/index.js:78
 #: blocks/carousel/src/index.jsx:57
+#: blocks/event-grid/build/index.js:1
 #: blocks/event-grid/index.js:161
 #: blocks/event-grid/src/index.jsx:109
 msgid "Show Image"
@@ -5646,8 +5681,10 @@ msgstr ""
 
 #: includes/Integrations/BeaverBuilder/BeaverBuilderIntegration.php:138
 #: includes/Integrations/BeaverBuilder/BeaverBuilderIntegration.php:311
+#: blocks/carousel/build/index.js:1
 #: blocks/carousel/index.js:85
 #: blocks/carousel/src/index.jsx:62
+#: blocks/event-grid/build/index.js:1
 #: blocks/event-grid/index.js:168
 #: blocks/event-grid/src/index.jsx:114
 msgid "Show Date"
@@ -5655,8 +5692,10 @@ msgstr ""
 
 #: includes/Integrations/BeaverBuilder/BeaverBuilderIntegration.php:147
 #: includes/Integrations/BeaverBuilder/BeaverBuilderIntegration.php:320
+#: blocks/carousel/build/index.js:1
 #: blocks/carousel/index.js:92
 #: blocks/carousel/src/index.jsx:67
+#: blocks/event-grid/build/index.js:1
 #: blocks/event-grid/index.js:175
 #: blocks/event-grid/src/index.jsx:119
 msgid "Show Time"
@@ -5664,8 +5703,10 @@ msgstr ""
 
 #: includes/Integrations/BeaverBuilder/BeaverBuilderIntegration.php:156
 #: includes/Integrations/BeaverBuilder/BeaverBuilderIntegration.php:329
+#: blocks/carousel/build/index.js:1
 #: blocks/carousel/index.js:99
 #: blocks/carousel/src/index.jsx:72
+#: blocks/event-grid/build/index.js:1
 #: blocks/event-grid/index.js:182
 #: blocks/event-grid/src/index.jsx:124
 msgid "Show Venue"
@@ -5697,24 +5738,28 @@ msgstr ""
 
 #: includes/Integrations/BeaverBuilder/BeaverBuilderIntegration.php:202
 #: includes/Integrations/BeaverBuilder/BeaverBuilderIntegration.php:209
+#: blocks/event-grid/build/index.js:1
 #: blocks/event-grid/index.js:59
 #: blocks/event-grid/src/index.jsx:42
 msgid "Layout"
 msgstr ""
 
 #: includes/Integrations/BeaverBuilder/BeaverBuilderIntegration.php:205
+#: blocks/event-grid/build/index.js:1
 #: blocks/event-grid/index.js:57
 #: blocks/event-grid/src/index.jsx:40
 msgid "Layout Settings"
 msgstr ""
 
 #: includes/Integrations/BeaverBuilder/BeaverBuilderIntegration.php:212
+#: blocks/event-grid/build/index.js:1
 #: blocks/event-grid/index.js:63
 #: blocks/event-grid/src/index.jsx:45
 msgid "Grid"
 msgstr ""
 
 #: includes/Integrations/BeaverBuilder/BeaverBuilderIntegration.php:214
+#: blocks/event-grid/build/index.js:1
 #: blocks/event-grid/index.js:71
 #: blocks/event-grid/src/index.jsx:47
 msgid "Cards"
@@ -5725,30 +5770,35 @@ msgid "Filters"
 msgstr ""
 
 #: includes/Integrations/BeaverBuilder/BeaverBuilderIntegration.php:244
+#: blocks/event-grid/build/index.js:1
 #: blocks/event-grid/index.js:102
 #: blocks/event-grid/src/index.jsx:69
 msgid "Filter Options"
 msgstr ""
 
 #: includes/Integrations/BeaverBuilder/BeaverBuilderIntegration.php:248
+#: blocks/event-grid/build/index.js:1
 #: blocks/event-grid/index.js:106
 #: blocks/event-grid/src/index.jsx:73
 msgid "Show Filters"
 msgstr ""
 
 #: includes/Integrations/BeaverBuilder/BeaverBuilderIntegration.php:257
+#: blocks/event-grid/build/index.js:1
 #: blocks/event-grid/index.js:114
 #: blocks/event-grid/src/index.jsx:79
 msgid "Show Search"
 msgstr ""
 
 #: includes/Integrations/BeaverBuilder/BeaverBuilderIntegration.php:266
+#: blocks/event-grid/build/index.js:1
 #: blocks/event-grid/index.js:122
 #: blocks/event-grid/src/index.jsx:86
 msgid "Show Category Filter"
 msgstr ""
 
 #: includes/Integrations/BeaverBuilder/BeaverBuilderIntegration.php:275
+#: blocks/event-grid/build/index.js:1
 #: blocks/event-grid/index.js:129
 #: blocks/event-grid/src/index.jsx:92
 msgid "Pre-filter by Category IDs"
@@ -5759,18 +5809,21 @@ msgid "e.g., 1,2,3"
 msgstr ""
 
 #: includes/Integrations/BeaverBuilder/BeaverBuilderIntegration.php:278
+#: blocks/event-grid/build/index.js:1
 #: blocks/event-grid/index.js:137
 #: blocks/event-grid/src/index.jsx:95
 msgid "Comma-separated category IDs to pre-filter events."
 msgstr ""
 
 #: includes/Integrations/BeaverBuilder/BeaverBuilderIntegration.php:282
+#: blocks/event-grid/build/index.js:1
 #: blocks/event-grid/index.js:143
 #: blocks/event-grid/src/index.jsx:98
 msgid "Show Past Events"
 msgstr ""
 
 #: includes/Integrations/BeaverBuilder/BeaverBuilderIntegration.php:288
+#: blocks/event-grid/build/index.js:1
 #: blocks/event-grid/index.js:148
 #: blocks/event-grid/src/index.jsx:101
 msgid "Show past events instead of upcoming."
@@ -5781,20 +5834,24 @@ msgid "Display"
 msgstr ""
 
 #: includes/Integrations/BeaverBuilder/BeaverBuilderIntegration.php:298
+#: blocks/carousel/build/index.js:1
 #: blocks/carousel/index.js:74
 #: blocks/carousel/src/index.jsx:53
+#: blocks/event-grid/build/index.js:1
 #: blocks/event-grid/index.js:157
 #: blocks/event-grid/src/index.jsx:105
 msgid "Display Options"
 msgstr ""
 
 #: includes/Integrations/BeaverBuilder/BeaverBuilderIntegration.php:338
+#: blocks/event-grid/build/index.js:1
 #: blocks/event-grid/index.js:189
 #: blocks/event-grid/src/index.jsx:129
 msgid "Show Excerpt"
 msgstr ""
 
 #: includes/Integrations/BeaverBuilder/BeaverBuilderIntegration.php:364
+#: blocks/event-grid/build/index.js:1
 #: blocks/event-grid/index.js:199
 #: blocks/event-grid/src/index.jsx:135
 msgid "Pagination"
@@ -5805,36 +5862,42 @@ msgid "Pagination Options"
 msgstr ""
 
 #: includes/Integrations/BeaverBuilder/BeaverBuilderIntegration.php:371
+#: blocks/event-grid/build/index.js:1
 #: blocks/event-grid/index.js:203
 #: blocks/event-grid/src/index.jsx:139
 msgid "Show Pagination"
 msgstr ""
 
 #: includes/Integrations/BeaverBuilder/BeaverBuilderIntegration.php:380
+#: blocks/event-grid/build/index.js:1
 #: blocks/event-grid/index.js:211
 #: blocks/event-grid/src/index.jsx:145
 msgid "AJAX Pagination"
 msgstr ""
 
 #: includes/Integrations/BeaverBuilder/BeaverBuilderIntegration.php:386
+#: blocks/event-grid/build/index.js:1
 #: blocks/event-grid/index.js:216
 #: blocks/event-grid/src/index.jsx:148
 msgid "Load pages without full page reload."
 msgstr ""
 
 #: includes/Integrations/BeaverBuilder/BeaverBuilderIntegration.php:411
+#: blocks/calendar/build/index.js:1
 #: blocks/calendar/index.js:37
 #: blocks/calendar/src/index.jsx:20
 msgid "Default View"
 msgstr ""
 
 #: includes/Integrations/BeaverBuilder/BeaverBuilderIntegration.php:421
+#: blocks/calendar/build/index.js:1
 #: blocks/calendar/index.js:58
 #: blocks/calendar/src/index.jsx:30
 msgid "Show View Switcher"
 msgstr ""
 
 #: includes/Integrations/BeaverBuilder/BeaverBuilderIntegration.php:430
+#: blocks/calendar/build/index.js:1
 #: blocks/calendar/index.js:69
 #: blocks/calendar/src/index.jsx:36
 msgid "Show Navigation"
@@ -5845,6 +5908,7 @@ msgid "Display events in an interactive calendar with month, week, and day views
 msgstr ""
 
 #: includes/Integrations/BeaverBuilder/Modules/EventCarousel/event-carousel.php:29
+#: blocks/carousel/build/index.js:1
 #: blocks/carousel/index.js:203
 #: blocks/carousel/src/index.jsx:129
 msgid "Event Carousel"
@@ -6054,55 +6118,55 @@ msgstr ""
 msgid "Select an option"
 msgstr ""
 
-#: includes/Integrations/WooCommerce/Blocks/StoreApiExtension.php:187
+#: includes/Integrations/WooCommerce/Blocks/StoreApiExtension.php:212
 msgid "Whether this cart item is an event ticket."
 msgstr ""
 
-#: includes/Integrations/WooCommerce/Blocks/StoreApiExtension.php:192
+#: includes/Integrations/WooCommerce/Blocks/StoreApiExtension.php:217
 msgid "Formatted event date."
 msgstr ""
 
-#: includes/Integrations/WooCommerce/Blocks/StoreApiExtension.php:197
+#: includes/Integrations/WooCommerce/Blocks/StoreApiExtension.php:222
 msgid "Formatted event time."
 msgstr ""
 
-#: includes/Integrations/WooCommerce/Blocks/StoreApiExtension.php:212
+#: includes/Integrations/WooCommerce/Blocks/StoreApiExtension.php:237
 msgid "URL to the event page."
 msgstr ""
 
-#: includes/Integrations/WooCommerce/Blocks/StoreApiExtension.php:222
+#: includes/Integrations/WooCommerce/Blocks/StoreApiExtension.php:247
 msgid "Event ID."
 msgstr ""
 
-#: includes/Integrations/WooCommerce/Blocks/StoreApiExtension.php:227
+#: includes/Integrations/WooCommerce/Blocks/StoreApiExtension.php:252
 msgid "Custom attendee registration fields for this event."
 msgstr ""
 
-#: includes/Integrations/WooCommerce/Blocks/StoreApiExtension.php:236
+#: includes/Integrations/WooCommerce/Blocks/StoreApiExtension.php:261
 msgid "Whether to collect per-attendee details when qty > 1."
 msgstr ""
 
-#: includes/Integrations/WooCommerce/Blocks/StoreApiExtension.php:270
+#: includes/Integrations/WooCommerce/Blocks/StoreApiExtension.php:295
 msgid "Stable attendee field key."
 msgstr ""
 
-#: includes/Integrations/WooCommerce/Blocks/StoreApiExtension.php:275
+#: includes/Integrations/WooCommerce/Blocks/StoreApiExtension.php:300
 msgid "Public field type used to render the checkout control."
 msgstr ""
 
-#: includes/Integrations/WooCommerce/Blocks/StoreApiExtension.php:280
+#: includes/Integrations/WooCommerce/Blocks/StoreApiExtension.php:305
 msgid "Public field label."
 msgstr ""
 
-#: includes/Integrations/WooCommerce/Blocks/StoreApiExtension.php:285
+#: includes/Integrations/WooCommerce/Blocks/StoreApiExtension.php:310
 msgid "Public field placeholder."
 msgstr ""
 
-#: includes/Integrations/WooCommerce/Blocks/StoreApiExtension.php:290
+#: includes/Integrations/WooCommerce/Blocks/StoreApiExtension.php:315
 msgid "Whether the field is required at checkout."
 msgstr ""
 
-#: includes/Integrations/WooCommerce/Blocks/StoreApiExtension.php:295
+#: includes/Integrations/WooCommerce/Blocks/StoreApiExtension.php:320
 msgid "Public choices for select, radio, or checkbox controls."
 msgstr ""
 
@@ -6185,45 +6249,108 @@ msgstr ""
 msgid "Invalid ticket selection."
 msgstr ""
 
-#: includes/Integrations/WooCommerce/DonationHandler.php:216
+#: includes/Integrations/WooCommerce/DonationHandler.php:260
+#: assets/js/blocks/nte-wc-blocks.js:600
 msgid "Add a Donation"
 msgstr ""
 
+#: includes/Integrations/WooCommerce/DonationHandler.php:292
+#: assets/js/blocks/nte-wc-blocks.js:544
+msgid "Other:"
+msgstr ""
+
+#: includes/Integrations/WooCommerce/DonationHandler.php:299
+#: assets/js/blocks/nte-wc-blocks.js:555
+msgid "Donation amount"
+msgstr ""
+
+#: includes/Integrations/WooCommerce/DonationHandler.php:309
+#: assets/js/blocks/nte-wc-blocks.js:579
+msgid "No thanks"
+msgstr ""
+
 #. translators: 1: rounded total, 2: donation amount
-#: includes/Integrations/WooCommerce/DonationHandler.php:230
+#: includes/Integrations/WooCommerce/DonationHandler.php:332
+#: includes/Integrations/WooCommerce/DonationHandler.php:677
 #, php-format
 msgid "Round up to %1$s (+%2$s)"
 msgstr ""
 
-#: includes/Integrations/WooCommerce/DonationHandler.php:257
-msgid "Other:"
-msgstr ""
-
-#: includes/Integrations/WooCommerce/DonationHandler.php:273
-msgid "No thanks"
-msgstr ""
-
-#: includes/Integrations/WooCommerce/DonationHandler.php:301
-#: includes/Integrations/WooCommerce/DonationHandler.php:465
+#: includes/Integrations/WooCommerce/DonationHandler.php:416
+#: includes/Integrations/WooCommerce/DonationHandler.php:773
+#: includes/Integrations/WooCommerce/DonationLedger.php:176
 msgid "Donation"
 msgstr ""
 
-#: includes/Integrations/WooCommerce/DonationHandler.php:402
+#: includes/Integrations/WooCommerce/DonationHandler.php:540
+#: includes/Integrations/WooCommerce/DonationHandler.php:618
 msgid "Donations are not enabled."
 msgstr ""
 
-#: includes/Integrations/WooCommerce/DonationHandler.php:457
+#: includes/Integrations/WooCommerce/DonationHandler.php:703
+msgid "Whether this cart can take a donation."
+msgstr ""
+
+#: includes/Integrations/WooCommerce/DonationHandler.php:704
+msgid "What donations support."
+msgstr ""
+
+#: includes/Integrations/WooCommerce/DonationHandler.php:705
+msgid "Chosen donation option: roundup, fixed, custom or none."
+msgstr ""
+
+#: includes/Integrations/WooCommerce/DonationHandler.php:706
+msgid "Donation amount in the cart."
+msgstr ""
+
+#: includes/Integrations/WooCommerce/DonationHandler.php:707
+msgid "Round-up option label with the rounded total and amount."
+msgstr ""
+
+#: includes/Integrations/WooCommerce/DonationHandler.php:709
+msgid "Preset donation amounts."
+msgstr ""
+
+#: includes/Integrations/WooCommerce/DonationHandler.php:715
+msgid "Preset amount."
+msgstr ""
+
+#: includes/Integrations/WooCommerce/DonationHandler.php:716
+msgid "Formatted preset amount."
+msgstr ""
+
+#: includes/Integrations/WooCommerce/DonationHandler.php:720
+msgid "Whether buyers may enter their own amount."
+msgstr ""
+
+#: includes/Integrations/WooCommerce/DonationHandler.php:721
+msgid "Largest donation accepted."
+msgstr ""
+
+#: includes/Integrations/WooCommerce/DonationHandler.php:722
+msgid "Store currency symbol."
+msgstr ""
+
+#: includes/Integrations/WooCommerce/DonationHandler.php:756
 msgid "Round-up"
 msgstr ""
 
-#: includes/Integrations/WooCommerce/DonationHandler.php:458
+#: includes/Integrations/WooCommerce/DonationHandler.php:757
 msgid "Preset"
 msgstr ""
 
 #. translators: 1: donation amount, 2: donation type
-#: includes/Integrations/WooCommerce/DonationHandler.php:469
+#: includes/Integrations/WooCommerce/DonationHandler.php:766
 #, php-format
-msgid "Amount: %1$s (%2$s)"
+msgid "%1$s (%2$s)"
+msgstr ""
+
+#: includes/Integrations/WooCommerce/DonationHandler.php:775
+msgid "Donated"
+msgstr ""
+
+#: includes/Integrations/WooCommerce/DonationHandler.php:778
+msgid "Net"
 msgstr ""
 
 #. translators: %s: list of capacity issues
@@ -7712,118 +7839,168 @@ msgstr ""
 msgid "Open camera to scan next ticket"
 msgstr ""
 
+#: assets/js/blocks/nte-wc-blocks.js:433
+msgid "Your donation could not be updated. Please try again."
+msgstr ""
+
+#. translators: %s: order total
+#: assets/js/blocks/nte-wc-blocks.js:446
+#, js-format
+msgid "Donation updated. Order total: %s"
+msgstr ""
+
+#: assets/js/blocks/nte-wc-blocks.js:448
+msgid "Donation updated."
+msgstr ""
+
+#. translators: %s: smallest amount, with currency symbol
+#: assets/js/blocks/nte-wc-blocks.js:461
+#, js-format
+msgid "Enter an amount of at least %s."
+msgstr ""
+
+#. translators: %s: largest amount, with currency symbol
+#: assets/js/blocks/nte-wc-blocks.js:465
+#, js-format
+msgid "Enter an amount no more than %s."
+msgstr ""
+
+#: blocks/calendar/build/index.js:1
 #: blocks/calendar/index.js:35
 #: blocks/calendar/src/index.jsx:18
 msgid "Calendar Settings"
 msgstr ""
 
+#: blocks/calendar/build/index.js:1
 #: blocks/calendar/index.js:63
 #: blocks/calendar/src/index.jsx:33
 msgid "Allow users to switch between month, week, and day views."
 msgstr ""
 
+#: blocks/calendar/build/index.js:1
 #: blocks/calendar/index.js:74
 #: blocks/calendar/src/index.jsx:39
 msgid "Show previous/next navigation buttons."
 msgstr ""
 
+#: blocks/calendar/build/index.js:1
 #: blocks/calendar/index.js:109
 #: blocks/calendar/src/index.jsx:53
 msgid "Calendar will display here with"
 msgstr ""
 
+#: blocks/calendar/build/index.js:1
 #: blocks/calendar/index.js:116
 #: blocks/calendar/src/index.jsx:55
 msgid "view."
 msgstr ""
 
+#: blocks/carousel/build/index.js:1
 #: blocks/carousel/index.js:47
 #: blocks/carousel/src/index.jsx:35
 msgid "Carousel Settings"
 msgstr ""
 
+#: blocks/carousel/build/index.js:1
 #: blocks/carousel/index.js:58
 #: blocks/carousel/src/index.jsx:44
 msgid "Visible Columns"
 msgstr ""
 
+#: blocks/carousel/build/index.js:1
 #: blocks/carousel/index.js:65
 #: blocks/carousel/src/index.jsx:49
 msgid "Number of cards visible at once."
 msgstr ""
 
+#: blocks/carousel/build/index.js:1
 #: blocks/carousel/index.js:106
 #: blocks/carousel/src/index.jsx:77
 msgid "Always Show Year"
 msgstr ""
 
+#: blocks/carousel/build/index.js:1
 #: blocks/carousel/index.js:111
 #: blocks/carousel/src/index.jsx:80
 msgid "Year is always shown for events in different years."
 msgstr ""
 
+#: blocks/carousel/build/index.js:1
 #: blocks/carousel/index.js:124
 #: blocks/carousel/src/index.jsx:88
 msgid "Maximum tags shown per card. Set to 0 to show all. Extras collapse into …and N more."
 msgstr ""
 
+#: blocks/carousel/build/index.js:1
 #: blocks/carousel/index.js:137
 #: blocks/carousel/src/index.jsx:96
 msgid "Enable Autoplay"
 msgstr ""
 
+#: blocks/carousel/build/index.js:1
 #: blocks/carousel/index.js:145
 #: blocks/carousel/src/index.jsx:102
 msgid "Interval (ms)"
 msgstr ""
 
+#: blocks/carousel/build/index.js:1
 #: blocks/carousel/index.js:212
 #: blocks/carousel/src/index.jsx:134
+#: blocks/event-grid/build/index.js:1
 #: blocks/event-grid/index.js:274
 #: blocks/event-grid/src/index.jsx:176
 msgid "Showing"
 msgstr ""
 
+#: blocks/carousel/build/index.js:1
 #: blocks/carousel/index.js:216
 #: blocks/carousel/src/index.jsx:136
 msgid "events in"
 msgstr ""
 
+#: blocks/carousel/build/index.js:1
 #: blocks/carousel/index.js:220
 #: blocks/carousel/src/index.jsx:138
 msgid "columns."
 msgstr ""
 
+#: blocks/event-grid/build/index.js:1
 #: blocks/event-grid/index.js:241
 #: blocks/event-grid/src/index.jsx:158
 msgid "Event Grid"
 msgstr ""
 
+#: blocks/event-grid/build/index.js:1
 #: blocks/event-grid/index.js:257
 #: blocks/event-grid/src/index.jsx:166
 msgid "layout"
 msgstr ""
 
+#: blocks/event-grid/build/index.js:1
 #: blocks/event-grid/index.js:263
 #: blocks/event-grid/src/index.jsx:169
 msgid "with"
 msgstr ""
 
+#: blocks/event-grid/build/index.js:1
 #: blocks/event-grid/index.js:267
 #: blocks/event-grid/src/index.jsx:171
 msgid "columns"
 msgstr ""
 
+#: blocks/event-grid/build/index.js:1
 #: blocks/event-grid/index.js:279
 #: blocks/event-grid/src/index.jsx:179
 msgid "past events"
 msgstr ""
 
+#: blocks/event-grid/build/index.js:1
 #: blocks/event-grid/index.js:280
 #: blocks/event-grid/src/index.jsx:180
 msgid "upcoming events"
 msgstr ""
 
+#: blocks/event-grid/build/index.js:1
 #: blocks/event-grid/index.js:282
 #: blocks/event-grid/src/index.jsx:182
 msgid "per page."

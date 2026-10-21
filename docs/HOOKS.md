@@ -491,8 +491,10 @@ replace it.
 Fired inside core's Space add/edit form, after core's own fieldsets and inside
 the same `<form>` element. Fields printed by a listener post with core's nonce
 to `admin-post.php?action=nettertech_events_save_space`; persist them on
-`nettertech_events_space_saved_extra`. Listeners escape their own output and
-must not print core's field names.
+`nettertech_events_space_saved_extra`. Listeners escape their own output,
+must not print core's field names, and must check their own capability, because
+another add-on's capability may have opened the screen (see
+`nettertech_events_admin_screen_capabilities`).
 
 **Parameters:**
 - `$space` (object|null) — The space being edited, or `null` when adding
@@ -505,9 +507,10 @@ must not print core's field names.
 #### `nettertech_events_space_saved_extra`
 
 Fired at the end of a successful save, for create and update alike, with the
-resulting space ID. Core has already checked the capability and verified the
-nonce before this fires; a listener requiring a different capability should
-still check its own.
+resulting space ID. Core has verified the nonce and that the user may open the
+Spaces screen. An add-on's capability can open that screen, so every listener
+must check its own capability. For a user without `manage_options`, core saves
+none of its own fields and fires this only for an existing space.
 
 **Parameters:**
 - `$space_id` (int) — The saved space ID
@@ -537,6 +540,46 @@ screen.
 - `$action` (string) — `add` or `edit`
 
 **Location:** `includes/Core/Assets.php`
+
+---
+
+#### `nettertech_events_admin_screen_capabilities` / `nettertech_events_settings_tab_capabilities`
+
+The pair that lets an add-on open core's Spaces and Settings screens to its own
+capability, so someone who holds that capability but not `manage_options` can
+reach the add-on's panel or tab.
+
+The first returns extra capabilities that open the Spaces screen. Such a user
+can open existing spaces, but cannot add, delete or bulk-delete them, and core's
+own fields stay with `manage_options`. The second maps an extension tab slug to
+the capability it requires. The Settings screen opens for any capability in that
+map and shows only the tabs the user holds. An undeclared tab requires
+`manage_options`, entries for core's own tabs are ignored, and core's settings
+option is written only by a `manage_options` user, whatever tab is posted.
+
+Any other core screen ignores both filters. Your panel and tab callbacks must
+still check your own capability.
+
+**Parameters (`..._admin_screen_capabilities`):**
+- `$capabilities` (string[]) — Capabilities that open the screen, default empty
+- `$screen` (string) — Screen slug (`nettertech-events-spaces`)
+
+**Parameters (`..._settings_tab_capabilities`):**
+- `$capabilities` (array) — Tab slug => capability, default empty
+
+```php
+add_filter( 'nettertech_events_admin_screen_capabilities', function ( $caps, $screen ) {
+    $caps[] = 'manage_my_addon';
+    return $caps;
+}, 10, 2 );
+
+add_filter( 'nettertech_events_settings_tab_capabilities', function ( $caps ) {
+    $caps['my_addon'] = 'manage_my_addon';
+    return $caps;
+} );
+```
+
+**Location:** `includes/Admin/ScreenAccess.php`
 
 ---
 
@@ -1382,6 +1425,7 @@ Every hook the plugin fires, grouped by kind, with the version it first shipped 
 | `nettertech_events_activity_log_retention_days` | filter | 1.0.2 | `includes/Core/PrivacyHooks.php:169`; `includes/Services/ActivityLogService.php:291` | Filters the activity log retention days. |
 | `nettertech_events_activity_logged` (internal) | action | 1.0.2 | `includes/Services/ActivityLogService.php:114`; `includes/Services/ActivityLogService.php:133`; `includes/Services/ActivityLogService.php:152` (+4 more) | Fires after an activity is logged. |
 | `nettertech_events_activity_logging_enabled` | filter | 1.0.2 | `includes/Services/ActivityLogService.php:65` | Filters whether activity logging is enabled. |
+| `nettertech_events_admin_screen_capabilities` | filter | 1.5.1 | `includes/Admin/ScreenAccess.php` | Filters the capabilities, besides core's, that open the Spaces screen. |
 | `nettertech_events_activity_retention` | filter | 1.0.2 | `includes/Repositories/ActivityLogRepository.php:305` | Filters the activity retention cutoff date. |
 | `nettertech_events_admin_ready` | action | 1.0.2 | `includes/Core/Plugin.php:381` | Fires after admin initialization is complete. |
 | `nettertech_events_admin_ticket_rows` | filter | 1.1.2 | `includes/Admin/Metaboxes/TicketsMetabox.php:507` | Filters the tiers offered for editing in the tickets metabox. |
@@ -1498,6 +1542,7 @@ Every hook the plugin fires, grouped by kind, with the version it first shipped 
 | `nettertech_events_search_label` | filter | 1.1.1 | `includes/Frontend/Shortcodes/EventListShortcode.php:280` | Filters the screen-reader label for the search input in the event list. |
 | `nettertech_events_search_placeholder` | filter | 1.1.1 | `includes/Frontend/Shortcodes/EventListShortcode.php:278` | Filters the search input placeholder text in the event list. |
 | `nettertech_events_service_providers` | filter | 1.0.2 | `includes/Core/ServiceRegistry.php:414` | Filters the list of service providers registered with the DI container. |
+| `nettertech_events_settings_tab_capabilities` | filter | 1.5.1 | `includes/Admin/ScreenAccess.php` | Filters the capability each extension settings tab requires. |
 | `nettertech_events_settings_tab_render` | action | 1.0.2 | `includes/Admin/SettingsPage.php:182` | Fired when rendering a settings page extension tab. |
 | `nettertech_events_settings_tab_save` | action | 1.0.2 | `includes/Admin/Settings/SettingsSaveHandler.php:254` | Fires when saving a settings page extension tab. |
 | `nettertech_events_settings_tabs` | filter | 1.0.2 | `includes/Admin/SettingsPage.php:99` | Filters the settings page tabs. |

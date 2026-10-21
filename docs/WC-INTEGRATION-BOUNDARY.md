@@ -76,19 +76,22 @@ From ADR-008 (accepted 2025-01-20):
 | `woocommerce_product_data_tabs` | filter | WC | `WooCommerceIntegration::add_product_data_tab` | Add "Event Ticket" tab to WC product editor | NTE -> WC (UI) |
 | `woocommerce_product_data_panels` | action | WC | `WooCommerceIntegration::render_product_data_panel` | Render occurrence/ticket type info in product editor | NTE -> WC (UI) |
 | `woocommerce_after_order_notes` | action | WC | `AccessibilityNotesHandler::render_field` (priority 10) | Render accessibility requirements textarea on checkout | NTE -> WC (checkout UI) |
-| `woocommerce_after_order_notes` | action | WC | `DonationHandler::render_donation_field` (priority 20) | Render donation options (round-up, presets, custom) on checkout | NTE -> WC (checkout UI) |
+| `woocommerce_after_order_notes` | action | WC | `DonationHandler::render_donation_field` (priority 20) | Render donation options (round-up, presets, custom) on classic checkout | NTE -> WC (checkout UI) |
 | `woocommerce_checkout_update_order_meta` | action | WC | `AccessibilityNotesHandler::save_notes` (priority 10) | Save `_nettertech_events_accessibility_notes` to order meta | WC -> NTE -> WC (order meta) |
-| `woocommerce_checkout_update_order_meta` | action | WC | `DonationHandler::save_donation_meta` (priority 20) | Save `_nte_donation_amount` and `_nte_donation_type` to order meta | WC -> NTE -> WC (order meta) |
-| `woocommerce_cart_calculate_fees` | action | WC | `DonationHandler::calculate_donation_fee` | Add donation as non-taxable cart fee | NTE -> WC (fee) |
+| `woocommerce_checkout_update_order_meta` | action | WC | `DonationHandler::save_donation_meta` (priority 20) | Save `_nettertech_events_donation_amount` and `_nettertech_events_donation_type` to order meta (classic checkout) | WC -> NTE -> WC (order meta) |
+| `woocommerce_cart_calculate_fees` | action | WC | `DonationHandler::calculate_donation_fee` (priority `DonationHandler::FEE_PRIORITY`, 1000) | Add donation as non-taxable cart fee with id `nettertech_events_donation`; work out a round-up from the order total so far | NTE -> WC (fee) |
+| `woocommerce_checkout_create_order_fee_item` | action | WC | `DonationHandler::tag_donation_fee_item` | Tag the donation's order fee line with `_nettertech_events_donation` = `1` and `_nettertech_events_donation_type` (both checkouts) | NTE -> WC (order item meta) |
+| `woocommerce_update_order_review_fragments` | filter | WC | `DonationHandler::add_roundup_label_fragment` | Re-send the classic round-up label with each checkout refresh | NTE -> WC (checkout UI) |
 | `woocommerce_admin_order_data_after_billing_address` | action | WC | `AccessibilityNotesHandler::display_admin` (priority 10) | Show accessibility notes in admin order view | WC -> NTE (read) -> WC (UI) |
 | `woocommerce_admin_order_data_after_billing_address` | action | WC | `DonationHandler::display_donation_admin` (priority 20) | Show donation info in admin order view | WC -> NTE (read) -> WC (UI) |
-| `wp_ajax_nte_update_donation` | action | WP | `DonationHandler::handle_ajax_update` | Update donation amount/type in WC session via AJAX | NTE -> WC (session) |
-| `wp_ajax_nopriv_nte_update_donation` | action | WP | `DonationHandler::handle_ajax_update` | Same for guest checkout | NTE -> WC (session) |
+| `wp_ajax_nettertech_events_update_donation` | action | WP | `DonationHandler::handle_ajax_update` | Update donation amount/type in WC session via AJAX (classic checkout) | NTE -> WC (session) |
+| `wp_ajax_nopriv_nettertech_events_update_donation` | action | WP | `DonationHandler::handle_ajax_update` | Same for guest checkout | NTE -> WC (session) |
+| `admin_enqueue_scripts` | action | WP | `DonationHandler::enqueue_admin_styles` | Load the order screen's donation box styles | NTE -> WC (admin UI) |
 | `wp_enqueue_scripts` | action | WP | `WooCommerceIntegration::maybe_enqueue_checkout_assets` | Enqueue donation CSS/JS on checkout when donations enabled | NTE -> WC (assets) |
 | `woocommerce_blocks_loaded` | action | WC | `WooCommerceIntegration::register_block_integration` (closure) | Register Store API extension + Block cart/checkout integration | NTE -> WC (Store API) |
 | `woocommerce_blocks_cart_block_registration` | action | WC | closure | Register `BlockIntegration` with WC Cart block | NTE -> WC |
 | `woocommerce_blocks_checkout_block_registration` | action | WC | closure | Register `BlockIntegration` with WC Checkout block | NTE -> WC |
-| `woocommerce_store_api_checkout_update_order_from_request` | action | WC | closure | Save accessibility notes from Block checkout session to order meta | WC -> NTE -> WC (order meta) |
+| `woocommerce_store_api_checkout_update_order_from_request` | action | WC | `WooCommerceIntegration::save_block_checkout_order_meta` | Save accessibility notes, custom fields and the donation from Block checkout session to order meta | WC -> NTE -> WC (order meta) |
 
 ### NTE Custom Hooks Fired During WC Integration
 
@@ -268,27 +271,36 @@ From ADR-008 (accepted 2025-01-20):
 
 **[RESOLVED]** One-way sync is correct by design. Additionally: hide the WC stock field on NTE-managed products and replace with a notice + link to NTE capacity editor. See task #13.
 
-### Donations (DonationHandler)
+### Donations (DonationHandler, DonationLedger)
 
 **NTE owns:**
 - Donation settings (enabled flag, cause text, round-up increment, presets, custom allowed, max)
-- Donation UI rendering on checkout (radio buttons for round-up, presets, custom, no thanks)
+- Donation UI on both checkouts: radio options for round-up, presets, custom and no thanks. Classic checkout renders it in PHP; Block checkout renders it in `nte-wc-blocks.js` from Store API cart data (see Blocks below), at checkout only.
 - Donation session management (amount + type stored in WC session)
-- Round-up calculation logic
-- AJAX handler for updating donation selection (nonce-verified, session-scoped)
-- Donation meta persistence to order (`_nte_donation_amount`, `_nte_donation_type`)
-- Admin display of donation info on order screen
+- Round-up calculation: rounds the order total before the donation (items after coupons, their tax, shipping and its tax, and other fees), recalculated on every cart calculation
+- AJAX handler for the classic picker and Store API update callback for the block picker; both share the rate limit, the eligibility check and `apply_donation_choice()`
+- Donation meta on the order: `_nettertech_events_donation_amount`, `_nettertech_events_donation_type`
+- The donation fee line's tag: order item meta `_nettertech_events_donation` (`1`) and `_nettertech_events_donation_type`
+- Admin display of donated, refunded and net on the order screen
 
 **WC owns:**
-- Cart fee system (NTE adds donation as non-taxable fee via `WC()->cart->add_fee()`)
-- Checkout form rendering (NTE injects after order notes)
+- Cart fee system (NTE adds donation as non-taxable fee via `$cart->fees_api()->add_fee()`)
+- Checkout form rendering (NTE injects after order notes on classic checkout)
 - Session storage (NTE uses `WC()->session->set/get`)
+- Refunds of the donation fee line
 
 **Data flow:**
-- NTE -> WC: donation amount as cart fee, donation meta on order
-- WC -> NTE: session storage for donation state, `$_POST` for AJAX updates, cart subtotal for round-up calculation
+- NTE -> WC: donation amount as cart fee, donation meta on order, tag on the fee line
+- WC -> NTE: session storage for donation state, `$_POST` (classic) or Store API extension data (block) for updates, cart totals for round-up calculation, fee line refunds for the ledger
 
 **Donation is only shown when cart contains event tickets.** The `is_enabled()` check requires both the setting to be on AND `cart_has_tickets()` to be true.
+
+**Reading donations (`DonationLedgerInterface`, since 1.5.0).** Add-ons read donations through the ledger, never through order meta: `ServiceRegistry::container()->get( DonationLedgerInterface::class )`.
+- `for_order( WC_Order ): ?Donation`: the order's donation, or null.
+- `in_range( string $start_utc, string $end_utc, array $statuses ): Donation[]`: donations on orders created in an inclusive UTC range with the given statuses, oldest first.
+- `Donation` is read-only: `order_id`, `fee_item_id`, `amount` (charged), `refunded` (refunds of the donation fee line), `net` (never below zero), `type` (`roundup`, `fixed`, `custom`, or `''`), `currency`, `date_created` (UTC).
+- The ledger finds the donation line by its tag. Orders from before the tag existed are matched by the recorded amount; an order whose donation line cannot be identified is left out.
+- Pro's Donations report and Grant Reporter's `donations_received` metric read the ledger and count the statuses from the `nettertech_events_revenue_paid_statuses` filter.
 
 ### Blocks / Store API (BlockIntegration, StoreApiExtension)
 
@@ -297,7 +309,9 @@ From ADR-008 (accepted 2025-01-20):
 - Extension data: `is_event_ticket`, `event_date`, `event_time`, `venue_name`, `ticket_type`, `event_permalink`, `event_title`
 - Extension schema: JSON schema for the above fields (all read-only strings/boolean)
 - Frontend script: `nte-wc-blocks.js` (IIFE, no build step) renders event metadata in Block cart/checkout
-- Script data: namespace identifier, donations enabled flag
+- Script data: namespace identifier, accessibility notes field definition
+- Cart extension data (`CartSchema`, namespace `nettertech-events`): the donation picker's state for the current cart (`DonationHandler::get_store_api_data()`): whether the cart can take a donation, cause, presets and round-up label formatted on the server, the current choice, custom allowed, max
+- Store API update callback (one per namespace, shared): accessibility notes, custom attendee fields, and donation choices (`donation_option`, `donation_amount`) via `DonationHandler::handle_store_api_update()`
 - Block checkout accessibility notes: saved via Store API update callback -> WC session -> order meta
 
 **WC owns:**

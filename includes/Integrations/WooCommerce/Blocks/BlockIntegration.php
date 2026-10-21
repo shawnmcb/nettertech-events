@@ -38,22 +38,6 @@ class BlockIntegration implements IntegrationInterface {
 	private const SCRIPT_HANDLE = 'nettertech-events-wc-blocks';
 
 	/**
-	 * Whether donations are enabled.
-	 *
-	 * @var bool
-	 */
-	private bool $donations_enabled;
-
-	/**
-	 * Constructor.
-	 *
-	 * @param bool $donations_enabled Whether donations feature is enabled.
-	 */
-	public function __construct( bool $donations_enabled = false ) {
-		$this->donations_enabled = $donations_enabled;
-	}
-
-	/**
 	 * Get the integration name.
 	 *
 	 * @return string
@@ -86,7 +70,10 @@ class BlockIntegration implements IntegrationInterface {
 				'wp-element',
 				'wp-i18n',
 				'wp-html-entities',
+				'wp-a11y',
+				'wp-data',
 				'wc-blocks-checkout',
+				'wc-price-format',
 			),
 			$version,
 			true
@@ -129,7 +116,6 @@ class BlockIntegration implements IntegrationInterface {
 	public function get_script_data(): array {
 		return array(
 			'namespace'          => StoreApiExtension::NAMESPACE,
-			'donationsEnabled'   => $this->donations_enabled,
 			// The block checkout renders the accessibility-needs textarea in JS;
 			// its strings come from the shared field definition so the block,
 			// classic and RSVP surfaces read identically (NTE-217).
