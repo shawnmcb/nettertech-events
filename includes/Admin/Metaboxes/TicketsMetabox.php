@@ -150,7 +150,7 @@ class TicketsMetabox {
 		$template_tickets   = array();
 
 		if ( $this->occurrence && $this->occurrence->id ) {
-			$occurrence_tickets = $this->ticket_type_repo->for_occurrence( $this->occurrence->id );
+			$occurrence_tickets = $this->own_tickets( $this->occurrence->id );
 		}
 
 		if ( ( $is_recurring || $is_multi_date ) && $this->event->id ) {
@@ -218,7 +218,7 @@ class TicketsMetabox {
 		}
 
 		$tickets = $this->editable_rows(
-			$this->ticket_type_repo->for_occurrence( $this->occurrence->id ),
+			$this->own_tickets( $this->occurrence->id ),
 			TicketTypeScope::OCCURRENCE
 		);
 
@@ -241,6 +241,25 @@ class TicketsMetabox {
 
 		$this->assets->render_scripts();
 		$this->assets->render_styles();
+	}
+
+	/**
+	 * The ticket types filed under one date.
+	 *
+	 * For a date without any, for_occurrence() returns the event's series passes and templates.
+	 * Listed here, they would post back as this date's tickets and the save would turn them into
+	 * tickets for this date only.
+	 *
+	 * @param int $occurrence_id Occurrence ID.
+	 * @return array<TicketType>
+	 */
+	private function own_tickets( int $occurrence_id ): array {
+		return array_values(
+			array_filter(
+				$this->ticket_type_repo->for_occurrence( $occurrence_id ),
+				static fn( TicketType $ticket ): bool => $occurrence_id === $ticket->occurrence_id
+			)
+		);
 	}
 
 	/**

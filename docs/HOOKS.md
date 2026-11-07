@@ -715,7 +715,7 @@ add_action( 'nettertech_events_after_series_content', function( $event ) {
 }, 10, 1 );
 ```
 
-**Location:** `templates/series-page.php:208`
+**Location:** `templates/series-page.php:259`
 
 ---
 
@@ -1432,7 +1432,7 @@ Every hook the plugin fires, grouped by kind, with the version it first shipped 
 | `nettertech_events_after_delete_event` | action | 1.0.2 | `includes/Repositories/EventRepository.php:487` | Fires after an event has been deleted. |
 | `nettertech_events_after_duplicate_event` | action | 1.0.2 | `includes/Services/EventDuplicationService.php:150` | Fires after an event is duplicated. |
 | `nettertech_events_after_save_event` | action | 1.0.2 | `includes/Repositories/EventRepository.php:396` | Fires after an event is created or updated. |
-| `nettertech_events_after_series_content` | action | 1.0.2 | `templates/series-page.php:209` | Fires after the main content on series pages. |
+| `nettertech_events_after_series_content` | action | 1.0.2 | `templates/series-page.php:259` | Fires after the main content on series pages. |
 | `nettertech_events_after_single_content` | action | 1.0.2 | `templates/single-event.php:113` | Fires after the main content on single event pages. |
 | `nettertech_events_after_single_space_content` | action | 1.0.2 | `templates/single-space.php:173` | Fires after the space article on single space pages. |
 | `nettertech_events_after_sold_out` | action | 1.0.2 | `includes/Frontend/Shortcodes/RSVPFormShortcode.php:196`; `templates/parts/ticket-form.php:81` | Fires after the sold-out message renders, before the closing wrapper. |
@@ -1500,6 +1500,7 @@ Every hook the plugin fires, grouped by kind, with the version it first shipped 
 | `nettertech_events_list_column` | action | 1.1.1 | `includes/Admin/ListTables/EventsListTable.php:808` | Fires when rendering a registered custom column cell on the All Events list. |
 | `nettertech_events_list_columns` | filter | 1.1.1 | `includes/Admin/ListTables/EventsListTable.php:185` | Filters the columns shown on the admin All Events list table. |
 | `nettertech_events_list_empty_message` | filter | 1.0.2 | `includes/Frontend/Shortcodes/EventListShortcode.php:672` | Filters the empty state message for the event list shortcode. |
+| `nettertech_events_list_status_note` | filter | 1.5.3 | `includes/Admin/ListTables/EventsListTable.php` | Filters a plain-text note (core escapes it) shown under the status label on the All Events list. Receives `$note`, `$event`. |
 | `nettertech_events_localize_data` | filter | 1.0.2 | `includes/Core/Assets.php:636` | Filters the data array localized for frontend scripts. |
 | `nettertech_events_max_revisions` | filter | 1.0.2 | `includes/Services/RevisionService.php:170`; `includes/Services/RevisionService.php:273` | Filter the maximum number of revisions to keep per event. |
 | `nettertech_events_occurrence_cancelled` | action | 1.0.2 | `includes/Repositories/OccurrenceRepository.php:692` | Fires when an occurrence is cancelled. |
@@ -1512,6 +1513,7 @@ Every hook the plugin fires, grouped by kind, with the version it first shipped 
 | `nettertech_events_open_graph_tags` | filter | 1.0.2 | `includes/Frontend/OpenGraphTags.php:68` | Filters the Open Graph meta tags before output. |
 | `nettertech_events_palette_map` | filter | 1.0.2 | `includes/Services/PaletteResolver.php:47` | Filters the palette map for theme color integration. |
 | `nettertech_events_prefix_migration_complete` (internal) | action | 1.0.2 | `includes/Database/PrefixMigrationManager.php:250` | Fires after the table/option prefix migration completes successfully. |
+| `nettertech_events_publish_box_fields` | action | 1.5.3 | `includes/Admin/Metaboxes/EventMetaboxContentRenderer.php` | Fires in the event editor's Publish box below the Status control, with the `$event` being edited. Save the fields on `nettertech_events_save_pro_extensions`. |
 | `nettertech_events_product_cat_ids` | filter | 1.1.2 | `includes/Integrations/WooCommerce/ProductManager.php:259` | Filters the final product_cat term-ID set for a ticket product. |
 | `nettertech_events_public_csp_directives` | filter | 1.0.2 | `includes/Core/SecurityHeaders.php:465` | Filters the CSP directives for public pages. |
 | `nettertech_events_purchases_synopsis` | action | 1.1.2 | `includes/Admin/AttendeesPage.php:408` | Fires inside the attendees summary card as an extension slot. |
@@ -1537,7 +1539,7 @@ Every hook the plugin fires, grouped by kind, with the version it first shipped 
 | `nettertech_events_route_template` | filter | 1.0.2 | `includes/Frontend/Router.php:387` | Filters the template to load for custom route handling. |
 | `nettertech_events_rsvp_submitted` | action | 1.0.2 | `includes/Frontend/Shortcodes/RSVPFormShortcode.php:379` | Fires after an RSVP form is successfully submitted and an attendee is created. |
 | `nettertech_events_sale_schedule_ui_available` | filter | 1.1.2 | `includes/Admin/Metaboxes/TicketFormRenderer.php:222` | Filters whether a sale-schedule control is present in the ticket form. |
-| `nettertech_events_save_pro_extensions` (internal) | action | 1.0.2 | `includes/Admin/EventSaveHandler.php:495` | Fires after Pro extension data is saved for an event. |
+| `nettertech_events_save_pro_extensions` (internal) | action | 1.0.2 | `includes/Admin/EventSaveHandler.php:495` | Fires after Pro extension data is saved for an event. Since 1.5.3 also receives the unslashed, unsanitized `$post` array (nonce and capability already verified); listeners sanitize their own fields. |
 | `nettertech_events_schema_org_data` | filter | 1.0.2 | `includes/Frontend/SchemaMarkup.php:61` | Filters the Schema.org structured data for an event. |
 | `nettertech_events_search_label` | filter | 1.1.1 | `includes/Frontend/Shortcodes/EventListShortcode.php:280` | Filters the screen-reader label for the search input in the event list. |
 | `nettertech_events_search_placeholder` | filter | 1.1.1 | `includes/Frontend/Shortcodes/EventListShortcode.php:278` | Filters the search input placeholder text in the event list. |

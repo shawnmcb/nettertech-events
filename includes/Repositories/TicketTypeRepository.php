@@ -334,24 +334,34 @@ class TicketTypeRepository implements TicketTypeRepositoryInterface {
 			array( '%d' )
 		);
 
+		// A cached copy without the product would hide it from the product cleanup on deletion.
+		$this->forget( $ticket_type_id );
+		wp_cache_delete( 'ticket_type_' . $ticket_type_id, CacheManager::CACHE_GROUP );
+
 		return false !== $result;
 	}
 
 	/**
-	 * Delete all ticket types for an occurrence.
+	 * Delete all ticket types filed under an occurrence.
+	 *
+	 * Finds them by the occurrence ID alone, so the ticket types of a date that is already gone are
+	 * deleted too, and the deletion action still reaches their products.
+	 *
+	 * @since 1.5.4 Also deletes the ticket types of an occurrence that no longer exists.
 	 *
 	 * @param int $occurrence_id Occurrence ID.
 	 * @return int Number deleted.
 	 */
 	public function delete_for_occurrence( int $occurrence_id ): int {
-		foreach ( $this->for_occurrence( $occurrence_id, array( 'status' => null ) ) as $ticket_type ) {
-			// for_occurrence() also returns event-scoped (series) ticket types
-			// whose occurrence_id is NULL. The bulk delete below only removes
-			// rows whose occurrence_id matches, so only fire the deletion action
-			// for the rows that are actually being deleted.
-			if ( null === $ticket_type->id || $occurrence_id !== $ticket_type->occurrence_id ) {
-				continue;
-			}
+		$rows = $this->db->get_results(
+			$this->db->prepare(
+				"SELECT * FROM {$this->table} WHERE occurrence_id = %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name from trusted constant or plugin property; user values bound via prepare().
+				$occurrence_id
+			)
+		);
+
+		foreach ( $rows ? $rows : array() as $row ) {
+			$ticket_type = TicketType::from_row( $row );
 
 			/** This action is documented in includes/Repositories/TicketTypeRepository.php */
 			do_action( Hooks::TICKET_TYPE_DELETED, (int) $ticket_type->id, $ticket_type->name );

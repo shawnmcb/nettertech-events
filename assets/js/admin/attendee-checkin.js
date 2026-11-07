@@ -51,6 +51,22 @@
 	}
 
 	/**
+	 * Hand the server's progress figures to the sticky progress row.
+	 *
+	 * A failed request passes null, which marks the row out of date rather than
+	 * leaving the last figure looking confirmed.
+	 *
+	 * @param {Object|null} progress CheckInProgress payload, or null on failure.
+	 */
+	function publishProgress( progress ) {
+		document.dispatchEvent(
+			new CustomEvent( 'nettertech-events:check-in-progress', {
+				detail: { progress: progress || null },
+			} )
+		);
+	}
+
+	/**
 	 * Send the check-in toggle request.
 	 *
 	 * @param {HTMLElement} button The toggle button that was activated.
@@ -59,11 +75,13 @@
 		const attendeeId = button.dataset.attendeeId;
 		const state = button.dataset.state;
 
-		if ( ! attendeeId || ! state ) {
+		if ( ! attendeeId || ! state || 'true' === button.getAttribute( 'aria-disabled' ) ) {
 			return;
 		}
 
-		button.disabled = true;
+		// aria-disabled, not disabled: a disabled button drops keyboard focus to
+		// <body>, which throws the operator out of their place in the list.
+		button.setAttribute( 'aria-disabled', 'true' );
 
 		const body = new URLSearchParams();
 		body.append( 'action', config.action );
@@ -82,16 +100,19 @@
 
 			if ( ! payload || ! payload.success ) {
 				const message = ( payload && payload.data && payload.data.message ) || i18n.error;
+				publishProgress( null );
 				announce( message );
 				return;
 			}
 
 			applyState( button, payload.data );
+			publishProgress( payload.data.progress );
 			announce( payload.data.checkedIn ? i18n.checkedInAnnounce : i18n.undoneAnnounce );
 		} catch ( error ) {
+			publishProgress( null );
 			announce( i18n.error );
 		} finally {
-			button.disabled = false;
+			button.removeAttribute( 'aria-disabled' );
 		}
 	}
 

@@ -18,6 +18,9 @@ use NetterTechEvents\Contracts\AttendeesSummaryServiceInterface;
 use NetterTechEvents\Admin\Attendees\Presenters\AttendeesFiltersPresenter;
 use NetterTechEvents\Contracts\OccurrenceRepositoryInterface;
 use NetterTechEvents\Database\Schema;
+use NetterTechEvents\Models\TicketType;
+use NetterTechEvents\Services\CheckIn\CheckInProgress;
+use NetterTechEvents\Services\CheckIn\CheckInProgressRenderer;
 
 /**
  * Admin page for viewing and managing attendees.
@@ -442,6 +445,7 @@ class AttendeesPage {
 						<thead>
 							<tr>
 								<th scope="col"><?php esc_html_e( 'Ticket', 'nettertech-events' ); ?></th>
+								<th scope="col"><?php esc_html_e( 'Price', 'nettertech-events' ); ?></th>
 								<th scope="col"><?php esc_html_e( 'Issued', 'nettertech-events' ); ?></th>
 								<th scope="col"><?php esc_html_e( 'Checked in', 'nettertech-events' ); ?></th>
 								<?php if ( $show_revenue ) : ?>
@@ -453,6 +457,7 @@ class AttendeesPage {
 							<?php foreach ( $tickets['rows'] as $ticket ) : ?>
 								<tr>
 									<td class="nte-summary-ticket-name"><?php echo esc_html( $ticket['name'] ); ?></td>
+									<td class="nte-summary-price"><?php echo wp_kses_post( TicketType::format_price( (float) ( $ticket['price'] ?? 0 ) ) ); ?></td>
 									<td class="nte-summary-ticket-count">
 										<span class="nte-summary-issued"><?php echo esc_html( $this->format_issued( $ticket['issued'] ) ); ?></span>
 										<span class="nte-summary-available"><?php echo esc_html( $this->format_available( $ticket['available'], ! empty( $tickets['shares_house'] ) && ! empty( $ticket['house_bound'] ) ) ); ?></span>
@@ -474,17 +479,19 @@ class AttendeesPage {
 						<tfoot>
 							<tr>
 								<th class="nte-summary-ticket-name" scope="row"><?php esc_html_e( 'Total', 'nettertech-events' ); ?></th>
+								<td class="nte-summary-price"></td>
 								<td class="nte-summary-ticket-count">
 									<span class="nte-summary-issued"><?php echo esc_html( $this->format_issued( $tickets['total_issued'] ) ); ?></span>
 									<span class="nte-summary-available"><?php echo esc_html( $this->format_available( $tickets['total_available'], false ) ); ?></span>
 								</td>
 								<td class="nte-summary-checkin-count">
 									<?php
+									$attendance_progress = new CheckInProgress( (int) $attendance['total_guests'], (int) $attendance['checked_in_guests'] );
 									printf(
-										/* translators: 1: checked-in guest count, 2: percentage. */
-										esc_html__( '%1$d (%2$d%%)', 'nettertech-events' ),
+										/* translators: 1: checked-in guest count, 2: percentage label such as "75%". */
+										esc_html__( '%1$d (%2$s)', 'nettertech-events' ),
 										(int) $attendance['checked_in_guests'],
-										(int) $attendance['checked_in_percent']
+										esc_html( $attendance_progress->percent_label() )
 									);
 									?>
 								</td>
@@ -513,7 +520,7 @@ class AttendeesPage {
 					</ul>
 					<?php if ( isset( $attendance['status_counts']['voided'] ) ) : ?>
 						<p class="nte-summary-footnote">
-							<?php esc_html_e( 'Voided: seats from orders that were cancelled, refunded, or failed. Not included in issued counts.', 'nettertech-events' ); ?>
+							<?php esc_html_e( 'Voided: seats from refunded orders. Not included in issued counts.', 'nettertech-events' ); ?>
 						</p>
 					<?php endif; ?>
 				</div>
@@ -684,6 +691,14 @@ class AttendeesPage {
 
 				<?php $this->render_event_summary( $event_id, $occurrence_id ); ?>
 			<?php endif; ?>
+
+			<?php
+			// One date is one door. Across all dates a series pass counts once per
+			// date, so an event-wide figure would not be "ticket holders".
+			if ( $occurrence_id > 0 ) {
+				CheckInProgressRenderer::render( $this->summary_service->occurrence_progress( $occurrence_id ) );
+			}
+			?>
 
 			<p class="description">
 				<?php

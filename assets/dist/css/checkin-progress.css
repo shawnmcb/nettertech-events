@@ -1,0 +1,130 @@
+/**
+ * Sticky check-in progress row (NTE-379).
+ *
+ * Shared by the Attendees screen and Pro's admin and volunteer check-in
+ * screens, so it carries its own colours instead of reading the admin colour
+ * scheme or the volunteer page palette: the fill/track contrast below is only
+ * guaranteed for these values.
+ *
+ * Contrast (WCAG 1.4.11, 3:1 non-text): blue fill #2271b1 on track #dcdcde is
+ * 3.77:1; green fill #008a20 on the track is 3.29:1; the track's #8c8f94
+ * outline on white is 3.24:1. The percentage is #000 on #fff.
+ */
+
+/*
+ * The row sticks below the WordPress toolbar where the toolbar is fixed: 46px
+ * from 601px, 32px from 783px. At 600px and below core makes the toolbar
+ * position: absolute, so it scrolls away and the row sticks to the very top.
+ */
+:root:has(.nte-checkin-progress) {
+
+	/* A unitless 0 would make the calc() below, which adds a length, invalid. */
+	--nte-checkin-progress-top: 0px; /* stylelint-disable-line length-zero-no-unit */
+	--nte-checkin-progress-height: 2.75rem;
+
+	/* Keyboard focus scrolled into view must land below the row, not under it. */
+	scroll-padding-block-start: calc(var(--nte-checkin-progress-top) + var(--nte-checkin-progress-height) + 0.5rem);
+}
+
+@media screen and (min-width: 601px) {
+
+	:root:has(#wpadminbar):has(.nte-checkin-progress) {
+		--nte-checkin-progress-top: 46px; /* WP toolbar height, 601–782px. */
+	}
+}
+
+@media screen and (min-width: 783px) {
+
+	:root:has(#wpadminbar):has(.nte-checkin-progress) {
+		--nte-checkin-progress-top: 32px; /* WP toolbar height, 783px and up. */
+	}
+}
+
+.nte-checkin-progress {
+	box-sizing: border-box;
+	position: sticky;
+	top: var(--nte-checkin-progress-top, 0);
+	z-index: 20;
+	min-block-size: var(--nte-checkin-progress-height, 2.75rem);
+	padding: 0.5rem 0.75rem;
+	border-block-end: 1px solid #c3c4c7;
+	background: #fff;
+	color: #000;
+}
+
+.nte-checkin-progress__meter {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	min-block-size: 1.75rem;
+}
+
+.nte-checkin-progress__percent {
+	flex: 0 0 auto;
+
+	/* Wide enough for "100%" in tabular figures, so the bar never shifts. */
+	inline-size: 4.5ch;
+	font-size: 1rem;
+	font-weight: 600;
+	font-variant-numeric: tabular-nums;
+	line-height: 1.2;
+	white-space: nowrap;
+}
+
+.nte-checkin-progress__track {
+	box-sizing: border-box;
+	display: block;
+	flex: 1 1 auto;
+	position: relative;
+	min-inline-size: 3rem;
+	block-size: 0.625rem;
+	overflow: hidden;
+	border: 1px solid #8c8f94;
+	border-radius: 999px;
+	background: #dcdcde;
+}
+
+.nte-checkin-progress__fill {
+	display: block;
+	inline-size: var(--nte-checkin-progress-value, 0%);
+	block-size: 100%;
+	background: #2271b1;
+	transition: inline-size 0.3s ease-out;
+}
+
+.nte-checkin-progress[data-state="complete"] .nte-checkin-progress__fill {
+	background: #008a20;
+}
+
+.nte-checkin-progress[data-stale="true"] .nte-checkin-progress__fill {
+	background: #646970;
+}
+
+.nte-checkin-progress__status {
+	flex: 0 1 auto;
+	font-size: 0.8125rem;
+	line-height: 1.3;
+	color: #50575e;
+}
+
+.nte-checkin-progress__status:empty {
+	display: none;
+}
+
+.nte-checkin-progress[data-stale="true"] .nte-checkin-progress__status {
+	color: #8a2424;
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+	.nte-checkin-progress__fill {
+		transition: none;
+	}
+}
+
+@media print {
+
+	.nte-checkin-progress {
+		position: static;
+	}
+}

@@ -1053,6 +1053,11 @@
 	margin: 12px 0 20px;
 }
 
+/* The sticky check-in progress row (NTE-379) carries no margin of its own. */
+.wrap > .nte-checkin-progress {
+	margin-bottom: 12px;
+}
+
 .nte-summary-card {
 	padding: 14px 16px 16px;
 	background: #fff;

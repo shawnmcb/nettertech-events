@@ -16,6 +16,7 @@ use NetterTechEvents\Admin\CategoryPage;
 use NetterTechEvents\Admin\Metaboxes\Presenters\VenueBoxPresenter;
 use NetterTechEvents\Contracts\CategoryRepositoryInterface;
 use NetterTechEvents\Contracts\OccurrenceRepositoryInterface;
+use NetterTechEvents\Core\Hooks;
 use NetterTechEvents\Core\ServiceRegistry;
 use NetterTechEvents\Models\Event;
 use NetterTechEvents\Utilities\ImageHelper;
@@ -115,6 +116,17 @@ class EventMetaboxContentRenderer {
 							</option>
 						</select>
 					</div>
+
+					<?php
+					/**
+					 * Fires in the event editor's Publish box, below the Status control.
+					 *
+					 * @since 1.5.3
+					 *
+					 * @param Event $event The event being edited (unsaved for a new event).
+					 */
+					do_action( Hooks::PUBLISH_BOX_FIELDS, $this->event );
+					?>
 
 					<div style="margin-bottom: 12px;">
 						<label for="event_type">

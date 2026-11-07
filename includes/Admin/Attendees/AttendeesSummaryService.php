@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace NetterTechEvents\Admin\Attendees;
 
+use NetterTechEvents\Contracts\AttendeeCheckInInterface;
 use NetterTechEvents\Contracts\AttendeesSummaryServiceInterface;
 use NetterTechEvents\Contracts\CapacityCalculatorInterface;
 use NetterTechEvents\Contracts\EventRepositoryInterface;
@@ -16,6 +17,7 @@ use NetterTechEvents\Contracts\OccurrenceRepositoryInterface;
 use NetterTechEvents\Database\Schema;
 use NetterTechEvents\Enums\CapacityType;
 use NetterTechEvents\Services\Capacity\HouseRule;
+use NetterTechEvents\Services\CheckIn\CheckInProgress;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -74,23 +76,43 @@ final class AttendeesSummaryService implements AttendeesSummaryServiceInterface 
 	private OccurrenceRepositoryInterface $occurrence_repo;
 
 	/**
+	 * Check-in repository, the single source of an occurrence's check-in totals.
+	 *
+	 * @var AttendeeCheckInInterface
+	 */
+	private AttendeeCheckInInterface $check_in;
+
+	/**
+	 * Separates seats voided by an unpaid order from seats voided by a refund.
+	 *
+	 * @var AttendeeOrderStatusFilter
+	 */
+	private AttendeeOrderStatusFilter $order_status;
+
+	/**
 	 * Constructor.
 	 *
-	 * @param \wpdb                         $db              Database handle.
-	 * @param EventRepositoryInterface      $event_repo      Event repository.
-	 * @param OccurrenceRepositoryInterface $occurrence_repo Occurrence repository.
-	 * @param CapacityCalculatorInterface   $capacity        Capacity calculator.
+	 * @param \wpdb                          $db              Database handle.
+	 * @param EventRepositoryInterface       $event_repo      Event repository.
+	 * @param OccurrenceRepositoryInterface  $occurrence_repo Occurrence repository.
+	 * @param CapacityCalculatorInterface    $capacity        Capacity calculator.
+	 * @param AttendeeCheckInInterface       $check_in        Check-in repository (occurrence totals).
+	 * @param AttendeeOrderStatusFilter|null $order_status    Unpaid-order filter (null = built from $db).
 	 */
 	public function __construct(
 		\wpdb $db,
 		EventRepositoryInterface $event_repo,
 		OccurrenceRepositoryInterface $occurrence_repo,
-		CapacityCalculatorInterface $capacity
+		CapacityCalculatorInterface $capacity,
+		AttendeeCheckInInterface $check_in,
+		?AttendeeOrderStatusFilter $order_status = null
 	) {
 		$this->db              = $db;
 		$this->event_repo      = $event_repo;
 		$this->occurrence_repo = $occurrence_repo;
 		$this->capacity        = $capacity;
+		$this->check_in        = $check_in;
+		$this->order_status    = $order_status ?? new AttendeeOrderStatusFilter( $db );
 	}
 
 	/**
@@ -100,8 +122,8 @@ final class AttendeesSummaryService implements AttendeesSummaryServiceInterface 
 	 * @param int $occurrence_id Occurrence drill-down filter (0 = all occurrences).
 	 * @return array{
 	 *     event: array{title: string, date: string, venue: string, edit_url: string, view_url: string},
-	 *     tickets: array{rows: array<int, array{id: int, name: string, issued: int, available: ?int, checked_in: int, is_pass: bool, is_shared: bool, house_bound: bool}>, total_issued: int, total_checked_in: int, total_available: ?int, house: ?int, shares_house: bool},
-	 *     attendance: array{total_guests: int, status_counts: array<string, int>, checked_in_guests: int, checked_in_percent: int}
+	 *     tickets: array{rows: array<int, array{id: int, name: string, price: float, issued: int, available: ?int, checked_in: int, is_pass: bool, is_shared: bool, house_bound: bool}>, total_issued: int, total_checked_in: int, total_available: ?int, house: ?int, shares_house: bool},
+	 *     attendance: array{total_guests: int, status_counts: array<string, int>, checked_in_guests: int, checked_in_percent: int|null}
 	 * }
 	 */
 	public function build( int $event_id, int $occurrence_id ): array {
@@ -191,7 +213,7 @@ final class AttendeesSummaryService implements AttendeesSummaryServiceInterface 
 	 *
 	 * @param int $event_id      Event ID.
 	 * @param int $occurrence_id Occurrence filter (0 = all).
-	 * @return array{rows: array<int, array{id: int, name: string, issued: int, available: ?int, checked_in: int, is_pass: bool, is_shared: bool, house_bound: bool}>, total_issued: int, total_checked_in: int, total_available: ?int, house: ?int, shares_house: bool}
+	 * @return array{rows: array<int, array{id: int, name: string, price: float, issued: int, available: ?int, checked_in: int, is_pass: bool, is_shared: bool, house_bound: bool}>, total_issued: int, total_checked_in: int, total_available: ?int, house: ?int, shares_house: bool}
 	 */
 	private function build_ticket_overview( int $event_id, int $occurrence_id ): array {
 		$rows     = $this->fetch_ticket_type_rows( $event_id, $occurrence_id );
@@ -219,6 +241,10 @@ final class AttendeesSummaryService implements AttendeesSummaryServiceInterface 
 			$out[] = array(
 				'id'          => (int) ( $row['id'] ?? 0 ),
 				'name'        => (string) ( $row['name'] ?? __( 'Unknown ticket', 'nettertech-events' ) ),
+				// The tier's current price. Shown so operators need not divide
+				// revenue by count; a price edited after sales will not match
+				// what earlier buyers paid.
+				'price'       => (float) ( $row['price'] ?? 0 ),
 				'issued'      => $issued,
 				'available'   => $available,
 				// Check-ins per tier (amendment 2026-07-15). For a pass this counts
@@ -402,6 +428,7 @@ final class AttendeesSummaryService implements AttendeesSummaryServiceInterface 
 		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQL.NotPrepared -- Table names from Schema; values bound via prepare().
 		$sql = "SELECT tt.id AS id,
 					tt.name AS name,
+					tt.price AS price,
 					tt.scope AS scope,
 					tt.capacity AS capacity,
 					tt.capacity_type AS capacity_type,
@@ -466,7 +493,7 @@ final class AttendeesSummaryService implements AttendeesSummaryServiceInterface 
 	 *
 	 * @param int $event_id      Event ID.
 	 * @param int $occurrence_id Occurrence filter (0 = all).
-	 * @return array{total_guests: int, status_counts: array<string, int>, checked_in_guests: int, checked_in_percent: int}
+	 * @return array{total_guests: int, status_counts: array<string, int>, checked_in_guests: int, checked_in_percent: int|null}
 	 */
 	private function build_attendance_overview( int $event_id, int $occurrence_id ): array {
 		$attendees   = Schema::table( 'attendees' );
@@ -474,8 +501,14 @@ final class AttendeesSummaryService implements AttendeesSummaryServiceInterface 
 
 		$scope = $this->scope_clause( $event_id, $occurrence_id );
 
+		// A seat voided by a failed or cancelled order was never paid for, so it
+		// is left out exactly as the list below leaves it out by default (NTE-212).
+		// Counting it would put a "Voided" line above a list that shows none.
+		$order_join = $this->order_status->join_clause( 'a' );
+		$paid_only  = $this->order_status->exclude_unpaid_predicate( 'a' );
+
 		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- Admin summary.
-		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQL.NotPrepared -- Table names from Schema; values bound via prepare().
+		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQL.NotPrepared -- Table names from Schema, order predicate from a constant list; values bound via prepare().
 		// Guests, not attendee rows: one row can carry a quantity of ten. Counting
 		// rows here would print "Confirmed 5" directly beneath "Tickets 32".
 		$status_rows = $this->db->get_results(
@@ -483,24 +516,33 @@ final class AttendeesSummaryService implements AttendeesSummaryServiceInterface 
 				"SELECT a.status AS status, COALESCE(SUM(a.quantity), 0) AS c
 				FROM {$attendees} a
 				LEFT JOIN {$occurrences} o ON a.occurrence_id = o.id
-				WHERE {$scope['where']}
+				{$order_join}
+				WHERE {$scope['where']} AND {$paid_only}
 				GROUP BY a.status",
 				$scope['params']
 			),
 			ARRAY_A
 		);
 
-		$totals = $this->db->get_row(
-			$this->db->prepare(
-				"SELECT COALESCE(SUM(a.quantity), 0) AS total_guests,
-					COALESCE(SUM(a.checked_in_count), 0) AS checked_in_guests
-				FROM {$attendees} a
-				LEFT JOIN {$occurrences} o ON a.occurrence_id = o.id
-				WHERE {$scope['where']} AND a.status = 'confirmed'",
-				$scope['params']
-			),
-			ARRAY_A
-		);
+		if ( $occurrence_id > 0 ) {
+			// One date: read the same totals the check-in screens and their
+			// progress row read, so the two figures cannot drift apart.
+			$progress = $this->occurrence_progress( $occurrence_id );
+		} else {
+			$totals = $this->db->get_row(
+				$this->db->prepare(
+					"SELECT COALESCE(SUM(a.quantity), 0) AS total_guests,
+						COALESCE(SUM(a.checked_in_count), 0) AS checked_in_guests
+					FROM {$attendees} a
+					LEFT JOIN {$occurrences} o ON a.occurrence_id = o.id
+					WHERE {$scope['where']} AND a.status = 'confirmed'",
+					$scope['params']
+				),
+				ARRAY_A
+			);
+
+			$progress = new CheckInProgress( (int) ( $totals['total_guests'] ?? 0 ), (int) ( $totals['checked_in_guests'] ?? 0 ) );
+		}
 		// phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQL.NotPrepared
 		// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
 
@@ -509,16 +551,24 @@ final class AttendeesSummaryService implements AttendeesSummaryServiceInterface 
 			$status_counts[ (string) $row['status'] ] = (int) $row['c'];
 		}
 
-		$total_guests      = (int) ( $totals['total_guests'] ?? 0 );
-		$checked_in_guests = (int) ( $totals['checked_in_guests'] ?? 0 );
-		$percent           = $total_guests > 0 ? (int) round( ( $checked_in_guests / $total_guests ) * 100 ) : 0;
-
 		return array(
-			'total_guests'       => $total_guests,
+			'total_guests'       => $progress->eligible(),
 			'status_counts'      => $status_counts,
-			'checked_in_guests'  => $checked_in_guests,
-			'checked_in_percent' => $percent,
+			'checked_in_guests'  => $progress->checked_in(),
+			'checked_in_percent' => $progress->percent(),
 		);
+	}
+
+	/**
+	 * Check-in progress for one occurrence.
+	 *
+	 * @since 1.5.3
+	 *
+	 * @param int $occurrence_id Occurrence ID.
+	 * @return CheckInProgress
+	 */
+	public function occurrence_progress( int $occurrence_id ): CheckInProgress {
+		return CheckInProgress::from_stats( $this->check_in->get_check_in_stats( $occurrence_id ) );
 	}
 
 	/**

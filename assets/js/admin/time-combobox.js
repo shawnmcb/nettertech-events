@@ -180,6 +180,12 @@
 			display.setAttribute( 'aria-label', nativeLabel );
 		}
 
+		// Help text too: the native input that points at it is hidden from AT below.
+		const describedBy = this.timeInput.getAttribute( 'aria-describedby' );
+		if ( describedBy ) {
+			display.setAttribute( 'aria-describedby', describedBy );
+		}
+
 		// Hide the native input from view and AT; it stays the submitted field.
 		this.timeInput.classList.add( 'nte-time-combobox__native' );
 		this.timeInput.tabIndex = -1;
@@ -288,6 +294,7 @@
 		const options = this._buildOptions( filterText );
 		this.listbox.textContent = '';
 		this.activeIndex = -1;
+		this.display.removeAttribute( 'aria-activedescendant' );
 
 		if ( 0 === options.length ) {
 			const empty = document.createElement( 'li' );

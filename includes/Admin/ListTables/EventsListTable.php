@@ -962,12 +962,30 @@ class EventsListTable extends \WP_List_Table {
 			admin_url( 'admin.php' )
 		);
 
-		return sprintf(
+		$html = sprintf(
 			'<a href="%s" style="color: %s;">%s</a>',
 			esc_url( $filter_url ),
 			esc_attr( $status['color'] ),
 			esc_html( $status['label'] )
 		);
+
+		/**
+		 * Filters a plain-text note shown under the status label on the All Events list.
+		 *
+		 * Plain text only: core escapes it, so add-ons cannot change the cell's markup.
+		 *
+		 * @since 1.5.3
+		 *
+		 * @param string $note The note text; empty for none.
+		 * @param Event  $item The event for this row.
+		 */
+		$note = (string) apply_filters( Hooks::LIST_STATUS_NOTE, '', $item );
+
+		if ( '' !== $note ) {
+			$html .= sprintf( '<br><span class="description">%s</span>', esc_html( $note ) );
+		}
+
+		return $html;
 	}
 
 	/**

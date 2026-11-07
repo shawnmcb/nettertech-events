@@ -125,6 +125,11 @@ class AttendeeCheckInRepository implements AttendeeCheckInInterface {
 	 * @return bool True on success.
 	 */
 	public function mark_not_checked_in( int $id ): bool {
+		$attendee = $this->find( $id );
+		if ( ! $attendee ) {
+			return false;
+		}
+
 		$result = $this->db->update(
 			$this->table,
 			array(
@@ -136,6 +141,10 @@ class AttendeeCheckInRepository implements AttendeeCheckInInterface {
 			array( '%d', '%d', '%s' ),
 			array( '%d' )
 		);
+
+		if ( false !== $result ) {
+			$this->invalidate_occurrence_caches( $attendee->occurrence_id );
+		}
 
 		return false !== $result;
 	}

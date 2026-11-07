@@ -1822,6 +1822,32 @@ final class Hooks {
 	public const ACTION_LIST_COLUMN = 'nettertech_events_list_column';
 
 	/**
+	 * Filters a plain-text note shown under the status label on the All Events list.
+	 *
+	 * Core escapes the note, so add-ons annotate a status (for example a draft's
+	 * scheduled publish time) without owning the cell's markup.
+	 *
+	 * @since 1.5.3
+	 *
+	 * @param string                         $note The note text; empty for none.
+	 * @param \NetterTechEvents\Models\Event $item The event for this row.
+	 * @return string
+	 */
+	public const LIST_STATUS_NOTE = 'nettertech_events_list_status_note';
+
+	/**
+	 * Fires in the event editor's Publish box, below the Status control.
+	 *
+	 * Add-ons render fields that belong with publishing here; they save them on
+	 * {@see self::SAVE_PRO_EXTENSIONS}, which receives the POST array.
+	 *
+	 * @since 1.5.3
+	 *
+	 * @param \NetterTechEvents\Models\Event $event The event being edited (unsaved for a new event).
+	 */
+	public const PUBLISH_BOX_FIELDS = 'nettertech_events_publish_box_fields';
+
+	/**
 	 * AJAX action returning one event's per-date rows for the All Events list.
 	 *
 	 * Admin-only (`edit_posts` + nonce) and read-only: it renders the same rows the
@@ -1875,8 +1901,10 @@ final class Hooks {
 	 * Fires after Pro extension data is saved for an event.
 	 *
 	 * @since 1.0.2
+	 * @since 1.5.3 Added the `$post` argument.
 	 *
-	 * @param int $event_id Event ID.
+	 * @param int                  $event_id Event ID.
+	 * @param array<string, mixed> $post     Unslashed POST data from the nonce-verified boundary; unsanitized.
 	 */
 	public const SAVE_PRO_EXTENSIONS = 'nettertech_events_save_pro_extensions';
 

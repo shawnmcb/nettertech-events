@@ -13,30 +13,26 @@ defined( 'ABSPATH' ) || exit;
 
 use NetterTechEvents\Admin\Metaboxes\TicketsMetabox;
 use NetterTechEvents\Contracts\AttendeeRepositoryInterface;
-use NetterTechEvents\Contracts\CategoryRepositoryInterface;
 use NetterTechEvents\Contracts\EventRepositoryInterface;
 use NetterTechEvents\Contracts\OccurrenceRepositoryInterface;
-use NetterTechEvents\Contracts\OrganizerRepositoryInterface;
-use NetterTechEvents\Contracts\TagRepositoryInterface;
-use NetterTechEvents\Contracts\TicketTypeRepositoryInterface;
+use NetterTechEvents\Core\ServiceRegistry;
 use NetterTechEvents\Exceptions\ValidationException;
 use NetterTechEvents\Models\Event;
 use NetterTechEvents\Models\Occurrence;
-use NetterTechEvents\Models\RecurrenceRule;
+use NetterTechEvents\Services\OccurrenceRemover;
 use NetterTechEvents\Services\OccurrenceTimeResolver;
-use NetterTechEvents\Services\RecurrenceService;
 use NetterTechEvents\Services\TicketTypeSaver;
 
 /**
  * Handles submission of the per-occurrence edit form.
  *
- * Three scope branches (NTE-077):
- *  - this:      edit one occurrence (override columns + is_override flag).
- *  - following: split the series at this date into a new event, re-pointing
- *               future occurrences (and their tickets) to it so attendee
- *               links survive. Capability check first, then nonce.
- *  - all:       propagate inheritable fields to the parent event and future
- *               occurrences.
+ * Two scopes:
+ *  - this: edit one occurrence (override columns + is_override flag).
+ *  - all:  propagate inheritable fields to the parent event and future
+ *          occurrences.
+ *
+ * A series is never split into two events, so any other posted scope saves
+ * this date only.
  *
  * @since 1.0.4
  */
@@ -57,41 +53,6 @@ class OccurrenceSaveHandler {
 	private EventRepositoryInterface $event_repo;
 
 	/**
-	 * Recurrence service (RRULE parse for series-split).
-	 *
-	 * @var RecurrenceService
-	 */
-	private RecurrenceService $recurrence_service;
-
-	/**
-	 * Ticket type repository (re-point + template copy on series-split).
-	 *
-	 * @var TicketTypeRepositoryInterface
-	 */
-	private TicketTypeRepositoryInterface $ticket_type_repo;
-
-	/**
-	 * Category repository (junction copy on series-split).
-	 *
-	 * @var CategoryRepositoryInterface
-	 */
-	private CategoryRepositoryInterface $category_repo;
-
-	/**
-	 * Tag repository (junction copy on series-split).
-	 *
-	 * @var TagRepositoryInterface
-	 */
-	private TagRepositoryInterface $tag_repo;
-
-	/**
-	 * Organizer repository (junction copy on series-split).
-	 *
-	 * @var OrganizerRepositoryInterface
-	 */
-	private OrganizerRepositoryInterface $organizer_repo;
-
-	/**
 	 * Saves this date's own ticket types (null when unavailable).
 	 *
 	 * @var TicketTypeSaver|null
@@ -106,38 +67,35 @@ class OccurrenceSaveHandler {
 	private ?AttendeeRepositoryInterface $attendee_repo;
 
 	/**
+	 * Removes a date with its ticket types (resolved on first use when not injected).
+	 *
+	 * @var OccurrenceRemover|null
+	 */
+	private ?OccurrenceRemover $remover;
+
+	/**
 	 * Constructor.
 	 *
-	 * @param OccurrenceRepositoryInterface    $occurrence_repo    Occurrence repository.
-	 * @param EventRepositoryInterface         $event_repo         Event repository.
-	 * @param RecurrenceService                $recurrence_service Recurrence service.
-	 * @param TicketTypeRepositoryInterface    $ticket_type_repo   Ticket type repository.
-	 * @param CategoryRepositoryInterface      $category_repo      Category repository.
-	 * @param TagRepositoryInterface           $tag_repo           Tag repository.
-	 * @param OrganizerRepositoryInterface     $organizer_repo     Organizer repository.
-	 * @param TicketTypeSaver|null             $ticket_saver       Saves this date's own ticket types.
+	 * @since 1.5.4 Added `$remover`.
+	 *
+	 * @param OccurrenceRepositoryInterface    $occurrence_repo Occurrence repository.
+	 * @param EventRepositoryInterface         $event_repo      Event repository.
+	 * @param TicketTypeSaver|null             $ticket_saver    Saves this date's own ticket types.
 	 * @param AttendeeRepositoryInterface|null $attendee_repo   Tells us whether a date has sold seats.
+	 * @param OccurrenceRemover|null           $remover         Removes a date with its ticket types.
 	 */
 	public function __construct(
 		OccurrenceRepositoryInterface $occurrence_repo,
 		EventRepositoryInterface $event_repo,
-		RecurrenceService $recurrence_service,
-		TicketTypeRepositoryInterface $ticket_type_repo,
-		CategoryRepositoryInterface $category_repo,
-		TagRepositoryInterface $tag_repo,
-		OrganizerRepositoryInterface $organizer_repo,
 		?TicketTypeSaver $ticket_saver = null,
-		?AttendeeRepositoryInterface $attendee_repo = null
+		?AttendeeRepositoryInterface $attendee_repo = null,
+		?OccurrenceRemover $remover = null
 	) {
-		$this->occurrence_repo    = $occurrence_repo;
-		$this->event_repo         = $event_repo;
-		$this->recurrence_service = $recurrence_service;
-		$this->ticket_type_repo   = $ticket_type_repo;
-		$this->category_repo      = $category_repo;
-		$this->tag_repo           = $tag_repo;
-		$this->organizer_repo     = $organizer_repo;
-		$this->ticket_saver       = $ticket_saver;
-		$this->attendee_repo      = $attendee_repo;
+		$this->occurrence_repo = $occurrence_repo;
+		$this->event_repo      = $event_repo;
+		$this->ticket_saver    = $ticket_saver;
+		$this->attendee_repo   = $attendee_repo;
+		$this->remover         = $remover;
 	}
 
 	/**
@@ -168,8 +126,9 @@ class OccurrenceSaveHandler {
 	 * gained a date the operator no longer wants has to be able to lose it again. Creating dates
 	 * without being able to remove them is only half a feature.
 	 *
-	 * A date that has sold tickets is never deleted. Those seats are somebody's evening; the refusal
-	 * says so and names the date, exactly as converting a series to a single date does.
+	 * A date that anyone holds a place on is never deleted. Those seats are somebody's evening; the
+	 * refusal says so and names the date, exactly as converting a series to a single date does. The
+	 * date's own ticket types go with it, so none is left on sale for a date that is gone.
 	 *
 	 * @since 1.1.2
 	 *
@@ -196,27 +155,44 @@ class OccurrenceSaveHandler {
 			return $this->redirect_to_event( 0, 'error' );
 		}
 
-		$event_id  = $occurrence->event_id;
-		$attendees = null !== $this->attendee_repo
-			? $this->attendee_repo->count_for_occurrence( $occurrence->id, null )
-			: 0;
+		$event_id = $occurrence->event_id;
+		$remover  = $this->remover ?? ServiceRegistry::get( OccurrenceRemover::class );
+		$when     = $occurrence->get_start()->format( 'M j, Y g:i a' );
 
-		if ( $attendees > 0 ) {
+		if ( $remover instanceof OccurrenceRemover && $remover->has_holders( $occurrence->id ) ) {
+			$attending = null !== $this->attendee_repo ? $this->attendee_repo->count_for_occurrence( $occurrence->id ) : 0;
+
+			$message = $attending > 0
+				? sprintf(
+					/* translators: 1: the date, 2: how many people are going. */
+					esc_html__( 'That date cannot be removed, because %1$s has already sold tickets (%2$d attending). Cancel and refund them first, or cancel the date instead of removing it.', 'nettertech-events' ),
+					esc_html( $when ),
+					$attending
+				)
+				: sprintf(
+					/* translators: %s: the date. */
+					esc_html__( 'That date cannot be removed, because %s has ticket or order records. Cancel the date instead of removing it.', 'nettertech-events' ),
+					esc_html( $when )
+				);
+
+			set_transient( 'nettertech_events_save_error_' . get_current_user_id(), $message, 60 );
+
+			return $this->redirect_to_event( $event_id, 'error' );
+		}
+
+		if ( ! $remover instanceof OccurrenceRemover || ! $remover->remove( $occurrence->id ) ) {
 			set_transient(
 				'nettertech_events_save_error_' . get_current_user_id(),
 				sprintf(
-					/* translators: 1: the date, 2: how many people are going. */
-					esc_html__( 'That date cannot be removed, because %1$s has already sold tickets (%2$d attending). Cancel and refund them first, or cancel the date instead of removing it.', 'nettertech-events' ),
-					esc_html( $occurrence->get_start()->format( 'M j, Y g:i a' ) ),
-					(int) $attendees
+					/* translators: %s: the date. */
+					esc_html__( '%s could not be removed. Reload the event and try again.', 'nettertech-events' ),
+					esc_html( $when )
 				),
 				60
 			);
 
 			return $this->redirect_to_event( $event_id, 'error' );
 		}
-
-		$this->occurrence_repo->delete( $occurrence->id );
 
 		return $this->redirect_to_event( $event_id, 'updated' );
 	}
@@ -269,7 +245,7 @@ class OccurrenceSaveHandler {
 		}
 		$occurrence->set_event( $event );
 
-		$scope = $this->sanitize_scope( isset( $post['scope'] ) ? (string) $post['scope'] : 'this' );
+		$posted_scope = isset( $post['scope'] ) ? sanitize_key( (string) $post['scope'] ) : 'this';
 
 		try {
 			// Inside the try: extract_fields now derives and validates times and can
@@ -277,22 +253,26 @@ class OccurrenceSaveHandler {
 			// or inverted span — NTE-189).
 			$fields = $this->extract_fields( $post );
 
-			switch ( $scope ) {
-				case 'following':
-					$this->apply_following( $occurrence, $event, $fields );
-					break;
-				case 'all':
-					$this->apply_all( $occurrence, $event, $fields );
-					break;
-				default:
-					$this->apply_this( $occurrence, $event, $fields );
-					break;
+			if ( 'all' === $posted_scope ) {
+				$this->apply_all( $occurrence, $event, $fields );
+			} else {
+				$this->apply_this( $occurrence, $event, $fields );
 			}
 
-			$this->save_ticket_types( $occurrence, $event, $post );
+			$this->save_ticket_types( $occurrence, $post );
 		} catch ( \RuntimeException $e ) {
 			set_transient( 'nettertech_events_save_error_' . get_current_user_id(), $e->getMessage(), 60 );
 			return $this->redirect_to_editor( $occurrence_id, 'error' );
+		}
+
+		// Any other scope, from a stale form or a crafted request, was saved as this date only;
+		// the operator asked for more and has to be told they did not get it.
+		if ( ! in_array( $posted_scope, array( 'this', 'all' ), true ) ) {
+			set_transient(
+				'nettertech_events_save_notice_' . get_current_user_id(),
+				__( 'Your changes were applied to this date only.', 'nettertech-events' ),
+				60
+			);
 		}
 
 		return $this->redirect_to_editor( $occurrence_id, 'updated' );
@@ -307,12 +287,13 @@ class OccurrenceSaveHandler {
 	 *
 	 * @since 1.1.2
 	 *
+	 * Tickets are filed under the event the date belongs to now.
+	 *
 	 * @param Occurrence           $occurrence The date being saved.
-	 * @param Event                $event      Its event.
 	 * @param array<string, mixed> $post       Unslashed POST data from the nonce-verified boundary.
 	 * @return void
 	 */
-	private function save_ticket_types( Occurrence $occurrence, Event $event, array $post ): void {
+	private function save_ticket_types( Occurrence $occurrence, array $post ): void {
 		if ( null === $this->ticket_saver || empty( $post['nte_tickets_metabox_rendered'] ) ) {
 			return;
 		}
@@ -328,7 +309,7 @@ class OccurrenceSaveHandler {
 		$this->ticket_saver->save_for_occurrence(
 			(int) $occurrence->id,
 			$post,
-			(int) $event->id
+			$occurrence->event_id
 		);
 	}
 
@@ -350,105 +331,6 @@ class OccurrenceSaveHandler {
 			$occurrence->is_override = true;
 		}
 		$this->occurrence_repo->save( $occurrence );
-	}
-
-	/**
-	 * Scope: this and all following dates (series split via re-point).
-	 *
-	 * Future occurrences (and their occurrence-scoped tickets) are re-pointed
-	 * to a new event so occurrence IDs — and therefore attendee links, WC
-	 * orders, QR codes, and check-in tokens — survive. The parent series RRULE
-	 * is capped with UNTIL = day before the cutoff.
-	 *
-	 * @param Occurrence           $occurrence Occurrence at the split point.
-	 * @param Event                $event      Parent event.
-	 * @param array<string, mixed> $fields     Sanitized field values.
-	 * @return void
-	 */
-	private function apply_following( Occurrence $occurrence, Event $event, array $fields ): void {
-		// The split cutoff is the occurrence's ORIGINAL position, not any edited date.
-		$cutoff_str = $occurrence->start_datetime;
-		$cutoff_dt  = new \DateTimeImmutable( $cutoff_str );
-
-		$all_occurrences = $this->occurrence_repo->for_event( (int) $event->id );
-
-		$before_count = 0;
-		foreach ( $all_occurrences as $sibling ) {
-			if ( $sibling->start_datetime < $cutoff_str ) {
-				++$before_count;
-			}
-		}
-
-		$parent_rule = ! empty( $event->recurrence_rule )
-			? $this->recurrence_service->parse_rule( $event->recurrence_rule )
-			: null;
-
-		// Create and persist the new (future) series.
-		$new_event = $this->event_repo->save(
-			$this->build_split_event( $event, $parent_rule, $before_count )
-		);
-
-		// Cap the parent series so the horizon-extender stops at the split.
-		$this->cap_parent_series( $event, $parent_rule, $cutoff_dt );
-
-		// Re-point future occurrences (excluding the clicked one) + their tickets.
-		foreach ( $all_occurrences as $sibling ) {
-			if ( null === $sibling->id
-				|| $sibling->id === $occurrence->id
-				|| $sibling->start_datetime < $cutoff_str ) {
-				continue;
-			}
-			$sibling->event_id = (int) $new_event->id;
-			$this->occurrence_repo->save( $sibling );
-			$this->repoint_occurrence_tickets( (int) $sibling->id, (int) $new_event->id );
-		}
-
-		// Copy category/tag/organizer junctions onto the new series.
-		$this->copy_junctions( (int) $event->id, (int) $new_event->id );
-
-		// Copy event-level ticket templates onto the new series.
-		$this->copy_templates( (int) $event->id, (int) $new_event->id );
-
-		// Move + edit the clicked occurrence onto the new series.
-		$occurrence->event_id = (int) $new_event->id;
-		$occurrence->set_event( $new_event );
-		$this->apply_fields_to_occurrence( $occurrence, $fields );
-		$occurrence->is_override = true;
-		$this->occurrence_repo->save( $occurrence );
-		$this->repoint_occurrence_tickets( (int) $occurrence->id, (int) $new_event->id );
-
-		// Re-sequence the new series 1-based by start_datetime. Re-pointed siblings
-		// retain their parent-series sequence_number; without this the new event's
-		// sequence would start mid-series, breaking iCal original-slot recovery.
-		$this->resequence_event_occurrences( (int) $new_event->id );
-	}
-
-	/**
-	 * Re-number an event's occurrences 1-based by start_datetime.
-	 *
-	 * @param int $event_id Event ID.
-	 * @return void
-	 */
-	private function resequence_event_occurrences( int $event_id ): void {
-		$occurrences = $this->occurrence_repo->for_event(
-			$event_id,
-			array(
-				'orderby' => 'start_datetime',
-				'order'   => 'ASC',
-			)
-		);
-
-		$seq = 1;
-		foreach ( $occurrences as $occurrence ) {
-			if ( null === $occurrence->id ) {
-				continue;
-			}
-			if ( $occurrence->sequence_number !== $seq ) {
-				$occurrence->sequence_number = $seq;
-				$this->occurrence_repo->save( $occurrence );
-			}
-			++$seq;
-		}
 	}
 
 	/**
@@ -484,10 +366,19 @@ class OccurrenceSaveHandler {
 		}
 		$this->event_repo->save( $event );
 
-		$future  = $this->occurrence_repo->for_event( (int) $event->id, array( 'upcoming' => true ) );
+		$future  = $this->occurrence_repo->for_event(
+			(int) $event->id,
+			array(
+				'upcoming' => true,
+				'limit'    => PHP_INT_MAX,
+			)
+		);
 		$skipped = array();
-		foreach ( $future as $sibling ) {
-			if ( null === $sibling->id ) {
+		foreach ( $future as $listed ) {
+			// The list query leaves out the long per-date columns; saving a listed row would blank
+			// the date's own description and address.
+			$sibling = null !== $listed->id ? $this->occurrence_repo->find( $listed->id ) : null;
+			if ( null === $sibling ) {
 				continue;
 			}
 
@@ -572,159 +463,6 @@ class OccurrenceSaveHandler {
 	}
 
 	/**
-	 * Build a new event copying the parent's content for a series split.
-	 *
-	 * Inherits content/venue/virtual/image/recurrence/layout/reminder/QR
-	 * fields. Category/tag/organizer junctions are copied separately by
-	 * copy_junctions() after the new event is persisted.
-	 *
-	 * @param Event               $source       Parent event.
-	 * @param RecurrenceRule|null $rule         Parsed parent rule (null when not recurring).
-	 * @param int                 $before_count Occurrences strictly before the cutoff.
-	 * @return Event Unsaved new event.
-	 */
-	private function build_split_event( Event $source, ?RecurrenceRule $rule, int $before_count ): Event {
-		$new                               = new Event();
-		$new->title                        = $source->title;
-		$new->description                  = $source->description;
-		$new->excerpt                      = $source->excerpt;
-		$new->featured_image_id            = $source->featured_image_id;
-		$new->status                       = $source->status;
-		$new->event_type                   = $source->event_type;
-		$new->series_id                    = $source->series_id;
-		$new->venue_name                   = $source->venue_name;
-		$new->venue_address                = $source->venue_address;
-		$new->is_virtual                   = $source->is_virtual;
-		$new->virtual_url                  = $source->virtual_url;
-		$new->collect_individual_attendees = $source->collect_individual_attendees;
-		$new->layout_config                = $source->layout_config;
-		$new->reminders_enabled            = $source->reminders_enabled;
-		$new->waitlist_enabled             = $source->waitlist_enabled;
-		$new->notification_emails          = $source->notification_emails;
-		$new->qr_logo_mode                 = $source->qr_logo_mode;
-		$new->qr_logo_attachment_id        = $source->qr_logo_attachment_id;
-		$new->space_id                     = $source->space_id;
-		$new->slug                         = $this->event_repo->generate_unique_slug( $source->title );
-
-		// The future series carries the recurrence; COUNT rules lose the
-		// occurrences that stay on the parent.
-		if ( null !== $rule ) {
-			if ( null !== $rule->count ) {
-				$new->recurrence_rule = (string) $rule->with_count( max( 1, $rule->count - $before_count ) );
-			} else {
-				$new->recurrence_rule = (string) $rule;
-			}
-		}
-
-		return $new;
-	}
-
-	/**
-	 * Cap the parent series at the split point.
-	 *
-	 * @param Event               $parent_event Parent event.
-	 * @param RecurrenceRule|null $rule         Parsed parent rule.
-	 * @param \DateTimeImmutable  $cutoff_dt    Split cutoff datetime.
-	 * @return void
-	 */
-	private function cap_parent_series( Event $parent_event, ?RecurrenceRule $rule, \DateTimeImmutable $cutoff_dt ): void {
-		if ( null !== $rule ) {
-			$until                         = $cutoff_dt->modify( '-1 day' )->setTime( 23, 59, 59 );
-			$parent_event->recurrence_rule = (string) $rule->with_until( $until );
-		}
-
-		$parent_event->title = sprintf(
-			/* translators: 1: original event title, 2: cutoff date */
-			__( '%1$s (through %2$s)', 'nettertech-events' ),
-			$parent_event->title,
-			$cutoff_dt->modify( '-1 day' )->format( (string) get_option( 'date_format', 'Y-m-d' ) )
-		);
-
-		$this->event_repo->save( $parent_event );
-	}
-
-	/**
-	 * Re-point an occurrence's occurrence-scoped ticket types to a new event.
-	 *
-	 * @param int $occurrence_id Occurrence ID.
-	 * @param int $new_event_id  Destination event ID.
-	 * @return void
-	 */
-	private function repoint_occurrence_tickets( int $occurrence_id, int $new_event_id ): void {
-		$tickets = $this->ticket_type_repo->for_occurrence( $occurrence_id );
-		foreach ( $tickets as $ticket ) {
-			if ( $ticket->event_id === $new_event_id ) {
-				continue;
-			}
-			$ticket->event_id = $new_event_id;
-			$this->ticket_type_repo->save( $ticket );
-		}
-	}
-
-	/**
-	 * Copy event-level ticket templates from one event to another.
-	 *
-	 * @param int $source_event_id Source (parent) event ID.
-	 * @param int $new_event_id    Destination (new) event ID.
-	 * @return void
-	 */
-	private function copy_templates( int $source_event_id, int $new_event_id ): void {
-		$templates = $this->ticket_type_repo->get_templates( $source_event_id );
-		foreach ( $templates as $template ) {
-			$copy                  = clone $template;
-			$copy->id              = null;
-			$copy->event_id        = $new_event_id;
-			$copy->occurrence_id   = null;
-			$copy->template_id     = null;
-			$copy->wc_product_id   = null;
-			$copy->wc_variation_id = null;
-			$copy->sold_count      = 0;
-			$this->ticket_type_repo->save( $copy );
-		}
-	}
-
-	/**
-	 * Copy category, tag, and organizer junctions from one event to another.
-	 *
-	 * Called after a series split so the new event inherits the same taxonomy
-	 * links as the source. Primary ordering is preserved because each
-	 * find_by_event() returns rows sorted primary-first; sync_event_* treats
-	 * the first array entry as primary when plain IDs are passed.
-	 *
-	 * @param int $source_event_id Source event ID.
-	 * @param int $new_event_id    New event ID.
-	 * @return void
-	 */
-	private function copy_junctions( int $source_event_id, int $new_event_id ): void {
-		$categories = $this->category_repo->find_by_event( $source_event_id );
-		if ( ! empty( $categories ) ) {
-			$category_ids = array();
-			foreach ( $categories as $cat ) {
-				$category_ids[] = (int) $cat->id;
-			}
-			$this->category_repo->sync_event_categories( $new_event_id, $category_ids );
-		}
-
-		$tags = $this->tag_repo->find_by_event( $source_event_id );
-		if ( ! empty( $tags ) ) {
-			$tag_ids = array();
-			foreach ( $tags as $tag ) {
-				$tag_ids[] = (int) $tag->id;
-			}
-			$this->tag_repo->sync_event_tags( $new_event_id, $tag_ids );
-		}
-
-		$organizers = $this->organizer_repo->find_by_event( $source_event_id );
-		if ( ! empty( $organizers ) ) {
-			$organizer_ids = array();
-			foreach ( $organizers as $org ) {
-				$organizer_ids[] = (int) $org->id;
-			}
-			$this->organizer_repo->sync_event_organizers( $new_event_id, $organizer_ids );
-		}
-	}
-
-	/**
 	 * Extract and sanitize the editable fields from POST.
 	 *
 	 * @param array<string, mixed> $post Unslashed POST data.
@@ -790,17 +528,6 @@ class OccurrenceSaveHandler {
 	 */
 	private function null_if_empty( string $value ): ?string {
 		return '' === $value ? null : $value;
-	}
-
-	/**
-	 * Normalize the scope parameter.
-	 *
-	 * @param string $scope Raw scope value.
-	 * @return string One of: this, following, all.
-	 */
-	private function sanitize_scope( string $scope ): string {
-		$scope = sanitize_key( $scope );
-		return in_array( $scope, array( 'this', 'following', 'all' ), true ) ? $scope : 'this';
 	}
 
 	/**

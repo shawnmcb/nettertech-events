@@ -11,8 +11,11 @@
 	padding: var(--nte-spacing-lg, 1.5rem);
 }
 
+/* A multi-date event's main page is its Event Page, so it takes the same
+   ratio setting and crop anchor as .nte-single-event__image. The ratio sits
+   on the container: a max-height cap here would clip every ratio to one band. */
 .nte-series-page__image {
-	max-height: 500px;
+	aspect-ratio: var(--nte-image-ratio-single, var(--nte-image-ratio-default, 16 / 9));
 	margin-bottom: var(--nte-spacing-lg, 1.5rem);
 	border-radius: var(--nte-radius-lg, 0.5rem);
 	overflow: hidden;
@@ -21,9 +24,9 @@
 .nte-series-page__img {
 	display: block;
 	width: 100%;
-	height: auto;
-	aspect-ratio: var(--nte-image-ratio-default, 16 / 9);
+	height: 100%;
 	object-fit: cover;
+	object-position: 50% var(--nte-series-image-anchor-y, 50%);
 }
 
 .nte-series-page__header {

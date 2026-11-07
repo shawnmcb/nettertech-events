@@ -227,12 +227,6 @@ $nte_back_url = admin_url( 'admin.php?page=' . AdminMenu::SUBMENU_EDIT . '&event
 				</p>
 				<p>
 					<label>
-						<input type="radio" name="scope" value="following">
-						<?php esc_html_e( 'This and all following dates', 'nettertech-events' ); ?>
-					</label>
-				</p>
-				<p>
-					<label>
 						<input type="radio" name="scope" value="all">
 						<?php esc_html_e( 'All dates in the series', 'nettertech-events' ); ?>
 					</label>

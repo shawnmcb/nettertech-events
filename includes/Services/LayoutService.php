@@ -116,27 +116,36 @@ class LayoutService {
 	 *
 	 * Resolves layout with fallback chain:
 	 * 1. Event-specific layout_config
-	 * 2. Global settings
+	 * 2. Global settings, unless they are just the built-in default
 	 * 3. Hardcoded defaults (recurring-aware when event context is provided)
 	 *
 	 * @param array<string, mixed>|null $event_layout_config Event's layout_config (JSON decoded array or null).
 	 * @param Event|null                $event               Optional event context for recurring-aware defaults.
+	 * @param bool                      $multi_date          The page lists several dates (the series page), so
+	 *                                                       the recurring default applies whatever the event type.
 	 * @return array{order: array<string>, visibility: array<string, bool>}
+	 * @since 1.5.2 Added $multi_date; a global layout equal to the built-in default no longer overrides the recurring default.
 	 */
-	public function get_layout( ?array $event_layout_config = null, ?Event $event = null ): array {
+	public function get_layout( ?array $event_layout_config = null, ?Event $event = null, bool $multi_date = false ): array {
 		// Try event-specific config first.
 		if ( ! empty( $event_layout_config ) && $this->validate_config( $event_layout_config ) ) {
 			return $this->merge_with_defaults( $event_layout_config );
 		}
 
-		// Fall back to global settings.
+		// Fall back to global settings. The Display settings form posts the
+		// layout editor's state on every save, so an editor nobody touched
+		// stores the built-in order. That is not a choice, and it must not
+		// override the recurring default below.
 		$global_config = $this->get_global_default();
 		if ( ! empty( $global_config ) && $this->validate_config( $global_config ) ) {
-			return $this->merge_with_defaults( $global_config );
+			$global_layout = $this->merge_with_defaults( $global_config );
+			if ( $global_layout !== $this->get_hardcoded_default() ) {
+				return $global_layout;
+			}
 		}
 
 		// Return hardcoded defaults (recurring-aware).
-		return $this->get_hardcoded_default( $event );
+		return $this->get_hardcoded_default( $event, $multi_date );
 	}
 
 	/**
@@ -173,17 +182,20 @@ class LayoutService {
 	 * the upcoming-dates list by default. Per-event and global-settings overrides
 	 * still take precedence via {@see self::get_layout()}.
 	 *
-	 * @param Event|null $event Optional event context for recurring-aware order selection.
+	 * @param Event|null $event      Optional event context for recurring-aware order selection.
+	 * @param bool       $multi_date The page lists several dates; takes the recurring order
+	 *                               even when the event type is 'single' with added dates.
 	 * @return array{order: array<string>, visibility: array<string, bool>}
 	 * @since 1.1.0 Added $event parameter for recurring-aware defaults.
+	 * @since 1.5.2 Added $multi_date.
 	 */
-	public function get_hardcoded_default( ?Event $event = null ): array {
+	public function get_hardcoded_default( ?Event $event = null, bool $multi_date = false ): array {
 		$visibility = array();
 		foreach ( self::COMPONENTS as $id => $meta ) {
 			$visibility[ $id ] = $meta['default_visible'];
 		}
 
-		$order = ( null !== $event && $event->is_recurring() )
+		$order = ( $multi_date || ( null !== $event && $event->is_recurring() ) )
 			? self::DEFAULT_ORDER_RECURRING
 			: self::DEFAULT_ORDER;
 
@@ -314,6 +326,35 @@ class LayoutService {
 			$merged['order'],
 			fn( $id ) => ! empty( $merged['visibility'][ $id ] )
 		);
+	}
+
+	/**
+	 * Ordered sections for a multi-date event's main page (series-page.php).
+	 *
+	 * That page has no current date, so occurrence_date has nothing to show,
+	 * and its date grid does the job of both "other dates" components. The
+	 * grid takes the slot of whichever of upcoming_dates / more_dates comes
+	 * first and is hidden only when both are: hiding one of them for the
+	 * per-date pages must not empty every series page of its dates.
+	 *
+	 * @since 1.5.2
+	 *
+	 * @param array<string, mixed> $config Layout configuration (see get_layout()).
+	 * @return array<int, string> Ordered subset of 'header', 'featured_image', 'description', 'dates'.
+	 */
+	public function get_series_page_sections( array $config ): array {
+		$sections = array();
+
+		foreach ( $this->get_visible_components( $config ) as $id ) {
+			if ( 'upcoming_dates' === $id || 'more_dates' === $id ) {
+				$id = 'dates';
+			}
+			if ( in_array( $id, array( 'header', 'featured_image', 'description', 'dates' ), true ) && ! in_array( $id, $sections, true ) ) {
+				$sections[] = $id;
+			}
+		}
+
+		return $sections;
 	}
 
 	/**

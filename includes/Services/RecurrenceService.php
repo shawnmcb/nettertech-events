@@ -15,11 +15,14 @@ use NetterTechEvents\Contracts\AttendeeRepositoryInterface;
 use NetterTechEvents\Contracts\OccurrenceRepositoryInterface;
 use NetterTechEvents\Contracts\TicketTypeRepositoryInterface;
 use NetterTechEvents\Core\Hooks;
+use NetterTechEvents\Core\ServiceRegistry;
+use NetterTechEvents\Enums\TicketTypeScope;
 use NetterTechEvents\Exceptions\RRuleException;
 use NetterTechEvents\Exceptions\ValidationException;
 use NetterTechEvents\Models\Event;
 use NetterTechEvents\Models\Occurrence;
 use NetterTechEvents\Models\RecurrenceRule;
+use NetterTechEvents\Models\TicketType;
 use NetterTechEvents\Utilities\DebugLogger;
 
 /**
@@ -69,26 +72,56 @@ class RecurrenceService {
 	private AttendeeRepositoryInterface $attendee_repo;
 
 	/**
+	 * Removes dates with the ticket types filed under them (resolved on first use when not injected).
+	 *
+	 * @var OccurrenceRemover|null
+	 */
+	private ?OccurrenceRemover $remover;
+
+	/**
 	 * Constructor.
+	 *
+	 * @since 1.5.4 Added `$remover`.
 	 *
 	 * @param RRuleParser                   $parser           RRULE parser.
 	 * @param OccurrenceGenerator           $generator        Occurrence generator.
 	 * @param OccurrenceRepositoryInterface $occurrence_repo  Occurrence repository.
 	 * @param TicketTypeRepositoryInterface $ticket_type_repo Ticket type repository.
 	 * @param AttendeeRepositoryInterface   $attendee_repo    Attendee repository.
+	 * @param OccurrenceRemover|null        $remover          Removes dates with their ticket types.
 	 */
 	public function __construct(
 		RRuleParser $parser,
 		OccurrenceGenerator $generator,
 		OccurrenceRepositoryInterface $occurrence_repo,
 		TicketTypeRepositoryInterface $ticket_type_repo,
-		AttendeeRepositoryInterface $attendee_repo
+		AttendeeRepositoryInterface $attendee_repo,
+		?OccurrenceRemover $remover = null
 	) {
 		$this->parser           = $parser;
 		$this->generator        = $generator;
 		$this->occurrence_repo  = $occurrence_repo;
 		$this->ticket_type_repo = $ticket_type_repo;
 		$this->attendee_repo    = $attendee_repo;
+		$this->remover          = $remover;
+	}
+
+	/**
+	 * The remover every date deletion here goes through.
+	 *
+	 * @return OccurrenceRemover
+	 * @throws \LogicException When the container has no remover to resolve.
+	 */
+	private function remover(): OccurrenceRemover {
+		if ( null === $this->remover ) {
+			$remover = ServiceRegistry::get( OccurrenceRemover::class );
+			if ( ! $remover instanceof OccurrenceRemover ) {
+				throw new \LogicException( 'OccurrenceRemover is not registered.' );
+			}
+			$this->remover = $remover;
+		}
+
+		return $this->remover;
 	}
 
 	/**
@@ -186,10 +219,9 @@ class RecurrenceService {
 	}
 
 	/**
-	 * Regenerate future occurrences for a recurring event.
+	 * Extend a recurring event's dates past its last one.
 	 *
-	 * Preserves past/modified occurrences and generates new future ones.
-	 * Future occurrences with confirmed attendees are protected from deletion.
+	 * @deprecated 1.5.4 Use extend_horizon(). This no longer deletes or recreates any date.
 	 *
 	 * @param Event              $event      The event.
 	 * @param \DateTimeInterface $start_date First occurrence start date/time.
@@ -203,11 +235,44 @@ class RecurrenceService {
 		\DateTimeInterface $end_date,
 		string $rrule
 	): array {
+		$result = $this->extend_horizon( $event, $start_date, $end_date, $rrule );
+
+		return array(
+			'generated' => $result['generated'],
+			'saved'     => $result['saved'],
+			'deleted'   => 0,
+			'protected' => 0,
+			'errors'    => $result['errors'],
+		);
+	}
+
+	/**
+	 * Add the pattern's dates that fall after the event's last generated date, and give them the
+	 * event's ticket templates.
+	 *
+	 * Add-only: no existing date is deleted, moved or recreated, so every date keeps its ID, its
+	 * tickets and its per-date values. The pattern is expanded from its original first date, so a
+	 * rule without BYDAY keeps its weekday and COUNT keeps meaning "this many in all". The boundary
+	 * is the later of the last slot the pattern already produced and the site's wall-clock now.
+	 *
+	 * @since 1.5.4
+	 *
+	 * @param Event              $event      The event.
+	 * @param \DateTimeInterface $start_date First date's start (the pattern's anchor).
+	 * @param \DateTimeInterface $end_date   First date's end.
+	 * @param string             $rrule      RRULE string.
+	 * @return array{generated: int, saved: int, tickets: int, errors: array<string>} Slots past the boundary, dates added, ticket types created on them, errors.
+	 */
+	public function extend_horizon(
+		Event $event,
+		\DateTimeInterface $start_date,
+		\DateTimeInterface $end_date,
+		string $rrule
+	): array {
 		$result = array(
 			'generated' => 0,
 			'saved'     => 0,
-			'deleted'   => 0,
-			'protected' => 0,
+			'tickets'   => 0,
 			'errors'    => array(),
 		);
 
@@ -217,7 +282,6 @@ class RecurrenceService {
 			return $result;
 		}
 
-		// Validate and parse RRULE.
 		try {
 			$rule = $this->parser->parse( $rrule );
 		} catch ( RRuleException $e ) {
@@ -225,43 +289,50 @@ class RecurrenceService {
 			return $result;
 		}
 
-		// Delete future occurrences, protecting those with attendees.
-		$deletion_result     = $this->delete_future_unattended_occurrences( $event_id );
-		$result['deleted']   = $deletion_result['deleted'];
-		$result['protected'] = $deletion_result['protected'];
+		$existing = $this->occurrence_repo->for_event( $event_id, array( 'limit' => PHP_INT_MAX ) );
 
-		// Expand from the ORIGINAL anchor and collect only future dates.
-		// Relocating the anchor to "today" was NTE-200: a BYDAY-less rule
-		// derives its weekday from DTSTART (moving it moved the whole series
-		// to a different day), and COUNT restarted from the new anchor. The
-		// original anchor also carries the original time-of-day, so the
-		// "11:18 pm carousel" wall-clock bug the old window logic guarded
-		// against cannot recur.
-		//
-		// The boundary is the site's wall-clock "now", not UTC: occurrence slots
-		// are naive site-local strings, and WordPress pins PHP's default zone to
-		// UTC, so a bare `new DateTimeImmutable()` runs ahead of the slots by the
-		// site's UTC offset. West of Greenwich that skipped every slot in the next
-		// few hours right after delete_future_unattended_occurrences() (which
-		// reasons in UTC correctly) had removed it — the NTE-182 cron-path loss.
-		$occurrences = $this->generator->generate(
-			$event,
-			$start_date,
-			$end_date,
-			$rule,
-			null,
-			new \DateTimeImmutable( current_time( 'mysql' ) )
-		);
+		// Site wall-clock, the frame occurrence slots are stored in.
+		$boundary  = new \DateTimeImmutable( current_time( 'mysql' ) );
+		$last_slot = $this->last_generated_slot( $existing );
+		if ( null !== $last_slot && $last_slot >= $boundary ) {
+			$boundary = $last_slot->modify( '+1 second' );
+		}
+
+		$occurrences = $this->generator->generate( $event, $start_date, $end_date, $rule, null, $boundary );
 
 		$result['generated'] = count( $occurrences );
 
-		// Skip slots held by surviving protected rows (cancelled EXDATE exclusions
-		// and NTE-077 in-place overrides), or regeneration would duplicate them.
-		$occurrences = $this->remove_occurrences_colliding_with_survivors( $event_id, $occurrences );
+		$occurrences = $this->remove_occurrences_colliding_with_survivors( $event_id, $occurrences, $existing );
 
-		$result['saved'] = $this->occurrence_repo->save_batch( $occurrences );
+		$result['saved']   = $this->occurrence_repo->save_batch( $occurrences );
+		$result['tickets'] = $this->apply_templates_to_occurrences( $event, $occurrences );
 
 		return $result;
+	}
+
+	/**
+	 * The latest slot the pattern has already produced for an event.
+	 *
+	 * A moved date counts at the slot it was generated at, so moving it later does not hide the
+	 * slots in between. A date added by hand was never a slot of the pattern and does not count.
+	 *
+	 * @param array<Occurrence> $occurrences The event's dates.
+	 * @return \DateTimeImmutable|null Null when the pattern has produced no date.
+	 */
+	private function last_generated_slot( array $occurrences ): ?\DateTimeImmutable {
+		$latest = null;
+
+		foreach ( $occurrences as $occurrence ) {
+			$slot = ( null !== $occurrence->origin_start_datetime && '' !== $occurrence->origin_start_datetime )
+				? $occurrence->origin_start_datetime
+				: ( $occurrence->is_override ? null : $occurrence->start_datetime );
+
+			if ( null !== $slot && ( null === $latest || $slot > $latest ) ) {
+				$latest = $slot;
+			}
+		}
+
+		return null === $latest ? null : new \DateTimeImmutable( $latest );
 	}
 
 	/**
@@ -281,12 +352,13 @@ class RecurrenceService {
 	 * historical numbers silently discarded legitimate new occurrences — the
 	 * NTE-182 first-occurrence loss.
 	 *
-	 * @param int               $event_id    Event ID.
-	 * @param array<Occurrence> $occurrences Freshly generated occurrences.
+	 * @param int                    $event_id    Event ID.
+	 * @param array<Occurrence>      $occurrences Freshly generated occurrences.
+	 * @param array<Occurrence>|null $survivors   The event's dates, when the caller already has them.
 	 * @return array<Occurrence> Occurrences whose slots are not already taken.
 	 */
-	private function remove_occurrences_colliding_with_survivors( int $event_id, array $occurrences ): array {
-		$survivors = $this->occurrence_repo->for_event( $event_id );
+	private function remove_occurrences_colliding_with_survivors( int $event_id, array $occurrences, ?array $survivors = null ): array {
+		$survivors ??= $this->occurrence_repo->for_event( $event_id, array( 'limit' => PHP_INT_MAX ) );
 
 		if ( empty( $survivors ) ) {
 			return $occurrences;
@@ -322,79 +394,6 @@ class RecurrenceService {
 		}
 
 		return false;
-	}
-
-	/**
-	 * Delete future unattended occurrences for an event.
-	 *
-	 * Fetches upcoming occurrences and deletes those without attendees.
-	 * Occurrences with attendees are protected and a hook is fired.
-	 *
-	 * @param int $event_id Event ID.
-	 * @return array{deleted: int, protected: int}
-	 */
-	private function delete_future_unattended_occurrences( int $event_id ): array {
-		$future = $this->occurrence_repo->for_event(
-			$event_id,
-			array( 'upcoming' => true )
-		);
-
-		$deleted   = 0;
-		$protected = 0;
-
-		foreach ( $future as $occurrence ) {
-			if ( null === $occurrence->id ) {
-				continue;
-			}
-
-			$attendee_count = $this->attendee_repo->count_for_occurrence( $occurrence->id );
-
-			if ( $attendee_count > 0 ) {
-				++$protected;
-
-				/**
-				 * Fires when an occurrence deletion is blocked due to attendees.
-				 *
-				 * @param int $occurrence_id  The occurrence that was protected.
-				 * @param int $attendee_count Number of active attendees.
-				 */
-				do_action( 'nettertech_events_occurrence_deletion_blocked', $occurrence->id, $attendee_count );
-				continue;
-			}
-
-			// Manual per-occurrence overrides (NTE-077) must survive regeneration,
-			// even with no attendees, or the horizon-extender cron would wipe them.
-			if ( $occurrence->is_override ) {
-				++$protected;
-				continue;
-			}
-
-			// Cancelled occurrences are recurrence exceptions (EXDATE): the date was
-			// deliberately excluded. Deleting it would let regeneration recreate the
-			// slot as scheduled, so the exclusion must survive even with no attendees.
-			if ( $occurrence->is_cancelled() ) {
-				++$protected;
-				continue;
-			}
-
-			// Operator-configured tiers bind to the occurrence row by id (NTE-177):
-			// deleting the row would orphan the tier and its commerce product —
-			// they point at an id that no longer exists, so status sync and stock
-			// updates silently stop reaching them. Template-derived tiers are
-			// excluded: regeneration re-applies templates to the new rows.
-			if ( $this->has_direct_ticket_types( $occurrence->id ) ) {
-				++$protected;
-				continue;
-			}
-
-			$this->occurrence_repo->delete( $occurrence->id );
-			++$deleted;
-		}
-
-		return array(
-			'deleted'   => $deleted,
-			'protected' => $protected,
-		);
 	}
 
 	/**
@@ -445,7 +444,7 @@ class RecurrenceService {
 
 		$deleted = 0;
 		foreach ( $plan['doomed'] as $occurrence ) {
-			if ( null !== $occurrence->id && $this->occurrence_repo->delete( $occurrence->id ) ) {
+			if ( null !== $occurrence->id && $this->remover()->remove( $occurrence->id ) ) {
 				++$deleted;
 			}
 		}
@@ -548,7 +547,7 @@ class RecurrenceService {
 	 *
 	 * @param array<Occurrence> $doomed The dates that would be removed.
 	 * @return void
-	 * @throws ValidationException When any of them has attendees.
+	 * @throws ValidationException When anyone holds a place on any of them (OccurrenceRemover::has_holders()).
 	 */
 	private function refuse_if_sold( array $doomed ): void {
 		$sold = array();
@@ -558,9 +557,8 @@ class RecurrenceService {
 				continue;
 			}
 
-			$attendees = $this->attendee_repo->count_for_occurrence( $occurrence->id );
-
-			if ( $attendees > 0 ) {
+			if ( $this->remover()->has_holders( $occurrence->id ) ) {
+				$attendees = $this->attendee_repo->count_for_occurrence( $occurrence->id, null );
 				do_action( 'nettertech_events_occurrence_deletion_blocked', $occurrence->id, $attendees );
 
 				$sold[] = sprintf(
@@ -650,7 +648,11 @@ class RecurrenceService {
 			}
 		}
 
-		return PrimaryOccurrence::find( $this->occurrence_repo, $event_id );
+		// The list query behind PrimaryOccurrence leaves out the long per-date columns; the row is
+		// saved back, so read it whole.
+		$primary = PrimaryOccurrence::find( $this->occurrence_repo, $event_id );
+
+		return null !== $primary && null !== $primary->id ? $this->occurrence_repo->find( $primary->id ) : null;
 	}
 
 	/**
@@ -661,6 +663,72 @@ class RecurrenceService {
 	 */
 	public function parse_rule( string $rrule ): ?RecurrenceRule {
 		return $this->parser->try_parse( $rrule );
+	}
+
+	/**
+	 * Everything the generator reads from a schedule, in a form two schedules can be compared by.
+	 *
+	 * Equal fingerprints generate the same dates, so a save whose schedule matches the stored one
+	 * has nothing to regenerate. Each entry is an input of OccurrenceGenerator::generate(): the
+	 * seed's start (date, time of day, weekday, day of month), its end (the duration every date
+	 * gets), and every rule part the expansion reads. An input missing here would stop a real
+	 * change to it from regenerating the dates.
+	 *
+	 * @since 1.5.4
+	 *
+	 * @param string             $rrule RRULE string.
+	 * @param \DateTimeInterface $start First date's start.
+	 * @param \DateTimeInterface $end   First date's end.
+	 * @return array<string, mixed>|null Null when the rule does not parse, which no stored schedule can equal.
+	 */
+	public function schedule_fingerprint( string $rrule, \DateTimeInterface $start, \DateTimeInterface $end ): ?array {
+		$rule = $this->parser->try_parse( $rrule );
+		if ( null === $rule ) {
+			return null;
+		}
+
+		return array(
+			'start'        => $start->format( 'Y-m-d H:i' ),
+			'end'          => $end->format( 'Y-m-d H:i' ),
+			'freq'         => $rule->freq,
+			'interval'     => $rule->interval,
+			'count'        => $rule->count,
+			'until'        => $rule->until?->format( 'Y-m-d H:i:s' ),
+			'by_day'       => $rule->by_day,
+			'by_set_pos'   => $rule->by_set_pos,
+			'by_month_day' => $rule->by_month_day,
+			'by_month'     => $rule->by_month,
+			'wkst'         => $rule->wkst,
+		);
+	}
+
+	/**
+	 * The fingerprint of the schedule an event has stored: its rule, seeded from the row the
+	 * editor shows as the first date.
+	 *
+	 * Read it before the save overwrites the event's rule.
+	 *
+	 * @since 1.5.4
+	 *
+	 * @param Event $event The event as stored.
+	 * @return array<string, mixed>|null Null when the event has no stored schedule to compare with.
+	 */
+	public function stored_schedule_fingerprint( Event $event ): ?array {
+		$rrule = (string) $event->recurrence_rule;
+		if ( null === $event->id || ! $event->is_recurring() || '' === $rrule ) {
+			return null;
+		}
+
+		$seed = PrimaryOccurrence::pattern_seed( $this->occurrence_repo, $event->id );
+		if ( null === $seed ) {
+			return null;
+		}
+
+		return $this->schedule_fingerprint(
+			$rrule,
+			new \DateTimeImmutable( $seed->start_datetime ),
+			new \DateTimeImmutable( $seed->end_datetime )
+		);
 	}
 
 	/**
@@ -822,7 +890,7 @@ class RecurrenceService {
 	 * @return int Number of occurrences that were protected (not deleted).
 	 */
 	private function delete_unprotected_occurrences_for_event( int $event_id ): int {
-		$existing = $this->occurrence_repo->for_event( $event_id );
+		$existing = $this->occurrence_repo->for_event( $event_id, array( 'limit' => PHP_INT_MAX ) );
 
 		if ( empty( $existing ) ) {
 			return 0;
@@ -835,18 +903,16 @@ class RecurrenceService {
 				continue;
 			}
 
-			$attendee_count = $this->attendee_repo->count_for_occurrence( $occurrence->id );
-
-			if ( $attendee_count > 0 ) {
+			if ( $this->remover()->has_holders( $occurrence->id ) ) {
 				++$protected;
 
 				/**
-				 * Fires when an occurrence deletion is blocked due to attendees.
+				 * Fires when an occurrence deletion is blocked because someone holds a place on it.
 				 *
 				 * @param int $occurrence_id  The occurrence that was protected.
-				 * @param int $attendee_count Number of active attendees.
+				 * @param int $attendee_count Number of confirmed attendees.
 				 */
-				do_action( 'nettertech_events_occurrence_deletion_blocked', $occurrence->id, $attendee_count );
+				do_action( 'nettertech_events_occurrence_deletion_blocked', $occurrence->id, $this->attendee_repo->count_for_occurrence( $occurrence->id ) );
 				continue;
 			}
 
@@ -875,7 +941,7 @@ class RecurrenceService {
 				continue;
 			}
 
-			$this->occurrence_repo->delete( $occurrence->id );
+			$this->remover()->remove( $occurrence->id );
 		}
 
 		return $protected;
@@ -896,21 +962,104 @@ class RecurrenceService {
 	}
 
 	/**
-	 * Apply ticket templates to newly created occurrences.
+	 * Give the event's future dates any active template they lack a copy of.
 	 *
-	 * Creates occurrence-scoped tickets from event templates for each occurrence.
+	 * A date the event's templates no longer reach is left alone: one with a ticket of its own
+	 * (not from a template), which was set up by hand, and one edited on its own with no template
+	 * copy at all, whose tickets were turned off there. No date is deleted or recreated.
 	 *
-	 * @param Event             $event       The event.
-	 * @param array<Occurrence> $occurrences Newly created occurrences (must have IDs).
+	 * The horizon cron calls this for every live series on every run, so a series with nothing
+	 * missing costs three reads and writes nothing: the gaps are found here, and only dates that
+	 * have one go on to be filled.
+	 *
+	 * @since 1.5.4
+	 *
+	 * @param Event $event The event.
+	 * @return int Copies created.
+	 */
+	public function fill_template_gaps( Event $event ): int {
+		$event_id = $event->id;
+		if ( null === $event_id ) {
+			return 0;
+		}
+
+		$template_ids = array();
+		foreach ( $this->ticket_type_repo->get_templates( $event_id ) as $template ) {
+			if ( null !== $template->id ) {
+				$template_ids[] = $template->id;
+			}
+		}
+		if ( empty( $template_ids ) ) {
+			return 0;
+		}
+
+		$own    = array();
+		$copied = array();
+		foreach ( $this->ticket_type_repo->for_event( $event_id, array( 'scope' => TicketTypeScope::OCCURRENCE->value ) ) as $row ) {
+			if ( null === $row->occurrence_id ) {
+				continue;
+			}
+			if ( null === $row->template_id ) {
+				$own[ $row->occurrence_id ] = $row->occurrence_id;
+			} else {
+				$copied[ $row->occurrence_id ][] = $row->template_id;
+			}
+		}
+
+		// Instants on both sides: get_start() reads the wall-clock in the date's own zone.
+		$now     = new \DateTimeImmutable( 'now', new \DateTimeZone( 'UTC' ) );
+		$created = 0;
+		$dates   = $this->occurrence_repo->for_event(
+			$event_id,
+			array(
+				'upcoming' => true,
+				'limit'    => PHP_INT_MAX,
+			)
+		);
+		foreach ( $dates as $date ) {
+			$date_id = $date->id;
+			if ( null === $date_id || isset( $own[ $date_id ] ) || $date->is_cancelled() || $date->get_start() <= $now ) {
+				continue;
+			}
+			if ( ! isset( $copied[ $date_id ] ) && $date->is_override ) {
+				continue;
+			}
+
+			$missing = array_values( array_diff( $template_ids, $copied[ $date_id ] ?? array() ) );
+			if ( ! empty( $missing ) ) {
+				$created += $this->apply_templates_to_occurrences( $event, array( $date ), $missing );
+			}
+		}
+
+		return $created;
+	}
+
+	/**
+	 * Give dates a copy of each of the event's active ticket templates.
+	 *
+	 * A date that already has a copy of a template is not given another, so this is safe to run
+	 * on dates that have some of the templates already.
+	 *
+	 * @since 1.5.4 Skips a template the date already has a copy of; added `$template_ids`.
+	 *
+	 * @param Event             $event        The event.
+	 * @param array<Occurrence> $occurrences  Saved dates of the event (must have IDs).
+	 * @param array<int>|null   $template_ids Only these templates; null for all of them.
 	 * @return int Number of tickets created.
 	 */
-	public function apply_templates_to_occurrences( Event $event, array $occurrences ): int {
+	public function apply_templates_to_occurrences( Event $event, array $occurrences, ?array $template_ids = null ): int {
 		if ( empty( $occurrences ) || ! $event->id ) {
 			return 0;
 		}
 
 		// Get active templates for this event.
 		$templates = $this->ticket_type_repo->get_templates( $event->id );
+		if ( null !== $template_ids ) {
+			$templates = array_filter(
+				$templates,
+				static fn( TicketType $template ): bool => in_array( (int) $template->id, $template_ids, true )
+			);
+		}
 
 		if ( empty( $templates ) ) {
 			return 0;
@@ -925,7 +1074,18 @@ class RecurrenceService {
 				continue;
 			}
 
+			$copied = array();
+			foreach ( $this->ticket_type_repo->for_occurrence( $occurrence_id ) as $existing ) {
+				if ( $occurrence_id === $existing->occurrence_id && null !== $existing->template_id ) {
+					$copied[ $existing->template_id ] = true;
+				}
+			}
+
 			foreach ( $templates as $template ) {
+				if ( isset( $copied[ (int) $template->id ] ) ) {
+					continue;
+				}
+
 				try {
 					// Create occurrence ticket from template.
 					$new_ticket = $this->ticket_type_repo->create_from_template( $template, $occurrence_id );

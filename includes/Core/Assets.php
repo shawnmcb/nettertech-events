@@ -14,6 +14,7 @@ defined( 'ABSPATH' ) || exit;
 use NetterTechEvents\Admin\AdminMenu;
 use NetterTechEvents\Admin\AdminRequest;
 use NetterTechEvents\Admin\SpacesPage;
+use NetterTechEvents\Services\CheckIn\CheckInProgressRenderer;
 use NetterTechEvents\Services\PaletteResolver;
 
 /**
@@ -322,6 +323,26 @@ class Assets {
 			)
 		);
 
+		// Sticky check-in progress row (NTE-379). Registered on every request,
+		// not just admin, because Pro's volunteer check-in page renders it on
+		// the front end.
+		wp_register_style(
+			CheckInProgressRenderer::HANDLE,
+			NETTERTECH_EVENTS_PLUGIN_URL . 'assets/dist/css/checkin-progress.css',
+			array(),
+			NETTERTECH_EVENTS_VERSION
+		);
+		wp_register_script(
+			CheckInProgressRenderer::HANDLE,
+			NETTERTECH_EVENTS_PLUGIN_URL . 'assets/js/checkin-progress.js',
+			array(),
+			NETTERTECH_EVENTS_VERSION,
+			array(
+				'in_footer' => true,
+				'strategy'  => 'defer',
+			)
+		);
+
 		// Attendees screen Edit / Add dialogs (NTE-143).
 		wp_register_script(
 			'nettertech-events-attendee-editor',
@@ -583,6 +604,9 @@ class Assets {
 				)
 			);
 			wp_enqueue_script( 'nettertech-events-attendee-checkin' );
+			if ( AdminRequest::get_absint( 'occurrence_id' ) > 0 ) {
+				CheckInProgressRenderer::enqueue_assets();
+			}
 			wp_localize_script(
 				'nettertech-events-attendee-checkin',
 				'nettertechEventsCheckIn',

@@ -97,6 +97,15 @@ class ICalService {
 	private ?int $feed_horizon_days = null;
 
 	/**
+	 * Zones the calendar being built writes local times in, with the span each must cover.
+	 *
+	 * Filled while VEVENTs are built and emptied by generate_ical(), which declares each once.
+	 *
+	 * @var array<string, array{zone: \DateTimeZone, from: \DateTimeImmutable, to: \DateTimeImmutable}>
+	 */
+	private array $zone_spans = array();
+
+	/**
 	 * Constructor.
 	 *
 	 * @param EventRepositoryInterface      $event_repo           Event repository instance.
@@ -210,11 +219,14 @@ class ICalService {
 		$earliest = $this->earliest_occurrence( $occurrences );
 		$anchor   = new \DateTimeImmutable( $earliest->start_datetime );
 
-		$vevents = array( $this->create_master_vevent( $event, $occurrences, $rule, $anchor ) );
+		// One zone for the whole series: RRULE, EXDATE and RECURRENCE-ID are all read in it.
+		$zone = $earliest->get_timezone();
+
+		$vevents = array( $this->create_master_vevent( $event, $occurrences, $rule, $anchor, $zone ) );
 
 		foreach ( $occurrences as $occurrence ) {
 			if ( true === $occurrence->is_override && ! $occurrence->is_cancelled() ) {
-				$vevents[] = $this->create_recurrence_override_vevent( $event, $occurrence, $rule, $anchor );
+				$vevents[] = $this->create_recurrence_override_vevent( $event, $occurrence, $rule, $anchor, $zone );
 			}
 		}
 
@@ -364,6 +376,11 @@ class ICalService {
 		$ical .= "METHOD:PUBLISH\r\n";
 		$ical .= 'X-WR-CALNAME:' . $this->escape_text( get_bloginfo( 'name' ) . ' Events' ) . "\r\n";
 
+		foreach ( $this->zone_spans as $span ) {
+			$ical .= IcsTime::vtimezone( $span['zone'], $span['from'], $span['to'] );
+		}
+		$this->zone_spans = array();
+
 		foreach ( $vevents as $vevent ) {
 			$ical .= $vevent;
 		}
@@ -394,14 +411,14 @@ class ICalService {
 
 		$vevent  = "BEGIN:VEVENT\r\n";
 		$vevent .= sprintf( "UID:%s\r\n", $uid );
-		$vevent .= sprintf( "DTSTAMP:%s\r\n", gmdate( 'Ymd\THis\Z' ) );
+		$vevent .= sprintf( "DTSTAMP:%s\r\n", IcsTime::utc( new \DateTimeImmutable() ) );
 
 		if ( $occurrence->all_day ) {
 			$vevent .= sprintf( "DTSTART;VALUE=DATE:%s\r\n", $start->format( 'Ymd' ) );
 			$vevent .= sprintf( "DTEND;VALUE=DATE:%s\r\n", $end->modify( '+1 day' )->format( 'Ymd' ) );
 		} else {
-			$vevent .= sprintf( "DTSTART:%s\r\n", $start->format( 'Ymd\THis\Z' ) );
-			$vevent .= sprintf( "DTEND:%s\r\n", $end->format( 'Ymd\THis\Z' ) );
+			$vevent .= sprintf( "DTSTART:%s\r\n", IcsTime::utc( $occurrence->get_start() ) );
+			$vevent .= sprintf( "DTEND:%s\r\n", IcsTime::utc( $occurrence->get_end() ) );
 		}
 
 		// Use occurrence title override if present.
@@ -454,9 +471,10 @@ class ICalService {
 	 * @param array<Occurrence>  $occurrences All occurrences for the event (any status).
 	 * @param RecurrenceRule     $rule        Parsed recurrence rule.
 	 * @param \DateTimeImmutable $anchor      Series-start anchor (earliest occurrence start).
+	 * @param \DateTimeZone      $zone        The series' zone.
 	 * @return string VEVENT content.
 	 */
-	private function create_master_vevent( Event $event, array $occurrences, RecurrenceRule $rule, \DateTimeImmutable $anchor ): string {
+	private function create_master_vevent( Event $event, array $occurrences, RecurrenceRule $rule, \DateTimeImmutable $anchor, \DateTimeZone $zone ): string {
 		$host = wp_parse_url( home_url(), PHP_URL_HOST ) ?? 'nettertech-events';
 		$uid  = sprintf( 'event-%d@%s', $event->id, $host );
 
@@ -466,17 +484,20 @@ class ICalService {
 
 		$vevent  = "BEGIN:VEVENT\r\n";
 		$vevent .= sprintf( "UID:%s\r\n", $uid );
-		$vevent .= sprintf( "DTSTAMP:%s\r\n", gmdate( 'Ymd\THis\Z' ) );
+		$vevent .= sprintf( "DTSTAMP:%s\r\n", IcsTime::utc( new \DateTimeImmutable() ) );
 
 		if ( $earliest->all_day ) {
-			$vevent .= sprintf( "DTSTART;VALUE=DATE:%s\r\n", $start->format( 'Ymd' ) );
-			$vevent .= sprintf( "DTEND;VALUE=DATE:%s\r\n", $end->modify( '+1 day' )->format( 'Ymd' ) );
+			$vevent   .= sprintf( "DTSTART;VALUE=DATE:%s\r\n", $start->format( 'Ymd' ) );
+			$vevent   .= sprintf( "DTEND;VALUE=DATE:%s\r\n", $end->modify( '+1 day' )->format( 'Ymd' ) );
+			$feed_rule = $this->apply_feed_horizon( $rule );
 		} else {
-			$vevent .= sprintf( "DTSTART:%s\r\n", $start->format( 'Ymd\THis\Z' ) );
-			$vevent .= sprintf( "DTEND:%s\r\n", $end->format( 'Ymd\THis\Z' ) );
+			$vevent   .= $this->time_property( 'DTSTART', $earliest->get_start(), $zone );
+			$vevent   .= $this->time_property( 'DTEND', $earliest->get_end(), $zone );
+			$feed_rule = $this->apply_feed_horizon( $this->until_as_instant( $rule, $zone ) );
+			$this->note_zone( $zone, $earliest->get_start(), $this->series_end( $occurrences, $feed_rule ) );
 		}
 
-		$vevent .= sprintf( "RRULE:%s\r\n", $this->apply_feed_horizon( $rule )->to_string() );
+		$vevent .= sprintf( "RRULE:%s\r\n", $feed_rule->to_string() );
 
 		// EXDATE lines for cancelled occurrences (one per cancellation). The slot
 		// is the ORIGINAL recurrence slot (handles time-moved-then-cancelled), not
@@ -484,7 +505,7 @@ class ICalService {
 		foreach ( $occurrences as $occurrence ) {
 			if ( $occurrence->is_cancelled() ) {
 				$slot    = $this->resolve_original_slot( $occurrence, $event, $rule, $anchor );
-				$vevent .= $this->build_exdate_line( $slot, $occurrence->all_day );
+				$vevent .= $this->build_exdate_line( $slot, $occurrence->all_day, $zone );
 			}
 		}
 
@@ -587,16 +608,109 @@ class ICalService {
 	 * recovered via resolve_original_slot() so time-moved-then-cancelled instances
 	 * exclude the correct recurrence date.
 	 *
-	 * @param \DateTimeImmutable $slot    Original recurrence-slot datetime.
+	 * @param \DateTimeImmutable $slot    Original recurrence-slot wall-clock.
 	 * @param bool               $all_day Whether the occurrence is all-day.
+	 * @param \DateTimeZone      $zone    The series' zone.
 	 * @return string EXDATE line.
 	 */
-	private function build_exdate_line( \DateTimeImmutable $slot, bool $all_day ): string {
+	private function build_exdate_line( \DateTimeImmutable $slot, bool $all_day, \DateTimeZone $zone ): string {
 		if ( $all_day ) {
 			return sprintf( "EXDATE;VALUE=DATE:%s\r\n", $slot->format( 'Ymd' ) );
 		}
 
-		return sprintf( "EXDATE:%s\r\n", $slot->format( 'Ymd\THis\Z' ) );
+		return $this->time_property( 'EXDATE', $this->wall_clock_in( $slot, $zone ), $zone );
+	}
+
+	/**
+	 * A date-time property in the same form as the series' DTSTART.
+	 *
+	 * A named zone is written as local time with TZID, so a recurrence keeps its
+	 * local hour across daylight-saving changes; any other zone is written in UTC.
+	 *
+	 * @param string             $name    Property name.
+	 * @param \DateTimeImmutable $instant The instant.
+	 * @param \DateTimeZone      $zone    The series' zone.
+	 * @return string Content line.
+	 */
+	private function time_property( string $name, \DateTimeImmutable $instant, \DateTimeZone $zone ): string {
+		if ( IcsTime::is_named( $zone ) ) {
+			return sprintf( "%s;TZID=%s:%s\r\n", $name, $zone->getName(), IcsTime::local( $instant, $zone ) );
+		}
+
+		return sprintf( "%s:%s\r\n", $name, IcsTime::utc( $instant ) );
+	}
+
+	/**
+	 * Read a bare wall-clock (as the occurrence generator produces) in a zone.
+	 *
+	 * @param \DateTimeImmutable $wall_clock Wall-clock value; its own zone is ignored.
+	 * @param \DateTimeZone      $zone       The zone it is meant in.
+	 * @return \DateTimeImmutable
+	 */
+	private function wall_clock_in( \DateTimeImmutable $wall_clock, \DateTimeZone $zone ): \DateTimeImmutable {
+		return new \DateTimeImmutable( $wall_clock->format( 'Y-m-d H:i:s' ), $zone );
+	}
+
+	/**
+	 * The rule with its UNTIL read as wall-clock in the series' zone and converted to UTC.
+	 *
+	 * Stored rules carry UNTIL as the local end of the last day (the editor writes
+	 * T235959Z for "until this date"). RFC 5545 requires UNTIL in UTC when DTSTART
+	 * is local with a TZID, so it has to become the real instant.
+	 *
+	 * @param RecurrenceRule $rule Parsed rule.
+	 * @param \DateTimeZone  $zone The series' zone.
+	 * @return RecurrenceRule
+	 */
+	private function until_as_instant( RecurrenceRule $rule, \DateTimeZone $zone ): RecurrenceRule {
+		if ( null === $rule->until ) {
+			return $rule;
+		}
+
+		return $rule->with_until( $this->wall_clock_in( $rule->until, $zone )->setTimezone( new \DateTimeZone( 'UTC' ) ) );
+	}
+
+	/**
+	 * The last instant a series' VTIMEZONE must cover.
+	 *
+	 * @param array<Occurrence> $occurrences The series' dates.
+	 * @param RecurrenceRule    $feed_rule   The rule as written to the feed.
+	 * @return \DateTimeImmutable
+	 */
+	private function series_end( array $occurrences, RecurrenceRule $feed_rule ): \DateTimeImmutable {
+		$latest = new \DateTimeImmutable();
+		foreach ( $occurrences as $occurrence ) {
+			$latest = max( $latest, $occurrence->get_end() );
+		}
+
+		// COUNT and unbounded rules run past the stored dates; ten years outlasts any feed.
+		return null !== $feed_rule->until ? max( $latest, $feed_rule->until ) : $latest->modify( '+10 years' );
+	}
+
+	/**
+	 * Record that the calendar writes local times in a zone over a span.
+	 *
+	 * @param \DateTimeZone      $zone The zone.
+	 * @param \DateTimeImmutable $from Earliest instant.
+	 * @param \DateTimeImmutable $to   Latest instant.
+	 * @return void
+	 */
+	private function note_zone( \DateTimeZone $zone, \DateTimeImmutable $from, \DateTimeImmutable $to ): void {
+		if ( ! IcsTime::is_named( $zone ) ) {
+			return;
+		}
+
+		$name = $zone->getName();
+		if ( isset( $this->zone_spans[ $name ] ) ) {
+			$from = min( $from, $this->zone_spans[ $name ]['from'] );
+			$to   = max( $to, $this->zone_spans[ $name ]['to'] );
+		}
+
+		$this->zone_spans[ $name ] = array(
+			'zone' => $zone,
+			'from' => $from,
+			'to'   => $to,
+		);
 	}
 
 	/**
@@ -612,9 +726,10 @@ class ICalService {
 	 * @param Occurrence         $occurrence Override occurrence (not cancelled).
 	 * @param RecurrenceRule     $rule       Parsed recurrence rule.
 	 * @param \DateTimeImmutable $anchor     Series-start anchor (earliest occurrence start).
+	 * @param \DateTimeZone      $zone       The series' zone.
 	 * @return string VEVENT content.
 	 */
-	private function create_recurrence_override_vevent( Event $event, Occurrence $occurrence, RecurrenceRule $rule, \DateTimeImmutable $anchor ): string {
+	private function create_recurrence_override_vevent( Event $event, Occurrence $occurrence, RecurrenceRule $rule, \DateTimeImmutable $anchor, \DateTimeZone $zone ): string {
 		// Wire the parent so effective getters resolve override -> parent without a repo.
 		$occurrence->set_event( $event );
 
@@ -627,16 +742,17 @@ class ICalService {
 
 		$vevent  = "BEGIN:VEVENT\r\n";
 		$vevent .= sprintf( "UID:%s\r\n", $uid );
-		$vevent .= sprintf( "DTSTAMP:%s\r\n", gmdate( 'Ymd\THis\Z' ) );
+		$vevent .= sprintf( "DTSTAMP:%s\r\n", IcsTime::utc( new \DateTimeImmutable() ) );
 
 		if ( $occurrence->all_day ) {
 			$vevent .= sprintf( "RECURRENCE-ID;VALUE=DATE:%s\r\n", $slot->format( 'Ymd' ) );
 			$vevent .= sprintf( "DTSTART;VALUE=DATE:%s\r\n", $start->format( 'Ymd' ) );
 			$vevent .= sprintf( "DTEND;VALUE=DATE:%s\r\n", $end->modify( '+1 day' )->format( 'Ymd' ) );
 		} else {
-			$vevent .= sprintf( "RECURRENCE-ID:%s\r\n", $slot->format( 'Ymd\THis\Z' ) );
-			$vevent .= sprintf( "DTSTART:%s\r\n", $start->format( 'Ymd\THis\Z' ) );
-			$vevent .= sprintf( "DTEND:%s\r\n", $end->format( 'Ymd\THis\Z' ) );
+			$vevent .= $this->time_property( 'RECURRENCE-ID', $this->wall_clock_in( $slot, $zone ), $zone );
+			$vevent .= $this->time_property( 'DTSTART', $occurrence->get_start(), $zone );
+			$vevent .= $this->time_property( 'DTEND', $occurrence->get_end(), $zone );
+			$this->note_zone( $zone, $occurrence->get_start(), $occurrence->get_end() );
 		}
 
 		$vevent .= sprintf( "SUMMARY:%s\r\n", $this->escape_text( $occurrence->get_title() ) );

@@ -45,6 +45,15 @@ use NetterTechEvents\Services\TicketTypeSaver;
 class EventSaveHandler {
 
 	/**
+	 * Transient key prefix (per user) for the dates a template change left alone.
+	 *
+	 * @since 1.5.4
+	 *
+	 * @var string
+	 */
+	public const TEMPLATE_NOTICE_KEY = 'nettertech_events_template_notice_';
+
+	/**
 	 * Event repository for slug generation.
 	 *
 	 * @var EventRepositoryInterface
@@ -224,6 +233,9 @@ class EventSaveHandler {
 		// the earliest date and stranded the rest (NTE-153).
 		$was_recurring = ( $event_id > 0 && $event->is_recurring() );
 
+		// Before the POST overwrites the rule: an untouched schedule must not regenerate the dates.
+		$stored_schedule = $was_recurring ? $this->recurrence_service->stored_schedule_fingerprint( $event ) : null;
+
 		$event = $this->extract_event_fields( $event, $post );
 
 		$converting_to_single = $was_recurring && 'recurring' !== $event->event_type;
@@ -268,8 +280,8 @@ class EventSaveHandler {
 			// per-scope rendered markers (NTE-178). An event whose series-pass/template section
 			// never rendered posts no marker, so this call changes nothing there; an event that
 			// did render one — including a plain single event — can now save it.
-			$post_sanitized = map_deep( $post, 'sanitize_textarea_field' );
-			$this->ticket_saver->save_for_event( $saved_id, $post_sanitized );
+			$post_sanitized   = map_deep( $post, 'sanitize_textarea_field' );
+			$template_changes = $this->ticket_saver->save_for_event( $saved_id, $post_sanitized );
 
 			if ( $converting_to_single ) {
 				// The surviving date keeps its OWN start and end. Do not run process_occurrences():
@@ -282,11 +294,14 @@ class EventSaveHandler {
 				);
 			} else {
 				// Process occurrences (handles validation, creation, and ticket types).
-				$this->process_occurrences( $event, $this->occurrence_repo, $post );
+				$this->process_occurrences( $event, $this->occurrence_repo, $post, $stored_schedule );
 			}
 
 			// After the pattern has had its say, so regeneration cannot collide with the new dates.
 			$this->add_manual_dates( $event, $post );
+
+			// Once the dates are settled, so template changes reach the dates the event ends up with.
+			$this->report_kept_copies( $this->ticket_saver->propagate_templates( $saved_id, $template_changes )['kept'] );
 
 			// Buffered ticket rows entered on a not-yet-saved event bind to the
 			// primary occurrence once it exists (NTE-177); only for a first save.
@@ -785,6 +800,43 @@ class EventSaveHandler {
 	}
 
 	/**
+	 * Tell the operator which dates kept their tickets through a template change because they
+	 * have sales of their own.
+	 *
+	 * @param array<int, Occurrence> $kept Dates whose template copies were left unchanged.
+	 * @return void
+	 */
+	private function report_kept_copies( array $kept ): void {
+		if ( empty( $kept ) ) {
+			return;
+		}
+
+		usort( $kept, static fn( Occurrence $a, Occurrence $b ): int => strcmp( $a->start_datetime, $b->start_datetime ) );
+
+		$dates = array();
+		foreach ( $kept as $date ) {
+			$start   = $date->get_start();
+			$dates[] = wp_date( (string) get_option( 'date_format' ), $start->getTimestamp(), $start->getTimezone() );
+		}
+
+		set_transient(
+			self::TEMPLATE_NOTICE_KEY . get_current_user_id(),
+			sprintf(
+				/* translators: 1: number of dates, 2: comma-separated dates. */
+				_n(
+					'%1$s date already has sales, so its tickets weren\'t changed: %2$s.',
+					'%1$s dates already have sales, so their tickets weren\'t changed: %2$s.',
+					count( $kept ),
+					'nettertech-events'
+				),
+				number_format_i18n( count( $kept ) ),
+				implode( ', ', $dates )
+			),
+			60
+		);
+	}
+
+	/**
 	 * Tell the operator the posted ticket rows were not saved because they belong to another date.
 	 *
 	 * @param array<string, mixed> $post Unslashed POST data from the nonce-verified boundary.
@@ -829,11 +881,16 @@ class EventSaveHandler {
 		/**
 		 * Fires after Pro extension data is saved for an event.
 		 *
-		 * @since 1.0.2
+		 * The POST array is passed unsanitized so each listener sanitizes its
+		 * own fields by type; the nonce and capability are already verified.
 		 *
-		 * @param int $event_id Event ID.
+		 * @since 1.0.2
+		 * @since 1.5.3 Added the `$post` argument.
+		 *
+		 * @param int                  $event_id Event ID.
+		 * @param array<string, mixed> $post     Unslashed POST data from the nonce-verified boundary.
 		 */
-		do_action( 'nettertech_events_save_pro_extensions', $event_id );
+		do_action( 'nettertech_events_save_pro_extensions', $event_id, $post );
 	}
 
 	/**
@@ -966,13 +1023,17 @@ class EventSaveHandler {
 	 * Handles datetime validation, occurrence creation (single or recurring),
 	 * capacity setting, and ticket type saving.
 	 *
+	 * @since 1.5.4 Added `$stored_schedule`.
+	 *
 	 * @param Event                         $event           Event to process occurrences for.
 	 * @param OccurrenceRepositoryInterface $occurrence_repo Occurrence repository.
 	 * @param array<string, mixed>          $post            Unslashed POST data from the nonce-verified boundary.
+	 * @param array<string, mixed>|null     $stored_schedule The event's schedule before this save
+	 *                                                       (RecurrenceService::stored_schedule_fingerprint()).
 	 * @return void
 	 * @throws \RuntimeException When recurrence generation fails.
 	 */
-	public function process_occurrences( Event $event, OccurrenceRepositoryInterface $occurrence_repo, array $post ): void {
+	public function process_occurrences( Event $event, OccurrenceRepositoryInterface $occurrence_repo, array $post, ?array $stored_schedule = null ): void {
 		$start_date = sanitize_text_field( $post['start_date'] ?? '' );
 
 		if ( empty( $start_date ) ) {
@@ -1009,7 +1070,7 @@ class EventSaveHandler {
 
 		// Create occurrences based on event type.
 		if ( 'recurring' === $event->event_type && ! empty( $event->recurrence_rule ) ) {
-			$this->create_recurring_occurrences( $event, $start_datetime, $end_datetime );
+			$this->create_recurring_occurrences( $event, $start_datetime, $end_datetime, $stored_schedule );
 		} else {
 			$this->create_single_occurrence( $event, $start_datetime, $end_datetime, $all_day, $capacity, $occurrence_repo, $post );
 		}
@@ -1045,16 +1106,24 @@ class EventSaveHandler {
 	/**
 	 * Create recurring occurrences for an event.
 	 *
-	 * @param Event              $event          Event to create occurrences for.
-	 * @param \DateTimeImmutable $start_datetime Start datetime.
-	 * @param \DateTimeImmutable $end_datetime   End datetime.
+	 * Regenerates only when the schedule changed. Regeneration replaces every date that has
+	 * nothing to protect it, so running it on an untouched schedule recreated the event's dates
+	 * under new IDs on every Update; an untouched schedule only has dates added past its last one.
+	 *
+	 * @since 1.5.4 Added `$stored_schedule`.
+	 *
+	 * @param Event                     $event           Event to create occurrences for.
+	 * @param \DateTimeImmutable        $start_datetime  Start datetime.
+	 * @param \DateTimeImmutable        $end_datetime    End datetime.
+	 * @param array<string, mixed>|null $stored_schedule The event's schedule before this save; null regenerates.
 	 * @return void
 	 * @throws ValidationException When generation fails.
 	 */
 	public function create_recurring_occurrences(
 		Event $event,
 		\DateTimeImmutable $start_datetime,
-		\DateTimeImmutable $end_datetime
+		\DateTimeImmutable $end_datetime,
+		?array $stored_schedule = null
 	): void {
 		$rrule = $event->recurrence_rule;
 		if ( null === $rrule || '' === $rrule ) {
@@ -1063,13 +1132,20 @@ class EventSaveHandler {
 			);
 		}
 
-		$result = $this->recurrence_service->generate_occurrences(
-			$event,
-			$start_datetime,
-			$end_datetime,
-			$rrule,
-			true // Replace existing.
-		);
+		$unchanged = null !== $stored_schedule
+			&& $stored_schedule === $this->recurrence_service->schedule_fingerprint( $rrule, $start_datetime, $end_datetime );
+
+		// An untouched schedule still reaches the horizon, by adding dates only, so an Update
+		// can bring back a series whose dates have run out.
+		$result = $unchanged
+			? $this->recurrence_service->extend_horizon( $event, $start_datetime, $end_datetime, $rrule )
+			: $this->recurrence_service->generate_occurrences(
+				$event,
+				$start_datetime,
+				$end_datetime,
+				$rrule,
+				true // Replace existing.
+			);
 
 		if ( ! empty( $result['errors'] ) ) {
 			throw ValidationException::fromErrors( array_map( 'esc_html', (array) $result['errors'] ) );

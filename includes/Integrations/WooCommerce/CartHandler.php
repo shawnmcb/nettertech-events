@@ -198,13 +198,9 @@ class CartHandler {
 
 			$quantity    = isset( $cart_item['quantity'] ) ? (int) $cart_item['quantity'] : 0;
 			$ticket_type = $this->product_manager->get_ticket_type_from_product( $product_id );
-			$occurrence  = $this->product_manager->get_occurrence_from_product( $product_id );
-
-			// A series pass has no occurrence of its own; anchor its date checks to
-			// the next upcoming one, as the add-to-cart gate does (NTE-156).
-			if ( ! $occurrence && $ticket_type && null !== $ticket_type->event_id ) {
-				$occurrence = $this->occurrence_repo->next_for_event( (int) $ticket_type->event_id );
-			}
+			$occurrence  = $ticket_type
+				? $this->validator->resolve_sale_occurrence( $ticket_type, $this->product_manager->get_occurrence_from_product( $product_id ) )
+				: null;
 
 			$ticket_type_id = $ticket_type ? $ticket_type->id : null;
 
@@ -265,14 +261,9 @@ class CartHandler {
 		}
 
 		$ticket_type = $this->product_manager->get_ticket_type_from_product( $product_id );
-		$occurrence  = $this->product_manager->get_occurrence_from_product( $product_id );
-
-		// A series pass carries no occurrence of its own; its date checks anchor to
-		// the next upcoming date, and none remaining means nothing left to admit
-		// to (NTE-156). Capacity comes from the pass-aware calculator either way.
-		if ( ! $occurrence && $ticket_type && null !== $ticket_type->event_id ) {
-			$occurrence = $this->occurrence_repo->next_for_event( (int) $ticket_type->event_id );
-		}
+		$occurrence  = $ticket_type
+			? $this->validator->resolve_sale_occurrence( $ticket_type, $this->product_manager->get_occurrence_from_product( $product_id ) )
+			: null;
 
 		$ticket_type_id = $ticket_type ? $ticket_type->id : null;
 		if ( ! $ticket_type || ! $occurrence || null === $ticket_type_id ) {

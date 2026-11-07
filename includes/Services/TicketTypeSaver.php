@@ -52,20 +52,32 @@ class TicketTypeSaver {
 	private ?EventRepositoryInterface $event_repo;
 
 	/**
+	 * Carries template changes to the copies on future dates (null: templates reach no copy).
+	 *
+	 * @var TemplatePropagator|null
+	 */
+	private ?TemplatePropagator $template_propagator;
+
+	/**
 	 * Constructor.
 	 *
-	 * @param TicketTypeRepositoryInterface                                  $ticket_type_repo Ticket type repository.
-	 * @param \NetterTechEvents\Integrations\WooCommerce\ProductManager|null $product_manager  Product manager (null when WC inactive).
-	 * @param EventRepositoryInterface|null                                  $event_repo       Event repository for status derivation.
+	 * @since 1.5.4 Added `$template_propagator`.
+	 *
+	 * @param TicketTypeRepositoryInterface                                  $ticket_type_repo    Ticket type repository.
+	 * @param \NetterTechEvents\Integrations\WooCommerce\ProductManager|null $product_manager     Product manager (null when WC inactive).
+	 * @param EventRepositoryInterface|null                                  $event_repo          Event repository for status derivation.
+	 * @param TemplatePropagator|null                                        $template_propagator Carries template changes to their copies.
 	 */
 	public function __construct(
 		TicketTypeRepositoryInterface $ticket_type_repo,
 		?\NetterTechEvents\Integrations\WooCommerce\ProductManager $product_manager = null,
-		?EventRepositoryInterface $event_repo = null
+		?EventRepositoryInterface $event_repo = null,
+		?TemplatePropagator $template_propagator = null
 	) {
-		$this->ticket_type_repo = $ticket_type_repo;
-		$this->product_manager  = $product_manager;
-		$this->event_repo       = $event_repo;
+		$this->ticket_type_repo    = $ticket_type_repo;
+		$this->product_manager     = $product_manager;
+		$this->event_repo          = $event_repo;
+		$this->template_propagator = $template_propagator;
 	}
 
 	/**
@@ -140,13 +152,20 @@ class TicketTypeSaver {
 	/**
 	 * Save recurring-event ticket scopes from event editor form data.
 	 *
+	 * @since 1.5.4 Returns the templates this save created, changed and deleted.
+	 *
 	 * @param int                  $event_id  Event ID.
 	 * @param array<string, mixed> $post_data POST data array.
-	 * @return void
+	 * @return array{changed: array<int>, deleted: array<int>} Template IDs, for propagate_templates().
 	 */
-	public function save_for_event( int $event_id, array $post_data ): void {
+	public function save_for_event( int $event_id, array $post_data ): array {
+		$template_changes = array(
+			'changed' => array(),
+			'deleted' => array(),
+		);
+
 		if ( empty( $post_data['nte_tickets_metabox_rendered'] ) ) {
-			return;
+			return $template_changes;
 		}
 
 		// The buffered first-save path refuses to touch tickets while ticketing
@@ -155,12 +174,12 @@ class TicketTypeSaver {
 		// ticketing_enabled=1, so its absence means the ticket rows were not on
 		// the page — not that the operator removed anything.
 		if ( empty( $post_data['ticketing_enabled'] ) ) {
-			return;
+			return $template_changes;
 		}
 
 		$ticket_types_data = $post_data['ticket_types'] ?? array();
 		if ( ! is_array( $ticket_types_data ) ) {
-			return;
+			return $template_changes;
 		}
 
 		// nte_tickets_metabox_rendered is form-level: it proves the metabox was
@@ -178,13 +197,17 @@ class TicketTypeSaver {
 		$processed_scope = false;
 
 		if ( ! empty( $rendered_scopes[ TicketTypeScope::EVENT->value ] ) ) {
-			$admin_skus      = $this->process_event_ticket_scope( $event_id, $ticket_types_data, TicketTypeScope::EVENT );
+			$admin_skus      = $this->process_event_ticket_scope( $event_id, $ticket_types_data, TicketTypeScope::EVENT )['skus'];
 			$processed_scope = true;
 		}
 
 		if ( ! empty( $rendered_scopes[ TicketTypeScope::TEMPLATE->value ] ) ) {
-			$this->process_event_ticket_scope( $event_id, $ticket_types_data, TicketTypeScope::TEMPLATE );
-			$processed_scope = true;
+			$templates        = $this->process_event_ticket_scope( $event_id, $ticket_types_data, TicketTypeScope::TEMPLATE );
+			$template_changes = array(
+				'changed' => $templates['changed'],
+				'deleted' => $templates['deleted'],
+			);
+			$processed_scope  = true;
 		}
 
 		// A pass that cannot be bought is a tab that lies (NTE-156): every saved
@@ -197,6 +220,33 @@ class TicketTypeSaver {
 				DebugLogger::exception( $e, 'TicketTypeSaver' );
 			}
 		}
+
+		return $template_changes;
+	}
+
+	/**
+	 * Carry the templates a save created, changed or deleted to the copies on future dates.
+	 *
+	 * Run it after the save has settled the event's dates, so it reaches the dates the event ends
+	 * up with.
+	 *
+	 * @since 1.5.4
+	 *
+	 * @param int                                             $event_id         Event ID.
+	 * @param array{changed: array<int>, deleted: array<int>} $template_changes What save_for_event() returned.
+	 * @return array{updated: int, created: int, retired: int, kept: array<int, \NetterTechEvents\Models\Occurrence>} See TemplatePropagator::propagate().
+	 */
+	public function propagate_templates( int $event_id, array $template_changes ): array {
+		if ( null === $this->template_propagator ) {
+			return array(
+				'updated' => 0,
+				'created' => 0,
+				'retired' => 0,
+				'kept'    => array(),
+			);
+		}
+
+		return $this->template_propagator->propagate( $event_id, $template_changes['changed'], $template_changes['deleted'] );
 	}
 
 	/**
@@ -217,12 +267,18 @@ class TicketTypeSaver {
 				? $ticket_types_data[ TicketTypeScope::OCCURRENCE->value ]
 				: $ticket_types_data;
 
-		// Get existing ticket type IDs.
-		$existing_types = $this->ticket_type_repo->for_occurrence( $occurrence_id );
-		$existing_ids   = array_filter( array_map( fn( $type ) => $type->id, $existing_types ) );
-		$submitted_ids  = array();
-		$saved_ids      = array();
-		$admin_skus     = array();
+		// Only the date's own tiers: for a date without any, for_occurrence() lists the event's
+		// series passes and templates, which this form neither shows nor may delete or rewrite.
+		$own_types = array();
+		foreach ( $this->ticket_type_repo->for_occurrence( $occurrence_id ) as $type ) {
+			if ( null !== $type->id && $occurrence_id === $type->occurrence_id ) {
+				$own_types[ $type->id ] = $type;
+			}
+		}
+		$existing_ids  = array_keys( $own_types );
+		$submitted_ids = array();
+		$saved_ids     = array();
+		$admin_skus    = array();
 
 		foreach ( $scope_data as $index => $data ) {
 			if ( ! is_array( $data ) ) {
@@ -236,10 +292,17 @@ class TicketTypeSaver {
 
 			$ticket_type = $this->build_ticket_type( $occurrence_id, $data, $event_id );
 
-			// Track submitted ID for deletion logic.
+			// A posted id that is not one of this date's own tiers belongs to another date or
+			// scope; saving it here would move that tier onto this date.
 			$tt_id = $ticket_type->id;
 			if ( null !== $tt_id && $tt_id > 0 ) {
-				$submitted_ids[] = $tt_id;
+				if ( ! isset( $own_types[ $tt_id ] ) ) {
+					continue;
+				}
+				$submitted_ids[]          = $tt_id;
+				$ticket_type->template_id = $this->unchanged( $own_types[ $tt_id ], $ticket_type )
+					? $own_types[ $tt_id ]->template_id
+					: null;
 			}
 
 			$this->save_ticket_type( $ticket_type );
@@ -267,6 +330,46 @@ class TicketTypeSaver {
 		$this->create_woocommerce_products( $occurrence_id, $admin_skus );
 
 		$this->announce_save( $event_id, $occurrence_id, $saved_ids );
+	}
+
+	/**
+	 * Whether a posted tier carries the same operator-set values as the stored one.
+	 *
+	 * A copy of a template stays linked to it until one of these actually changes, so saving a
+	 * date for another reason does not detach its tickets.
+	 *
+	 * @param TicketType $stored The tier as stored.
+	 * @param TicketType $posted The tier as posted back.
+	 * @return bool
+	 */
+	private function unchanged( TicketType $stored, TicketType $posted ): bool {
+		$stored = clone $stored;
+		$posted = clone $posted;
+		$stored->normalize_capacity();
+		$posted->normalize_capacity();
+
+		return $this->comparable( $stored ) === $this->comparable( $posted );
+	}
+
+	/**
+	 * The values a copy takes from its template that the date's form shows, in a form two tiers can
+	 * be compared by.
+	 *
+	 * Sale windows are compared to the minute the form shows; the form posts `Y-m-dTH:i` and the
+	 * table returns `Y-m-d H:i:s`.
+	 *
+	 * @param TicketType $ticket_type Tier.
+	 * @return array<string, mixed>
+	 */
+	private function comparable( TicketType $ticket_type ): array {
+		$values = TemplatePropagator::followed( $ticket_type );
+		unset( $values['sort_order'], $values['status'] );
+
+		foreach ( array( 'sale_start', 'sale_end' ) as $window ) {
+			$values[ $window ] = substr( str_replace( 'T', ' ', (string) $values[ $window ] ), 0, 16 );
+		}
+
+		return $values;
 	}
 
 	/**
@@ -308,7 +411,8 @@ class TicketTypeSaver {
 	 * @param int                  $event_id          Event ID.
 	 * @param array<string, mixed> $ticket_types_data Submitted ticket data grouped by scope.
 	 * @param TicketTypeScope      $scope             Event-level scope to save.
-	 * @return array<int, string> Tier id => operator-entered SKU, for product creation (NTE-160).
+	 * @return array{skus: array<int, string>, changed: array<int>, deleted: array<int>} Tier id =>
+	 *         operator-entered SKU for product creation (NTE-160); tiers created or changed; tiers deleted.
 	 */
 	private function process_event_ticket_scope( int $event_id, array $ticket_types_data, TicketTypeScope $scope ): array {
 		$scope_data = $ticket_types_data[ $scope->value ] ?? array();
@@ -322,8 +426,15 @@ class TicketTypeSaver {
 			static fn( TicketType $type ): bool => $type->scope === $scope->value
 		);
 		$existing_ids   = array_map( static fn( TicketType $type ): ?int => $type->id, $existing_types );
-		$submitted_ids  = array();
-		$saved_ids      = array();
+		$stored         = array();
+		foreach ( $existing_types as $existing_type ) {
+			if ( null !== $existing_type->id ) {
+				$stored[ $existing_type->id ] = $existing_type;
+			}
+		}
+		$submitted_ids = array();
+		$saved_ids     = array();
+		$changed       = array();
 
 		foreach ( $scope_data as $index => $data ) {
 			if ( ! is_array( $data ) ) {
@@ -346,6 +457,10 @@ class TicketTypeSaver {
 
 			if ( null !== $ticket_type->id ) {
 				$saved_ids[ $scope->value ][ $index ] = $ticket_type->id;
+
+				if ( TicketTypeScope::TEMPLATE === $scope && $this->created_or_changed( $stored[ $ticket_type->id ] ?? null, $ticket_type->id ) ) {
+					$changed[] = $ticket_type->id;
+				}
 			}
 
 			// Operator-entered SKU rides to product creation (NTE-160); the
@@ -355,11 +470,32 @@ class TicketTypeSaver {
 			}
 		}
 
-		$this->delete_removed_types( array_filter( $existing_ids ), $submitted_ids );
+		$deleted = $this->delete_removed_types( array_filter( $existing_ids ), $submitted_ids );
 
 		$this->announce_save( $event_id, 0, $saved_ids );
 
-		return $admin_skus;
+		return array(
+			'skus'    => $admin_skus,
+			'changed' => $changed,
+			'deleted' => $deleted,
+		);
+	}
+
+	/**
+	 * Whether a template saved in this request is new, or differs from how it was stored.
+	 *
+	 * @param TicketType|null $stored   The template before the save; null when it is new.
+	 * @param int             $saved_id The saved template's ID.
+	 * @return bool
+	 */
+	private function created_or_changed( ?TicketType $stored, int $saved_id ): bool {
+		if ( null === $stored ) {
+			return true;
+		}
+
+		$saved = $this->ticket_type_repo->find( $saved_id );
+
+		return null !== $saved && TemplatePropagator::differs( $stored, $saved );
 	}
 
 	/**
@@ -529,9 +665,9 @@ class TicketTypeSaver {
 	 *
 	 * @param array<int> $existing_ids  IDs of existing ticket types.
 	 * @param array<int> $submitted_ids IDs submitted in the form.
-	 * @return void
+	 * @return array<int> IDs deleted.
 	 */
-	private function delete_removed_types( array $existing_ids, array $submitted_ids ): void {
+	private function delete_removed_types( array $existing_ids, array $submitted_ids ): array {
 		$removed = array_values( array_diff( $existing_ids, $submitted_ids ) );
 
 		/**
@@ -551,12 +687,17 @@ class TicketTypeSaver {
 		);
 
 		if ( ! is_array( $removed ) ) {
-			return;
+			return array();
 		}
 
+		$deleted = array();
 		foreach ( $removed as $removed_id ) {
-			$this->ticket_type_repo->delete( (int) $removed_id );
+			if ( $this->ticket_type_repo->delete( (int) $removed_id ) ) {
+				$deleted[] = (int) $removed_id;
+			}
 		}
+
+		return $deleted;
 	}
 
 	/**

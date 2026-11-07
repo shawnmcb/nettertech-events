@@ -465,15 +465,28 @@ class TicketType {
 	 * @return string
 	 */
 	public function get_formatted_price(): string {
-		if ( $this->is_free() ) {
+		return self::format_price( $this->price );
+	}
+
+	/**
+	 * Format a ticket price for display.
+	 *
+	 * Static so report rows that carry a bare price, not a model, render it the
+	 * same way the ticket card does.
+	 *
+	 * @param float $price Ticket price.
+	 * @return string "Free", or WooCommerce price markup.
+	 */
+	public static function format_price( float $price ): string {
+		if ( $price <= 0 ) {
 			return __( 'Free', 'nettertech-events' );
 		}
 
 		if ( function_exists( 'wc_price' ) ) {
-			return wc_price( $this->price );
+			return wc_price( $price );
 		}
 
-		return '$' . number_format( $this->price, 2 );
+		return '$' . number_format( $price, 2 );
 	}
 
 	/**

@@ -42,6 +42,7 @@ use NetterTechEvents\Services\EmailConfig;
 use NetterTechEvents\Services\PathConflictDetector;
 
 use NetterTechEvents\Contracts\ActivityLogServiceInterface;
+use NetterTechEvents\Contracts\AttendeeCheckInInterface;
 use NetterTechEvents\Contracts\AttendeeFieldRepositoryInterface;
 use NetterTechEvents\Contracts\AttendeeFieldValueRepositoryInterface;
 use NetterTechEvents\Contracts\CapacityCalculatorInterface;
@@ -113,13 +114,9 @@ class AdminServiceProvider implements ServiceProviderInterface {
 			fn( Container $c ) => new \NetterTechEvents\Admin\OccurrenceSaveHandler(
 				$c->get( OccurrenceRepositoryInterface::class ),
 				$c->get( EventRepositoryInterface::class ),
-				$c->get( RecurrenceService::class ),
-				$c->get( TicketTypeRepositoryInterface::class ),
-				$c->get( CategoryRepositoryInterface::class ),
-				$c->get( TagRepositoryInterface::class ),
-				$c->get( OrganizerRepositoryInterface::class ),
 				$c->get( TicketTypeSaver::class ),
-				$c->get( AttendeeRepositoryInterface::class )
+				$c->get( AttendeeRepositoryInterface::class ),
+				$c->get( \NetterTechEvents\Services\OccurrenceRemover::class )
 			)
 		);
 
@@ -284,7 +281,8 @@ class AdminServiceProvider implements ServiceProviderInterface {
 				ServiceRegistry::wpdb(),
 				$c->get( EventRepositoryInterface::class ),
 				$c->get( OccurrenceRepositoryInterface::class ),
-				$c->get( CapacityCalculatorInterface::class )
+				$c->get( CapacityCalculatorInterface::class ),
+				$c->get( AttendeeCheckInInterface::class )
 			)
 		);
 

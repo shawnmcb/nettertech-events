@@ -13,6 +13,7 @@ use NetterTechEvents\Contracts\ActivityLogServiceInterface;
 use NetterTechEvents\Contracts\AttendeeCheckInInterface;
 use NetterTechEvents\Contracts\AttendeeRepositoryInterface;
 use NetterTechEvents\Core\Hooks;
+use NetterTechEvents\Services\CheckIn\CheckInProgress;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -154,6 +155,7 @@ final class AttendeeCheckInAjaxHandler {
 
 		$quantity      = max( 1, $attendee->quantity );
 		$checked_count = $checking_in ? $quantity : 0;
+		$stats         = $this->check_in_repo->get_check_in_stats( $attendee->occurrence_id );
 
 		wp_send_json_success(
 			array(
@@ -162,7 +164,8 @@ final class AttendeeCheckInAjaxHandler {
 				'checkedInCount' => $checked_count,
 				'quantity'       => $quantity,
 				'label'          => $this->format_check_in_label( $checked_count, $quantity ),
-				'stats'          => $this->check_in_repo->get_check_in_stats( $attendee->occurrence_id ),
+				'stats'          => $stats,
+				'progress'       => CheckInProgress::from_stats( $stats )->to_array(),
 			)
 		);
 	}

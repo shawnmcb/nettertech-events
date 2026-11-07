@@ -20,9 +20,9 @@ use NetterTechEvents\Models\Occurrence;
 /**
  * Builds `.ics` calendar files for email attachments.
  *
- * Extracted from EmailTemplateRenderer (NTE-107). Distinct from ICalService,
- * which produces the public subscribable feed (master VEVENT + RRULE/EXDATE);
- * this generator writes simple single-PUBLISH temp files for email attachment.
+ * Distinct from ICalService, which produces the public subscribable feed
+ * (master VEVENT + RRULE/EXDATE); this generator writes simple single-PUBLISH
+ * temp files for email attachment. Both take their times from IcsTime.
  *
  * @since 1.0.3
  */
@@ -94,17 +94,11 @@ class IcsGenerator implements IcsGeneratorInterface {
 				continue;
 			}
 
-			// True instants from the occurrence's authoring zone (DST-aware), so the
-			// UTC DTSTART/DTEND below are correct; strtotime() read the wall-clock as
-			// server-UTC and exported times off by the site's offset.
-			$start = $occurrence->get_start()->getTimestamp();
-			$end   = $occurrence->get_end()->getTimestamp();
-
 			$ics_content .= "BEGIN:VEVENT\r\n";
 			$ics_content .= sprintf( "UID:%s-%d@%s\r\n", $ticket->ticket_code, $occ_id, wp_parse_url( home_url(), PHP_URL_HOST ) );
-			$ics_content .= sprintf( "DTSTAMP:%s\r\n", gmdate( 'Ymd\THis\Z' ) );
-			$ics_content .= sprintf( "DTSTART:%s\r\n", gmdate( 'Ymd\THis\Z', $start ) );
-			$ics_content .= sprintf( "DTEND:%s\r\n", gmdate( 'Ymd\THis\Z', $end ) );
+			$ics_content .= sprintf( "DTSTAMP:%s\r\n", IcsTime::utc( new \DateTimeImmutable() ) );
+			$ics_content .= sprintf( "DTSTART:%s\r\n", IcsTime::utc( $occurrence->get_start() ) );
+			$ics_content .= sprintf( "DTEND:%s\r\n", IcsTime::utc( $occurrence->get_end() ) );
 			$ics_content .= sprintf( "SUMMARY:%s\r\n", $this->escape_ics_text( $event->title ) );
 
 			if ( $event->venue_name ) {
@@ -158,16 +152,11 @@ class IcsGenerator implements IcsGeneratorInterface {
 		$ics_content .= "CALSCALE:GREGORIAN\r\n";
 		$ics_content .= "METHOD:PUBLISH\r\n";
 
-		// True instants from the occurrence's authoring zone (DST-aware) so the UTC
-		// DTSTART/DTEND below are correct (was strtotime → wall-clock read as UTC).
-		$start = $occurrence->get_start()->getTimestamp();
-		$end   = $occurrence->get_end()->getTimestamp();
-
 		$ics_content .= "BEGIN:VEVENT\r\n";
 		$ics_content .= sprintf( "UID:reminder-%d@%s\r\n", $occurrence->id, wp_parse_url( home_url(), PHP_URL_HOST ) );
-		$ics_content .= sprintf( "DTSTAMP:%s\r\n", gmdate( 'Ymd\THis\Z' ) );
-		$ics_content .= sprintf( "DTSTART:%s\r\n", gmdate( 'Ymd\THis\Z', $start ) );
-		$ics_content .= sprintf( "DTEND:%s\r\n", gmdate( 'Ymd\THis\Z', $end ) );
+		$ics_content .= sprintf( "DTSTAMP:%s\r\n", IcsTime::utc( new \DateTimeImmutable() ) );
+		$ics_content .= sprintf( "DTSTART:%s\r\n", IcsTime::utc( $occurrence->get_start() ) );
+		$ics_content .= sprintf( "DTEND:%s\r\n", IcsTime::utc( $occurrence->get_end() ) );
 		$ics_content .= sprintf( "SUMMARY:%s\r\n", $this->escape_ics_text( $event->title ) );
 
 		if ( $event->venue_name ) {

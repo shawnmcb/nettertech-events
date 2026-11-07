@@ -16,6 +16,7 @@ use NetterTechEvents\Frontend\FrontendBranding;
 use NetterTechEvents\Frontend\Router;
 use NetterTechEvents\Frontend\Shortcodes\ShortcodeOutput;
 use NetterTechEvents\Frontend\TemplateCompat;
+use NetterTechEvents\Services\LayoutService;
 use NetterTechEvents\TemplateLoader\Templates;
 
 // Mark that NTE content is being rendered for optional frontend branding.
@@ -31,6 +32,16 @@ if ( ! $nettertech_events_event ) {
 	wp_safe_redirect( home_url() );
 	exit;
 }
+
+// The event's Layout settings, resolved as on the single-event page: the
+// admin layout preview first, then the event's own layout, the global
+// default, the built-in order.
+$nettertech_events_layout_service = new LayoutService();
+$nettertech_events_layout_config  = $nettertech_events_layout_service->get_preview_config();
+if ( ! $nettertech_events_layout_config ) {
+	$nettertech_events_layout_config = $nettertech_events_layout_service->get_layout( $nettertech_events_event->layout_config, $nettertech_events_event, true );
+}
+$nettertech_events_series_sections = $nettertech_events_layout_service->get_series_page_sections( $nettertech_events_layout_config );
 
 // Get occurrence list with transient caching (persists in database).
 // Transient is invalidated when event/occurrences change via nettertech_events_cache_invalidated hook.
@@ -66,7 +77,8 @@ $nettertech_events_display_occurrences = $nettertech_events_show_past ? array_me
 // renders no availability UI of its own.
 $nettertech_events_series_availability = array();
 if (
-	apply_filters( \NetterTechEvents\Core\Hooks::CARDS_NEED_AVAILABILITY, false )
+	in_array( 'dates', $nettertech_events_series_sections, true )
+	&& apply_filters( \NetterTechEvents\Core\Hooks::CARDS_NEED_AVAILABILITY, false )
 	&& ! empty( $nettertech_events_display_occurrences )
 	&& function_exists( '\\NetterTechEvents\\nettertech_events_container' )
 ) {
@@ -97,137 +109,146 @@ TemplateCompat::header();
 	?>
 	<article class="nte-series-page__article">
 
-		<div class="nte-series-page__header">
-			<h1 class="nte-series-page__title"><?php echo esc_html( $nettertech_events_event->title ); ?></h1>
+		<?php foreach ( $nettertech_events_series_sections as $nettertech_events_series_section ) : ?>
+			<?php if ( 'header' === $nettertech_events_series_section ) : ?>
+				<div class="nte-series-page__header">
+					<h1 class="nte-series-page__title"><?php echo esc_html( $nettertech_events_event->title ); ?></h1>
 
-			<?php if ( ! empty( $nettertech_events_event->venue_name ) ) : ?>
-				<p class="nte-series-page__venue">
-					<svg class="nte-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-						<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-						<circle cx="12" cy="10" r="3"/>
-					</svg>
-					<?php echo esc_html( $nettertech_events_event->venue_name ); ?>
-					<?php if ( ! empty( $nettertech_events_event->venue_address ) ) : ?>
-						<span class="nte-series-page__address"><?php echo esc_html( $nettertech_events_event->venue_address ); ?></span>
+					<?php if ( ! empty( $nettertech_events_event->venue_name ) ) : ?>
+						<p class="nte-series-page__venue">
+							<svg class="nte-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+								<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+								<circle cx="12" cy="10" r="3"/>
+							</svg>
+							<?php echo esc_html( $nettertech_events_event->venue_name ); ?>
+							<?php if ( ! empty( $nettertech_events_event->venue_address ) ) : ?>
+								<span class="nte-series-page__address"><?php echo esc_html( $nettertech_events_event->venue_address ); ?></span>
+							<?php endif; ?>
+						</p>
 					<?php endif; ?>
-				</p>
-			<?php endif; ?>
-		</div>
-
-		<?php if ( $nettertech_events_event->featured_image_id ) : ?>
-			<div class="nte-series-page__image">
+				</div>
+			<?php elseif ( 'featured_image' === $nettertech_events_series_section && $nettertech_events_event->featured_image_id ) : ?>
 				<?php
-				// wp_get_attachment_image() is a recognized escape primitive in PHPCS.
-				echo wp_get_attachment_image( $nettertech_events_event->featured_image_id, 'large', false, array( 'class' => 'nte-series-page__img' ) );
+				// Per-event vertical crop anchor, same allowlist as the single-event
+				// image; center/null falls through to the CSS var's own 50%.
+				$nettertech_events_series_anchor_map = array(
+					'top'    => '0%',
+					'bottom' => '100%',
+				);
+				$nettertech_events_series_anchor_y   = $nettertech_events_series_anchor_map[ (string) $nettertech_events_event->image_vertical_anchor ] ?? '50%';
 				?>
-			</div>
-		<?php endif; ?>
-
-		<?php if ( ! empty( $nettertech_events_event->description ) ) : ?>
-			<section class="nte-series-page__content">
-				<div class="nte-series-page__description">
+				<div class="nte-series-page__image" style="--nte-series-image-anchor-y: <?php echo esc_attr( $nettertech_events_series_anchor_y ); ?>;">
 					<?php
-					// Run the description through WordPress's content pipeline (wpautop, shortcodes,
-					// and oEmbed auto-embeds such as YouTube), then sanitize the result against the
-					// shared NTE allowlist. That allowlist permits oEmbed <iframe> markup, so embedded
-					// videos survive; using the default post allowlist (wp_kses_post) would strip the
-					// iframe and silently drop the video. The description is already wp_kses_post()-
-					// sanitized at the input boundary (EventSaveHandler).
-					// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- the_content is a WordPress core filter, not a plugin-prefixed hook.
-					echo wp_kses( apply_filters( 'the_content', $nettertech_events_event->description ), ShortcodeOutput::get_allowlist() );
+					// wp_get_attachment_image() is a recognized escape primitive in PHPCS.
+					echo wp_get_attachment_image( $nettertech_events_event->featured_image_id, 'large', false, array( 'class' => 'nte-series-page__img' ) );
 					?>
 				</div>
-			</section>
-		<?php endif; ?>
-
-		<section class="nte-series-page__dates" aria-label="<?php esc_attr_e( 'All Dates', 'nettertech-events' ); ?>">
-			<div class="nte-series-page__dates-header">
-				<h2 class="nte-series-page__section-title">
-					<?php
-					if ( $nettertech_events_has_upcoming ) {
-						esc_html_e( 'Upcoming Dates', 'nettertech-events' );
-					} else {
-						esc_html_e( 'Past Dates', 'nettertech-events' );
-					}
-					?>
-					<span class="nte-series-page__count">(<?php echo esc_html( (string) count( $nettertech_events_display_occurrences ) ); ?>)</span>
-				</h2>
-
-				<?php if ( $nettertech_events_has_past && $nettertech_events_has_upcoming ) : ?>
-					<nav class="nte-series-page__date-nav" aria-label="<?php esc_attr_e( 'Date filter', 'nettertech-events' ); ?>">
-						<?php if ( $nettertech_events_show_past ) : ?>
-							<a href="<?php echo esc_url( remove_query_arg( 'show_past' ) ); ?>" class="nte-series-page__nav-link">
-								<?php
-								printf(
-									/* translators: %d: number of upcoming dates */
-									esc_html__( 'Upcoming (%d)', 'nettertech-events' ),
-									count( $nettertech_events_upcoming )
-								);
-								?>
-							</a>
-							<span class="nte-series-page__nav-current" aria-current="true">
-								<?php
-								printf(
-									/* translators: %d: number of past dates */
-									esc_html__( 'All (%d)', 'nettertech-events' ),
-									count( $nettertech_events_past ) + count( $nettertech_events_upcoming )
-								);
-								?>
-							</span>
-						<?php else : ?>
-							<span class="nte-series-page__nav-current" aria-current="true">
-								<?php
-								printf(
-									/* translators: %d: number of upcoming dates */
-									esc_html__( 'Upcoming (%d)', 'nettertech-events' ),
-									count( $nettertech_events_upcoming )
-								);
-								?>
-							</span>
-							<a href="?show_past=1" class="nte-series-page__nav-link">
-								<?php
-								printf(
-									/* translators: %d: number of past dates */
-									esc_html__( 'All (%d)', 'nettertech-events' ),
-									count( $nettertech_events_past ) + count( $nettertech_events_upcoming )
-								);
-								?>
-							</a>
-						<?php endif; ?>
-					</nav>
-				<?php endif; ?>
-			</div>
-
-			<?php if ( ! empty( $nettertech_events_display_occurrences ) ) : ?>
-				<div class="nte-grid nte-grid--cols-3 nte-grid--grid" aria-label="<?php esc_attr_e( 'Event occurrences', 'nettertech-events' ); ?>">
-					<?php foreach ( $nettertech_events_display_occurrences as $nettertech_events_occ ) : ?>
+			<?php elseif ( 'description' === $nettertech_events_series_section && ! empty( $nettertech_events_event->description ) ) : ?>
+				<section class="nte-series-page__content">
+					<div class="nte-series-page__description">
 						<?php
-						$nettertech_events_occ->set_event( $nettertech_events_event );
-						echo wp_kses(
-							Templates::get_part(
-								'event-card',
-								array(
-									'occurrence'   => $nettertech_events_occ,
-									'event'        => $nettertech_events_event,
-									'show_image'   => true,
-									'show_venue'   => true,
-									'show_price'   => true,
-									'heading_tag'  => 'h3',
-									'heading_date' => true,
-									'prefetched_availability' => $nettertech_events_series_availability[ (int) $nettertech_events_occ->id ] ?? array( 'sold_out' => false ),
-								)
-							),
-							ShortcodeOutput::get_allowlist()
-						);
+						// Run the description through WordPress's content pipeline (wpautop, shortcodes,
+						// and oEmbed auto-embeds such as YouTube), then sanitize the result against the
+						// shared NTE allowlist. That allowlist permits oEmbed <iframe> markup, so embedded
+						// videos survive; using the default post allowlist (wp_kses_post) would strip the
+						// iframe and silently drop the video. The description is already wp_kses_post()-
+						// sanitized at the input boundary (EventSaveHandler).
+						// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- the_content is a WordPress core filter, not a plugin-prefixed hook.
+						echo wp_kses( apply_filters( 'the_content', $nettertech_events_event->description ), ShortcodeOutput::get_allowlist() );
 						?>
-					<?php endforeach; ?>
-				</div>
-			<?php else : ?>
-				<p class="nte-series-page__no-dates">
-					<?php esc_html_e( 'No upcoming dates scheduled.', 'nettertech-events' ); ?>
-				</p>
+					</div>
+				</section>
+			<?php elseif ( 'dates' === $nettertech_events_series_section ) : ?>
+				<section class="nte-series-page__dates" aria-label="<?php esc_attr_e( 'All Dates', 'nettertech-events' ); ?>">
+					<div class="nte-series-page__dates-header">
+						<h2 class="nte-series-page__section-title">
+							<?php
+							if ( $nettertech_events_has_upcoming ) {
+								esc_html_e( 'Upcoming Dates', 'nettertech-events' );
+							} else {
+								esc_html_e( 'Past Dates', 'nettertech-events' );
+							}
+							?>
+							<span class="nte-series-page__count">(<?php echo esc_html( (string) count( $nettertech_events_display_occurrences ) ); ?>)</span>
+						</h2>
+
+						<?php if ( $nettertech_events_has_past && $nettertech_events_has_upcoming ) : ?>
+							<nav class="nte-series-page__date-nav" aria-label="<?php esc_attr_e( 'Date filter', 'nettertech-events' ); ?>">
+								<?php if ( $nettertech_events_show_past ) : ?>
+									<a href="<?php echo esc_url( remove_query_arg( 'show_past' ) ); ?>" class="nte-series-page__nav-link">
+										<?php
+										printf(
+											/* translators: %d: number of upcoming dates */
+											esc_html__( 'Upcoming (%d)', 'nettertech-events' ),
+											count( $nettertech_events_upcoming )
+										);
+										?>
+									</a>
+									<span class="nte-series-page__nav-current" aria-current="true">
+										<?php
+										printf(
+											/* translators: %d: number of past dates */
+											esc_html__( 'All (%d)', 'nettertech-events' ),
+											count( $nettertech_events_past ) + count( $nettertech_events_upcoming )
+										);
+										?>
+									</span>
+								<?php else : ?>
+									<span class="nte-series-page__nav-current" aria-current="true">
+										<?php
+										printf(
+											/* translators: %d: number of upcoming dates */
+											esc_html__( 'Upcoming (%d)', 'nettertech-events' ),
+											count( $nettertech_events_upcoming )
+										);
+										?>
+									</span>
+									<a href="?show_past=1" class="nte-series-page__nav-link">
+										<?php
+										printf(
+											/* translators: %d: number of past dates */
+											esc_html__( 'All (%d)', 'nettertech-events' ),
+											count( $nettertech_events_past ) + count( $nettertech_events_upcoming )
+										);
+										?>
+									</a>
+								<?php endif; ?>
+							</nav>
+						<?php endif; ?>
+					</div>
+
+					<?php if ( ! empty( $nettertech_events_display_occurrences ) ) : ?>
+						<div class="nte-grid nte-grid--cols-3 nte-grid--cards" aria-label="<?php esc_attr_e( 'Event occurrences', 'nettertech-events' ); ?>">
+							<?php foreach ( $nettertech_events_display_occurrences as $nettertech_events_occ ) : ?>
+								<?php
+								$nettertech_events_occ->set_event( $nettertech_events_event );
+								echo wp_kses(
+									Templates::get_part(
+										'event-card',
+										array(
+											'occurrence'   => $nettertech_events_occ,
+											'event'        => $nettertech_events_event,
+											'show_image'   => true,
+											'show_venue'   => true,
+											'show_price'   => true,
+											'heading_tag'  => 'h3',
+											'heading_date' => true,
+											'prefetched_availability' => $nettertech_events_series_availability[ (int) $nettertech_events_occ->id ] ?? array( 'sold_out' => false ),
+										)
+									),
+									ShortcodeOutput::get_allowlist()
+								);
+								?>
+							<?php endforeach; ?>
+						</div>
+					<?php else : ?>
+						<p class="nte-series-page__no-dates">
+							<?php esc_html_e( 'No upcoming dates scheduled.', 'nettertech-events' ); ?>
+						</p>
+					<?php endif; ?>
+				</section>
 			<?php endif; ?>
-		</section>
+		<?php endforeach; ?>
 
 		<?php
 		/**

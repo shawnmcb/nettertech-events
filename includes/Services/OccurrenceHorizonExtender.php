@@ -24,8 +24,10 @@ use NetterTechEvents\Utilities\DebugLogger;
  * Extends occurrence horizons for recurring events via daily cron.
  *
  * When a recurring event's latest occurrence falls within the extension
- * threshold (default 30 days from now), new occurrences are generated
- * to push the horizon out to the configured limit.
+ * threshold (default 30 days from now), the pattern's later dates are added
+ * to push the horizon out to the configured limit. Every live series also has
+ * its future dates given any ticket template they lack. Existing dates are
+ * never deleted or recreated.
  *
  * @since 2.2.0
  */
@@ -216,6 +218,16 @@ class OccurrenceHorizonExtender {
 			return 'dormant';
 		}
 
+		// Every live series, near its horizon or not: dates left without their template tickets
+		// have nothing else to give them back.
+		$filled = $this->recurrence_service->fill_template_gaps( $event );
+		if ( $filled > 0 ) {
+			DebugLogger::log(
+				sprintf( 'Gave %d template tickets to dates of event #%d "%s" that lacked them', $filled, $event->id, $event->title ),
+				'OccurrenceHorizonExtender'
+			);
+		}
+
 		// Skip if latest occurrence is beyond the threshold.
 		if ( $latest_date > $threshold ) {
 			return 'skipped';
@@ -248,7 +260,7 @@ class OccurrenceHorizonExtender {
 			return 'error';
 		}
 
-		$gen_result = $this->recurrence_service->regenerate_future_occurrences(
+		$gen_result = $this->recurrence_service->extend_horizon(
 			$event,
 			$start_date,
 			$end_date,
@@ -268,13 +280,13 @@ class OccurrenceHorizonExtender {
 			return 'error';
 		}
 
-		if ( $gen_result['generated'] > 0 ) {
+		if ( $gen_result['saved'] > 0 ) {
 			DebugLogger::log(
 				sprintf(
-					'Extended occurrences for event #%d "%s": generated %d new occurrences',
+					'Extended occurrences for event #%d "%s": added %d dates',
 					$event->id,
 					$event->title,
-					$gen_result['generated']
+					$gen_result['saved']
 				),
 				'OccurrenceHorizonExtender'
 			);

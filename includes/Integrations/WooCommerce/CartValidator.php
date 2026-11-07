@@ -17,6 +17,7 @@ defined( 'ABSPATH' ) || exit;
 use NetterTechEvents\Contracts\CapacityServiceInterface;
 use NetterTechEvents\Contracts\OccurrenceRepositoryInterface;
 use NetterTechEvents\Contracts\TicketTypeRepositoryInterface;
+use NetterTechEvents\Enums\TicketTypeScope;
 use NetterTechEvents\Models\Occurrence;
 use NetterTechEvents\Models\TicketType;
 
@@ -185,6 +186,31 @@ class CartValidator {
 	}
 
 	/**
+	 * The date a ticket is sold against, or null when there is none to sell.
+	 *
+	 * Only a series pass borrows the event's next date, because it has none of its own. Any other
+	 * ticket whose own date is gone or cancelled is unsellable; lending it another date would admit
+	 * the buyer to a night they never chose and leave the order without an attendee.
+	 *
+	 * @since 1.5.3
+	 *
+	 * @param TicketType      $ticket_type The ticket being sold.
+	 * @param Occurrence|null $own         The ticket's own date as its product resolves it.
+	 * @return Occurrence|null
+	 */
+	public function resolve_sale_occurrence( TicketType $ticket_type, ?Occurrence $own ): ?Occurrence {
+		if ( null !== $own ) {
+			return $own->is_cancelled() ? null : $own;
+		}
+
+		if ( TicketTypeScope::EVENT->value !== $ticket_type->scope || null === $ticket_type->event_id ) {
+			return null;
+		}
+
+		return $this->occurrence_repo->next_for_event( $ticket_type->event_id );
+	}
+
+	/**
 	 * Validate multiple ticket types for batch cart addition.
 	 *
 	 * Validates all tickets in a single pass, checking capacity, on-sale status,
@@ -237,19 +263,10 @@ class CartValidator {
 
 			$ticket_type = $ticket_types[ $ticket_type_id ];
 
-			// Get occurrence (may be null for event-scoped tickets).
-			$occurrence = null;
-			if ( $ticket_type->occurrence_id ) {
-				$occurrence = $occurrences[ $ticket_type->occurrence_id ] ?? null;
-			}
+			$own = $ticket_type->occurrence_id ? ( $occurrences[ $ticket_type->occurrence_id ] ?? null ) : null;
 
-			// An event-scoped ticket (series pass) anchors its date checks to the next
-			// upcoming occurrence: on sale while any date remains, ended when none does.
-			// Capacity is NOT this occurrence's — the calculator bounds a pass by its
-			// tightest date's room across the whole event (NTE-156).
-			if ( ! $occurrence && $ticket_type->event_id ) {
-				$occurrence = $this->occurrence_repo->next_for_event( $ticket_type->event_id );
-			}
+			// A pass's capacity is not this date's: the calculator bounds it by its tightest date.
+			$occurrence = $this->resolve_sale_occurrence( $ticket_type, $own );
 
 			if ( ! $occurrence ) {
 				$errors[ $ticket_type_id ] = __( 'No valid event date found for this ticket.', 'nettertech-events' );

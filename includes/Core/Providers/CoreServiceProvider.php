@@ -67,6 +67,7 @@ use NetterTechEvents\Services\ICalService;
 use NetterTechEvents\Services\LayoutService;
 use NetterTechEvents\Services\OccurrenceGenerator;
 use NetterTechEvents\Services\OccurrenceHorizonExtender;
+use NetterTechEvents\Services\OccurrenceRemover;
 use NetterTechEvents\Services\OrderEmailHandler;
 use NetterTechEvents\Services\PrivacyService;
 use NetterTechEvents\Services\RateLimitService;
@@ -298,13 +299,24 @@ class CoreServiceProvider implements ServiceProviderInterface {
 	 */
 	private function register_recurrence_services( Container $container ): void {
 		$container->singleton(
+			OccurrenceRemover::class,
+			fn( Container $c ) => new OccurrenceRemover(
+				$c->get( OccurrenceRepositoryInterface::class ),
+				$c->get( TicketTypeRepositoryInterface::class ),
+				$c->get( AttendeeRepositoryInterface::class ),
+				$c->get( TicketRepositoryInterface::class )
+			)
+		);
+
+		$container->singleton(
 			RecurrenceService::class,
 			fn( Container $c ) => new RecurrenceService(
 				new RRuleParser(),
 				new OccurrenceGenerator(),
 				$c->get( OccurrenceRepositoryInterface::class ),
 				$c->get( TicketTypeRepositoryInterface::class ),
-				$c->get( AttendeeRepositoryInterface::class )
+				$c->get( AttendeeRepositoryInterface::class ),
+				$c->get( OccurrenceRemover::class )
 			)
 		);
 
@@ -477,7 +489,19 @@ class CoreServiceProvider implements ServiceProviderInterface {
 			fn( Container $c ) => new TicketTypeSaver(
 				$c->get( TicketTypeRepositoryInterface::class ),
 				class_exists( 'WooCommerce' ) ? $c->get( \NetterTechEvents\Integrations\WooCommerce\ProductManager::class ) : null,
-				$c->get( EventRepositoryInterface::class )
+				$c->get( EventRepositoryInterface::class ),
+				$c->get( \NetterTechEvents\Services\TemplatePropagator::class )
+			)
+		);
+
+		$container->singleton(
+			\NetterTechEvents\Services\TemplatePropagator::class,
+			fn( Container $c ) => new \NetterTechEvents\Services\TemplatePropagator(
+				$c->get( TicketTypeRepositoryInterface::class ),
+				$c->get( OccurrenceRepositoryInterface::class ),
+				$c->get( EventRepositoryInterface::class ),
+				$c->get( RecurrenceService::class ),
+				$c->get( OccurrenceRemover::class )
 			)
 		);
 

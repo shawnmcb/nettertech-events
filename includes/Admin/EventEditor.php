@@ -176,8 +176,7 @@ class EventEditor {
 		// show the row the save will write back to.
 		$occurrence = null;
 		if ( $this->event->is_recurring() ) {
-			$occurrences = $this->occurrence_repo->for_event( $this->event_id, array( 'limit' => 1 ) );
-			$occurrence  = $occurrences[0] ?? null;
+			$occurrence = PrimaryOccurrence::pattern_seed( $this->occurrence_repo, $this->event_id );
 		} elseif ( ! $is_new ) {
 			$occurrence = PrimaryOccurrence::find_for_display( $this->occurrence_repo, $this->event_id );
 		}
@@ -194,6 +193,13 @@ class EventEditor {
 		$notice     = get_transient( $notice_key );
 		if ( $notice ) {
 			delete_transient( $notice_key );
+		}
+
+		$template_notice_key = EventSaveHandler::TEMPLATE_NOTICE_KEY . get_current_user_id();
+		$template_notice     = get_transient( $template_notice_key );
+		if ( $template_notice ) {
+			delete_transient( $template_notice_key );
+			$this->announce_on_load( 'nte-template-notice' );
 		}
 
 		?>
@@ -217,6 +223,12 @@ class EventEditor {
 			<?php if ( $notice ) : ?>
 				<div class="notice notice-info is-dismissible">
 					<p><?php echo esc_html( $notice ); ?></p>
+				</div>
+			<?php endif; ?>
+
+			<?php if ( $template_notice ) : ?>
+				<div class="notice notice-warning is-dismissible" id="nte-template-notice">
+					<p><?php echo esc_html( (string) $template_notice ); ?></p>
 				</div>
 			<?php endif; ?>
 
@@ -342,5 +354,25 @@ class EventEditor {
 		</div>
 
 		<?php
+	}
+
+	/**
+	 * Have screen readers read a notice once the page has loaded.
+	 *
+	 * A notice rendered with the page is not announced on its own; this one reports that a save
+	 * deliberately did less than asked, so it is spoken.
+	 *
+	 * @param string $element_id ID of the notice element.
+	 * @return void
+	 */
+	private function announce_on_load( string $element_id ): void {
+		wp_enqueue_script( 'wp-a11y' );
+		wp_add_inline_script(
+			'wp-a11y',
+			sprintf(
+				'wp.domReady( function () { var notice = document.getElementById( %s ); if ( notice ) { wp.a11y.speak( notice.textContent.trim(), \'polite\' ); } } );',
+				(string) wp_json_encode( $element_id )
+			)
+		);
 	}
 }

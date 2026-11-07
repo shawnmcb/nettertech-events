@@ -285,17 +285,19 @@ Customize your event URL structure. **Changes require permalink flush.**
 
 ### Event Page Layout
 
-Drag-and-drop interface to reorder components on single event pages.
+Drag-and-drop interface to reorder the sections of event pages (Alt+Arrow keys also move the focused item). Each event can override this in its own Layout box.
 
 **Available components:**
+- Header (title, date, price, venue)
 - Featured Image
-- Event Details (date, time, venue)
+- Current Date/Time (the date being viewed, with ticket actions)
+- Upcoming Dates
 - Description
-- Ticket Types / RSVP Form
-- Related Events
-- Share Buttons
+- More Dates Navigation (previous/next date)
 
 Toggle visibility with checkboxes. Order determines display sequence on the frontend.
+
+On the main page of an event with more than one date, the layout controls the header, featured image, description, and the grid of dates. The grid takes the place of Upcoming Dates or More Dates Navigation, whichever comes first, and is hidden only when both are hidden. Current Date/Time does not apply there. If the layout has never been changed from the built-in order, events with more than one date show the description above their dates.
 
 ### Features
 
@@ -494,10 +496,11 @@ Duplication includes:
 
 ## Series Pages
 
-For recurring events with tickets, automatic series pages show:
+Any event with more than one date gets an automatic series page showing:
 - Event overview and description
-- List of upcoming occurrences
-- Quick links to purchase tickets for each date
+- A grid of its dates, each linking to that date's page
+
+The page follows the event's layout (see Event Page Layout), the Event Page image ratio and crop anchor for its featured image, and the Cards image ratio for the date grid.
 
 Access via: `yoursite.com/events/event-slug/`
 

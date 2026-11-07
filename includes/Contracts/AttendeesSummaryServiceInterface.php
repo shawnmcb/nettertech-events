@@ -11,6 +11,8 @@ namespace NetterTechEvents\Contracts;
 
 defined( 'ABSPATH' ) || exit;
 
+use NetterTechEvents\Services\CheckIn\CheckInProgress;
+
 /**
  * Builds the Event Details, Ticket Overview and Attendance Overview data for
  * the event-scoped Attendees view.
@@ -27,8 +29,18 @@ interface AttendeesSummaryServiceInterface {
 	 * @return array{
 	 *     event: array{title: string, date: string, venue: string, edit_url: string, view_url: string},
 	 *     tickets: array{rows: array<int, array{id: int, name: string, issued: int, available: ?int, checked_in: int, is_pass: bool, is_shared: bool, house_bound: bool}>, total_issued: int, total_checked_in: int, total_available: ?int, house: ?int, shares_house: bool},
-	 *     attendance: array{total_guests: int, status_counts: array<string, int>, checked_in_guests: int, checked_in_percent: int}
+	 *     attendance: array{total_guests: int, status_counts: array<string, int>, checked_in_guests: int, checked_in_percent: int|null}
 	 * }
 	 */
 	public function build( int $event_id, int $occurrence_id ): array;
+
+	/**
+	 * Check-in progress for one occurrence, from the canonical check-in totals.
+	 *
+	 * @since 1.5.3
+	 *
+	 * @param int $occurrence_id Occurrence ID.
+	 * @return CheckInProgress
+	 */
+	public function occurrence_progress( int $occurrence_id ): CheckInProgress;
 }

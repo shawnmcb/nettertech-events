@@ -3,7 +3,7 @@ Contributors: shawnmcburnie
 Tags: events, calendar, tickets, recurring events, rsvp
 Requires at least: 6.5
 Tested up to: 7.0
-Stable tag: 1.5.1
+Stable tag: 1.5.4
 Requires PHP: 8.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -143,6 +143,36 @@ NetterTech Events uses its own custom tables and a dedicated URL namespace (`/ev
 10. Mobile single event page with ticket type selector and add-to-cart
 
 == Changelog ==
+
+= 1.5.4 =
+* Changed: changing a ticket template updates the tickets already made from it on future dates, and their WooCommerce products. Removing a template removes its unsold tickets. A date's ticket with sales of its own is left as it is, and the save notice lists those dates.
+* Fixed: saving a recurring event no longer deletes and recreates its dates. Dates are regenerated only when the schedule changes.
+* Fixed: a removed date takes its ticket types with it. Their WooCommerce products are deleted, or moved to the trash when an order refers to them.
+* Fixed: a date with any attendee, whatever their status, any ticket, or a sold ticket of its own is never deleted. A series pass holder counts for every date the pass covers.
+* Fixed: the daily date extension only adds new dates, gives them the event's ticket templates, and leaves existing dates alone. Before, it recreated unsold future dates without their tickets, so they showed a price but could not be bought.
+* Fixed: dates missing their tickets get them back when you save the event or its ticket template, and the daily run puts them back too.
+* Fixed: changing the schedule of a series with more than 100 dates no longer duplicates its later dates.
+* Fixed: saving a date's Edit Date screen no longer turns the event's series pass into a ticket for that date. Passes already converted this way are not repaired by this release.
+* Fixed: a date's template tickets stay linked to their template when the date is saved, unless one of the ticket's own values changes.
+* Fixed: "All dates in the series" keeps each later date's own description and address, and reaches every later date, not only the first hundred.
+* Fixed: on sites with a persistent object cache, deleting a ticket no longer leaves its WooCommerce product behind.
+
+= 1.5.3 =
+* Added: a check-in progress row on the Attendees screen. With one date selected, a row that stays in view as you scroll shows how many ticket holders have checked in, as a percentage and a bar that turns green when everyone is in.
+* Added: add-ons can add publishing options to the event editor's Publish box and a short note under an event's status on the All Events list.
+* Changed: editing one date of a recurring event now offers "This date only" or "All dates in the series". "This and all following dates" is gone: it split the event in two, and the later dates lost their own changes and their old links. Events already split this way are left as they are.
+* Changed: Tickets & Attendance shows each ticket type's price, or Free.
+* Fixed: calendar downloads and event feeds show the right time. A recurring event is written in its own time zone, so a weekly 7 pm event stays at 7 pm after the clocks change.
+* Fixed: a ticket for a deleted or cancelled date can no longer be bought through an old product or add-to-cart link. Series passes still sell while any date of the event remains.
+* Fixed: seats from failed or cancelled orders no longer count as Voided in Tickets & Attendance. Voided now counts refunded orders only, matching the purchase list.
+* Fixed: undoing a check-in lowers the date's check-in totals on sites with a persistent object cache.
+* Fixed: keyboard focus stays on the check-in button while it saves, so you keep your place in the list.
+* Fixed: screen readers hear a time field's help text, and no longer hear a time suggestion that isn't on screen.
+
+= 1.5.2 =
+* Fixed: on the main page of an event with more than one date, the featured image follows the Event Page image ratio and the event's crop position. On wide screens it was cut to a fixed band that hid the bottom of the image.
+* Fixed: that page follows Event Page Layout and the event's own Layout box, so its header, image, description and dates appear in the order set and can be hidden. The dates are hidden only when both Upcoming Dates and More Dates Navigation are. If the layout was never changed, the description stays above the dates.
+* Fixed: the date cards on that page use the Cards image ratio.
 
 = 1.5.1 =
 * Added: an add-on can let people who hold its own permission, but are not administrators, reach its panel on Events › Spaces and its tabs on Events › Settings. They see only that add-on's settings tabs, and on Spaces they can open an existing space with its own details shown but locked. They cannot add or delete spaces, and core settings stay with administrators. Administrators see no change.

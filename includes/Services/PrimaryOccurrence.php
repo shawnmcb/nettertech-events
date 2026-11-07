@@ -17,7 +17,7 @@ use NetterTechEvents\Models\Occurrence;
  * fields and every save path that writes them must resolve the same row, or a save updates one
  * date while the form's tickets are bound to another.
  *
- * Not for recurring events: their date fields seed the pattern from the first row of any status.
+ * A recurring event's date fields stand for a different row: see pattern_seed().
  */
 final class PrimaryOccurrence {
 
@@ -72,6 +72,22 @@ final class PrimaryOccurrence {
 			return $primary;
 		}
 
+		return self::pattern_seed( $repo, $event_id );
+	}
+
+	/**
+	 * The row a recurring event's date fields seed the pattern from: its earliest row of any status.
+	 *
+	 * The editor fills the First date fields from this row, and the save compares what comes back
+	 * against it to tell an untouched schedule from a changed one. Both must read the same row.
+	 *
+	 * @since 1.5.4
+	 *
+	 * @param OccurrenceRepositoryInterface $repo     Occurrence repository.
+	 * @param int                           $event_id Event id (events-table id).
+	 * @return Occurrence|null Null when the event has no dates at all.
+	 */
+	public static function pattern_seed( OccurrenceRepositoryInterface $repo, int $event_id ): ?Occurrence {
 		$first = $repo->for_event( $event_id, array( 'limit' => 1 ) );
 
 		return $first[0] ?? null;
